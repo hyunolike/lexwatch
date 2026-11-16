@@ -3,7 +3,7 @@
   "id": "chatcmpl-fixture-1",
   "object": "chat.completion",
   "created": 1763254800,
-  "model": "nvidia/nemotron-3-nano-30b-a3b",
+  "model": "nvidia/nemotron-3-super-120b-a12b",
   "choices": [
     {
       "index": 0,

@@ -1,5 +1,5 @@
 {
-  "_fixture_meta": "문서 기반 재구성(실호출 아님). 필드명은 open.law.go.kr 활용가이드 기준. ID·일련번호·날짜 값은 예시이며 키 확보 후 scripts/record_lawapi.py로 교체.",
+  "_fixture_meta": "문서 기반 재구성(실호출 아님). 필드명은 open.law.go.kr 활용가이드 기준. PLACEHOLDER — 법령ID·일련번호·공포번호·날짜는 실제 법령처럼 보여도 예시값이며 실제 API 질의에 쓰지 말 것. 키 확보 후 scripts/record_lawapi.py로 교체. 구조문목록의 '(구조문 예시)' 문구는 합성 데이터.",
   "OldAndNewService": {
     "구조문_기본정보": {
       "법령일련번호": "90002",
