@@ -21,7 +21,9 @@
 - `sync: false` 항목은 값이 비면 블루프린트 승인이 거부된다. 그래서 `LAW_OC`는 블루프린트에서 뺐고, 키를 받으면 따로 넣는다(아래 3단계).
 - Vercel ai의 rewrite를 걷어냈다(2단계 참고).
 - 예약 워크플로(`collect`, `reset-demo`)는 기본 브랜치(`main`)에 있어야 돈다. `feat/mvp`가 `main`에 합쳐지기 전에는 예약 실행도 수동 실행도 되지 않는다.
-- 아직 확인하지 않은 것: 실제 `/analyze` 한 건의 응답 시간, Render 메모리 추이, `TRUST_FORWARDED_FOR`, UptimeRobot.
+- Render 자동 배포가 push에 반응하지 않는다(저장소를 URL로 연결해 GitHub 앱 웹훅이 없다). 새 커밋은 `POST /v1/services/<id>/deploys`에 `commitId`를 넣거나 대시보드에서 배포한다.
+- AI 토큰: 백엔드를 먼저 새 코드로 올리고(이전 ai는 헤더를 무시한다) 그다음 Vercel ai에 `AI_TOKEN`, `AI_REQUIRE_TOKEN=true`를 넣고 재배포했다. 토큰 없는 호출 401, `/docs`·`/openapi.json` 404, 백엔드 경유 채팅 200을 확인했다.
+- 아직 확인하지 않은 것: 실제 `/analyze` 한 건의 응답 시간(키 필요), Render 메모리 추이, `CLIENT_IP_HEADER` 값(키가 없으면 채팅이 할당량을 쓰지 않아 실험할 수 없다), UptimeRobot.
 
 ## 구성과 순서
 
@@ -105,7 +107,7 @@ ai 서비스는 NVIDIA 크레딧과 `LAW_OC`를 쓰므로 공개 주소를 누�
 - ai: `AI_TOKEN`이 있으면 `/health`를 뺀 모든 경로가 같은 값의 `X-Ai-Token` 헤더를 요구한다(상수 시간 비교, 틀리면 401). `/docs`, `/redoc`, `/openapi.json`은 404다.
 - ai: `AI_TOKEN`이 비어 있으면 검사하지 않는다(로컬·테스트용). `AI_REQUIRE_TOKEN=true`이면 대신 503으로 닫힌다.
 - Render: `AI_TOKEN`이 있으면 AI 호출마다 `X-Ai-Token`을 붙인다(`AiTokenHandler`). 계약 생성(`scripts/gen-ai-client.sh`)은 `app.openapi()`를 직접 부르므로 영향이 없다.
-- 값: `openssl rand -hex 32`. Render와 Vercel ai에 **같은 값**을 넣고, 순서는 Vercel ai 재배포와 Render 재시작을 연달아 한다. 사이에 들어온 AI 호출은 401이고, 백엔드는 이를 재시도하지 않고 단계 실패(`AI_REQUEST_REJECTED`)로 남긴다 — 실행 이력에서 관리자가 다시 실행한다. 수집이 없는 시간(07:00 KST 근처를 피해서)에 바꾼다. 로그에는 남기지 않는다.
+- 값: `openssl rand -hex 32`. Render와 Vercel ai에 **같은 값**을 넣고, 순서는 Vercel ai 재배포와 Render 재시작을 연달아 한다. 사이에 들어온 AI 호출은 401이고, 백엔드는 이를 재시도하지 않고 단계 실패(응답 본문의 `AI_TOKEN_INVALID`)로 남긴다 — 실행 이력에서 관리자가 다시 실행한다. 수집이 없는 시간(07:00 KST 근처를 피해서)에 바꾼다. 로그에는 남기지 않는다.
 
 실제 `/analyze` 한 건은 요청 본문이 크므로 `fixtures/` 아래 기록이나 `ai/openapi.json`의 `AnalyzeRequest` 스키마로 만들어 호출하고, 응답 시간을 기록한다.
 
