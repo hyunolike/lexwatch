@@ -4,6 +4,25 @@
 아래 1~5단계는 **계정이 필요한 작업이고 아직 하나도 실행하지 않았다.** 각 단계의 "확인" 항목이 통과해야 다음으로 넘어간다.
 **검증 표기**: `[검증됨]`은 로컬에서 실제로 돌려 본 것, `[미검증]`은 외부 서비스에서만 확인할 수 있는 것이다.
 
+## 배포 기록 (2026-11-16)
+
+아래 1~5단계를 CLI(`supabase`, `vercel`, `render ea blueprints`, `gh`)로 실행했다. 확인한 것과 남은 것을 나눠 적는다.
+
+| 구성 | 주소 | 확인한 것 |
+|---|---|---|
+| Supabase | 프로젝트 `lexwatch`, ap-southeast-1, 세션 풀러 | 첫 기동에서 마이그레이션이 적용되고 재현 검토가 시드됐다 |
+| Vercel ai | https://lexwatch-ai.vercel.app (sin1, Fluid Compute) | `/health` 200, `/classify {}` 422 |
+| Render api | https://lexwatch-api-qinh.onrender.com (singapore, free) | `/health` 200, 재현 검토 목록, 토큰 없는 `/jobs/reset-demo` 401, 토큰 있는 호출 200 |
+| Vercel web | https://lexwatch-web.vercel.app (sin1) | CORS 사전 요청 204, 승인 대기함 표시, 재현 검토 승인 뒤 알림함 도착 |
+| GitHub | 시크릿 `API_BASE_URL`, `JOB_TOKEN` 설정 | — |
+
+배포하면서 고친 것과 알게 된 것:
+- Render 서비스 이름은 블루프린트가 붙인 접미사 때문에 `lexwatch-api-qinh`다.
+- `sync: false` 항목은 값이 비면 블루프린트 승인이 거부된다. 그래서 `LAW_OC`는 블루프린트에서 뺐고, 키를 받으면 따로 넣는다(아래 3단계).
+- Vercel ai의 rewrite를 걷어냈다(2단계 참고).
+- 예약 워크플로(`collect`, `reset-demo`)는 기본 브랜치(`main`)에 있어야 돈다. `feat/mvp`가 `main`에 합쳐지기 전에는 예약 실행도 수동 실행도 되지 않는다.
+- 아직 확인하지 않은 것: 실제 `/analyze` 한 건의 응답 시간, Render 메모리 추이, `TRUST_FORWARDED_FOR`, UptimeRobot.
+
 ## 구성과 순서
 
 ```
@@ -57,7 +76,8 @@ Render는 배포 중 헬스체크가 통과할 때까지 이전 인스턴스와 
 ## 2. Vercel — `ai` `[미검증]`
 
 1. Vercel → Add New Project → 이 저장소 선택. **Root Directory = `ai`**. Framework Preset = Other.
-2. `ai/vercel.json`이 `api/index.py`를 함수로 지정하고 `maxDuration: 150`, 전체 경로 rewrite를 건다. `api/index.py`는 `app.main:app`을 가져온다.
+2. `ai/vercel.json`이 `api/index.py`의 `maxDuration: 150`, `fluid: true`, `regions: ["sin1"]`을 정한다. `api/index.py`는 `app.main:app`을 가져온다.
+   **rewrite를 두지 않는다.** Vercel이 FastAPI를 감지해 모든 경로를 앱으로 보내는데, `/(.*) → /api/index` rewrite를 걸면 앱이 받는 경로가 `/api/index`로 바뀌어 모든 요청이 404가 된다(2026-11-16 실제 배포에서 겪었다).
 3. 의존성은 `ai/pyproject.toml`의 `dependencies`만 설치된다. 선택 그룹 `guardrails`(`nemoguardrails`)는 설치되지 않는다 — 번들에 넣지 않는다(ai/README.md 참고). `tests/`, `.venv/` 등은 `excludeFiles`로 뺀다.
 4. 환경변수: `NVIDIA_API_KEY`(없어도 됨), `LAW_OC`(ai 서비스가 법제처를 직접 부르는 경로가 있을 때만), 필요 시 `LLM_PROVIDER`.
 5. 배포 후 주소(예: `https://lexwatch-ai.vercel.app`)를 기록한다.
@@ -102,7 +122,7 @@ curl -s -H 'X-Demo-Role: lawyer' https://<render>.onrender.com/api/reviews   # �
 1. Add New Project → 같은 저장소 → **Root Directory = `web`**. Framework = Next.js (자동).
 2. 환경변수 `NEXT_PUBLIC_API_BASE_URL` = Render 주소(`https://<render>.onrender.com`, 끝 슬래시 없음). **빌드 때 박히므로 값을 바꾸면 재배포해야 한다.**
 3. 배포 후 주소를 Render의 `Web__Origins`에 넣고(여러 개면 쉼표) 저장하면 Render가 재시작한다. CORS는 `X-Demo-Role`, `Content-Type` 헤더와 GET/POST만 허용한다.
-4. `web/vercel.json`은 필요 없다(기본 빌드 명령을 쓴다).
+4. `web/vercel.json`은 리전(`sin1`)만 정한다. 빌드 명령은 기본값을 쓴다.
 
 확인: 브라우저로 주소를 열면 수신함이 보이고, 네트워크 탭에서 Render로 가는 요청이 CORS 오류 없이 200이다. 서버가 잠들어 있으면 화면이 "깨우는 중" 상태로 재시도한다.
 

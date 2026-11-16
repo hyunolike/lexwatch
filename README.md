@@ -2,7 +2,7 @@
 
 공포된 법령 개정을 매일 수집해 실무그룹별 영향 검토 메모 초안을 만들고, 크리틱 3단이 검사한 뒤 변호사 역할 사용자가 승인해야 알림이 나가는 Workflow 데모입니다. 변호사의 판단을 대신하지 않고, 초안과 근거를 사람이 확인하는 단계를 중심에 둡니다.
 
-- 데모 주소: `<배포 주소 — 배포 후 기입>` <!-- TODO(deploy) -->
+- 데모 주소: https://lexwatch-web.vercel.app (무료 서버라 첫 접속은 1분쯤 걸릴 수 있습니다)
 - 상태: 배포 전입니다. 아래 화면은 로컬 docker compose에서 키 없이 띄운 것입니다.
 - 키(`NVIDIA_API_KEY`, `LAW_OC`) 없이 만든 구현입니다. 실제 NVIDIA 모델 호출과 실제 법령 수집은 아직 한 번도 돌려 보지 않았습니다. 자세한 수준은 [NVIDIA 연동과 검증 수준](docs/nvidia-integration.md)에 있습니다.
 
@@ -149,4 +149,4 @@ make test-backend                           # .NET 118건, Testcontainers라 Doc
 make eval-critic                            # 크리틱 평가, 결과를 eval/results에 저장
 ```
 
-배포는 [docs/deploy.md](docs/deploy.md)에 적었으나 계정이 필요한 단계는 아직 실행하지 않았습니다.
+배포 절차와 실제 배포 기록은 [docs/deploy.md](docs/deploy.md)에 있습니다. 웹과 AI 서비스는 Vercel, 백엔드는 Render, DB는 Supabase에 올렸습니다.
