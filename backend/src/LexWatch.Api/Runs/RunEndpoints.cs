@@ -130,6 +130,8 @@ public static class RunEndpoints
             var run = (await db.WorkflowRuns.FromSqlInterpolated($"""SELECT * FROM "WorkflowRuns" WHERE "Id" = {id} FOR UPDATE""")
                 .ToListAsync(ct)).SingleOrDefault();
             if (run is null) return Err(404, "NOT_FOUND", "실행을 찾을 수 없다");
+            // 재현 실행에 실제 핸들러(AI, 법제처)를 돌리면 재현과 실제 배지가 한 실행에 섞인다.
+            if (run.IsReplay) return Err(409, "REPLAY_RUN", "재현 실행은 다시 실행할 수 없다");
             var steps = await db.StepRuns.Where(s => s.RunId == id).ToListAsync(ct);
             var groups = await db.GroupReviews.Where(g => g.RunId == id).ToDictionaryAsync(g => g.Id, ct);
             // 같은 (단계, 그룹)에 실패가 아닌 행이 이미 있으면 한 번 재큐된 것이므로 다시 넣지 않는다.

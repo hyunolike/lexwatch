@@ -149,6 +149,22 @@ public class RunEndpointTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal(ReviewStatus.Approved, (await db.GroupReviews.SingleAsync(x => x.Id == g.Id)).Status);
     }
 
+    [Fact]
+    public async Task Retry_on_replay_run_is_409()
+    {
+        var (run, _) = await FailedSeedAsync(ReviewStatus.NeedsReview, "analyze");
+        await using (var db = pg.CreateDb())
+        {
+            (await db.WorkflowRuns.SingleAsync(r => r.Id == run.Id)).IsReplay = true;
+            await db.SaveChangesAsync();
+        }
+        await using var f = Factory();
+        var resp = await As(f, "admin").PostAsync($"/api/runs/{run.Id}/retry", null);
+        Assert.Equal(HttpStatusCode.Conflict, resp.StatusCode);
+        await using var chk = pg.CreateDb();
+        Assert.Equal(1, await chk.StepRuns.CountAsync(s => s.RunId == run.Id));
+    }
+
     [Theory]
     [InlineData(ReviewStatus.Rejected, "analyze")]
     [InlineData(ReviewStatus.Notified, "notify")]

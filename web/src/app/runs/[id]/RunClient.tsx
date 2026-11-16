@@ -28,7 +28,7 @@ function Detail({ data, reload }: { data: RunDetail; reload: () => void }) {
         {!data.run.isReplay && <span className="text-sm text-slate-500">{data.lawChange.promulgationDate} 공포</span>}
       </div>
       {data.run.isReplay && <ReplayNote />}
-      {role === "admin" && hasRetryableStep(data.timeline, data.groups ?? []) && (
+      {role === "admin" && !data.run.isReplay && hasRetryableStep(data.timeline, data.groups ?? []) && (
         <button onClick={onRetry} disabled={retrying} className="rounded border bg-white px-3 py-1 text-sm disabled:opacity-50">
           실패한 단계 다시 실행
         </button>
