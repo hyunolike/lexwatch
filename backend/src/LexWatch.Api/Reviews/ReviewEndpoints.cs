@@ -21,6 +21,9 @@ public static class ReviewEndpoints
     private static IResult Err(int status, string code, string message) =>
         Results.Json(new { code, message }, statusCode: status);
 
+    private static IResult NoDraft() =>
+        Err(409, "NO_DRAFT", "초안이 없어 승인하거나 수정할 수 없다. 반려만 할 수 있다");
+
     private static IResult Conflict() => Err(409, "REVIEW_ALREADY_DECIDED", "이미 결정됐거나 다른 사용자가 먼저 처리했다");
 
     public static void MapReviewEndpoints(this IEndpointRouteBuilder app)
@@ -90,6 +93,8 @@ public static class ReviewEndpoints
             var review = await db.GroupReviews.SingleOrDefaultAsync(g => g.Id == id, ct);
             if (review is null) return Err(404, "NOT_FOUND", "검토를 찾을 수 없다");
             if (!Decidable(review) || review.Version != req.Version) return Conflict();
+            var current = await LatestDraftAsync(db, id, ct);
+            if (current is null) return NoDraft();
 
             string? diffJson = null;
             if (req.EditedSentences is { Count: > 0 } edited)
@@ -99,9 +104,7 @@ public static class ReviewEndpoints
                 if (edited.Any(e => string.IsNullOrWhiteSpace(e.Sentence) || e.Citations is not { Count: > 0 }
                         || e.Citations.Any(c => !evidenceIds.Contains(c))))
                     return Err(400, "INVALID_CITATION", "수정한 문장마다 근거 저장소에 있는 인용이 하나 이상 필요하다");
-                var current = await LatestDraftAsync(db, id, ct);
-                var before = current is null ? []
-                    : JsonSerializer.Deserialize<List<MemoSentenceDto>>(current.SentencesJson, J) ?? [];
+                var before = JsonSerializer.Deserialize<List<MemoSentenceDto>>(current.SentencesJson, J) ?? [];
                 var after = edited.Select(e => new MemoSentenceDto(e.Sentence, e.Citations!)).ToList();
                 var diff = new List<object>();
                 for (var i = 0; i < Math.Max(before.Count, after.Count); i++)
@@ -114,9 +117,9 @@ public static class ReviewEndpoints
                 diffJson = JsonSerializer.Serialize(diff, J);
                 db.MemoDrafts.Add(new MemoDraft
                 {
-                    Id = Guid.NewGuid(), GroupReviewId = id, Version = (current?.Version ?? 0) + 1, CreatedBy = "lawyer",
+                    Id = Guid.NewGuid(), GroupReviewId = id, Version = current.Version + 1, CreatedBy = "lawyer",
                     SentencesJson = JsonSerializer.Serialize(after, J),
-                    OpenQuestionsJson = current?.OpenQuestionsJson ?? "[]",
+                    OpenQuestionsJson = current.OpenQuestionsJson,
                 });
             }
 
@@ -218,19 +221,28 @@ public static class ReviewEndpoints
     }
 
     /// <summary>
-    /// 할당량용 클라이언트 주소. 기본은 연결의 원격 IP다. 헤더는 위조할 수 있으므로
-    /// TRUST_FORWARDED_FOR=true일 때만(리버스 프록시 뒤에서만 켠다) X-Forwarded-For의 마지막 항목을 쓴다 —
-    /// 마지막 항목은 신뢰하는 프록시가 덧붙인 값이라 클라이언트가 고를 수 없다.
+    /// 할당량용 클라이언트 주소. 헤더는 위조할 수 있으므로 설정으로 켠 경우에만 믿는다.
+    /// 1) CLIENT_IP_HEADER(예: True-Client-IP, CF-Connecting-IP)가 있으면 그 헤더 하나만 읽는다.
+    ///    값이 IP로 읽히지 않으면 원격 IP로 내려간다.
+    /// 2) 없고 TRUST_FORWARDED_FOR=true면 X-Forwarded-For의 마지막 항목(신뢰하는 프록시가 덧붙인 값)을 쓴다.
+    /// 3) 그 밖에는 연결의 원격 IP. 값은 로그로 남기지 않는다(해시만 할당량 표에 남는다).
     /// </summary>
-    private static string ClientIp(HttpContext http, IConfiguration cfg)
+    public static string ClientIp(HttpContext http, IConfiguration cfg)
     {
+        var remote = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var header = cfg["CLIENT_IP_HEADER"]?.Trim();
+        if (!string.IsNullOrEmpty(header))
+        {
+            var raw = http.Request.Headers[header].ToString().Trim();
+            return System.Net.IPAddress.TryParse(raw, out var ip) && !raw.Contains(',') ? ip.ToString() : remote;
+        }
         if (cfg.GetValue<bool>("TRUST_FORWARDED_FOR"))
         {
             var last = http.Request.Headers["X-Forwarded-For"].ToString().Split(',',
                 StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault();
             if (!string.IsNullOrEmpty(last)) return last;
         }
-        return http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return remote;
     }
 
     private static string Role(HttpContext http) => http.Request.Headers["X-Demo-Role"].ToString();

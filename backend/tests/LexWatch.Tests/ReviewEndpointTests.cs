@@ -103,6 +103,38 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Draftless_group_cannot_be_approved_or_edited_but_can_be_rejected()
+    {
+        var (run, _) = await AiSeed.RunWithEvidenceAsync(pg);
+        var g = await AiSeed.GroupAsync(pg, run.Id, "labor", ReviewStatus.NeedsReview);
+        await using var f = Factory();
+        var c = As(f, "lawyer");
+
+        var approve = await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version });
+        Assert.Equal(HttpStatusCode.Conflict, approve.StatusCode);
+        Assert.Equal("NO_DRAFT", (await approve.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString());
+        var edit = await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new
+        {
+            version = g.Version,
+            editedSentences = new[] { new { sentence = "새 문장", citations = new[] { "law:L1:제23조" } } },
+        });
+        Assert.Equal(HttpStatusCode.Conflict, edit.StatusCode);
+        Assert.Equal("NO_DRAFT", (await edit.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString());
+
+        await using (var db = pg.CreateDb())
+        {
+            Assert.Equal(ReviewStatus.NeedsReview, (await db.GroupReviews.SingleAsync()).Status);
+            Assert.Empty(await db.StepRuns.Where(s => s.Step == "notify").ToListAsync());
+            Assert.Empty(await db.MemoDrafts.ToListAsync());
+        }
+
+        var reject = await c.PostAsJsonAsync($"/api/reviews/{g.Id}/reject", new { version = g.Version, comment = "근거 부족" });
+        Assert.Equal(HttpStatusCode.OK, reject.StatusCode);
+        await using var db2 = pg.CreateDb();
+        Assert.Equal(ReviewStatus.Rejected, (await db2.GroupReviews.SingleAsync()).Status);
+    }
+
+    [Fact]
     public async Task Admin_cannot_approve()
     {
         var g = await SeedAsync();
