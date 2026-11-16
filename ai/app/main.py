@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from app.agent.loop import AnalyzeRequest, AnalyzeResponse, analyze
 from app.classify import ClassifyRequest, ClassifyResponse, classify
 from app.errors import register_handlers
 from app.rag.factory import get_retriever
@@ -26,3 +27,8 @@ async def embed(req: EmbedRequest) -> EmbedResponse:
 @app.post("/classify", response_model=ClassifyResponse)
 async def classify_endpoint(req: ClassifyRequest) -> ClassifyResponse:
     return await classify(req)
+
+
+@app.post("/analyze", response_model=AnalyzeResponse)
+async def analyze_endpoint(req: AnalyzeRequest) -> AnalyzeResponse:
+    return await analyze(req)
