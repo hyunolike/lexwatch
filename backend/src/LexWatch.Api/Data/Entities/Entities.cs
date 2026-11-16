@@ -1,0 +1,140 @@
+using Pgvector;
+
+namespace LexWatch.Api.Data.Entities;
+
+public class LawChange
+{
+    public Guid Id { get; set; }
+    public string LawId { get; set; } = "";
+    public string LawName { get; set; } = "";
+    public DateOnly PromulgationDate { get; set; }
+    public DateOnly? EffectiveDate { get; set; }
+    public string RawJson { get; set; } = "";
+    public string RawSha256 { get; set; } = "";
+    public DateTimeOffset FetchedAt { get; set; }
+    public string IdempotencyKey { get; set; } = "";
+}
+
+public class WorkflowRun
+{
+    public Guid Id { get; set; }
+    public Guid LawChangeId { get; set; }
+    public RunStatus Status { get; set; }
+    public string TraceId { get; set; } = "";
+    public bool IsReplay { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? FinishedAt { get; set; }
+}
+
+public class GroupReview
+{
+    public Guid Id { get; set; }
+    public Guid RunId { get; set; }
+    public string GroupCode { get; set; } = "";
+    public ReviewStatus Status { get; set; }
+    public double? Confidence { get; set; }
+    public string? Reason { get; set; }
+    /// <summary>낙관적 동시성 토큰 (Postgres xmin).</summary>
+    public uint Version { get; set; }
+}
+
+public class StepRun
+{
+    public Guid Id { get; set; }
+    public Guid RunId { get; set; }
+    public Guid? GroupReviewId { get; set; }
+    public string Step { get; set; } = "";
+    public int Attempt { get; set; }
+    public StepStatus Status { get; set; }
+    public DateTimeOffset NotBefore { get; set; }
+    public DateTimeOffset? LeaseUntil { get; set; }
+    public string? InputJson { get; set; }
+    public string? OutputJson { get; set; }
+    public string? ErrorCode { get; set; }
+    public string? ErrorMessage { get; set; }
+    public string ProviderKind { get; set; } = "";
+    public string? ProviderName { get; set; }
+    public DateTimeOffset? StartedAt { get; set; }
+    public DateTimeOffset? FinishedAt { get; set; }
+    public int? DurationMs { get; set; }
+}
+
+public class Evidence
+{
+    public Guid RunId { get; set; }
+    public string EvidenceId { get; set; } = "";
+    public string Kind { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string Body { get; set; } = "";
+    public string? SourceUrl { get; set; }
+    public DateTimeOffset FetchedAt { get; set; }
+}
+
+public class AgentToolCall
+{
+    public Guid Id { get; set; }
+    public Guid StepRunId { get; set; }
+    public int Seq { get; set; }
+    public string Tool { get; set; } = "";
+    public string ArgsJson { get; set; } = "";
+    public string ResultSummary { get; set; } = "";
+    public string[] EvidenceIds { get; set; } = [];
+}
+
+public class MemoDraft
+{
+    public Guid Id { get; set; }
+    public Guid GroupReviewId { get; set; }
+    public int Version { get; set; }
+    public string SentencesJson { get; set; } = "";
+    public string OpenQuestionsJson { get; set; } = "";
+    public string CreatedBy { get; set; } = "";
+}
+
+public class CriticFinding
+{
+    public Guid Id { get; set; }
+    public Guid MemoDraftId { get; set; }
+    public int Tier { get; set; }
+    public int SentenceIndex { get; set; }
+    public string RuleId { get; set; } = "";
+    public string Message { get; set; } = "";
+}
+
+public class Approval
+{
+    public Guid Id { get; set; }
+    public Guid GroupReviewId { get; set; }
+    public string Decision { get; set; } = "";
+    public string ActorRole { get; set; } = "";
+    public string? Comment { get; set; }
+    public string? DiffJson { get; set; }
+    public DateTimeOffset DecidedAt { get; set; }
+}
+
+public class Notification
+{
+    public Guid Id { get; set; }
+    public Guid GroupReviewId { get; set; }
+    public string Channel { get; set; } = "demo_inbox";
+    public string Status { get; set; } = "";
+    public string Body { get; set; } = "";
+    public int Attempts { get; set; }
+    public DateTimeOffset? SentAt { get; set; }
+}
+
+public class PracticeGroup
+{
+    public string Code { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string InterestText { get; set; } = "";
+    public string[] LawIds { get; set; } = [];
+    public Vector? Embedding { get; set; }
+}
+
+public class ChatQuota
+{
+    public DateOnly Day { get; set; }
+    public string IpHash { get; set; } = "";
+    public int Count { get; set; }
+}
