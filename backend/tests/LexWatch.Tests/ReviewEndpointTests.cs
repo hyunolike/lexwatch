@@ -71,6 +71,7 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal(1, list.GetArrayLength());
         Assert.Equal(1, list[0].GetProperty("findingCount").GetInt32());
         Assert.Equal("노동", list[0].GetProperty("groupName").GetString());
+        Assert.Equal(2, list[0].GetProperty("evidenceCount").GetInt32());
 
         var d = await c.GetFromJsonAsync<JsonElement>($"/api/reviews/{g.Id}");
         Assert.Equal(g.Version, d.GetProperty("version").GetUInt32());

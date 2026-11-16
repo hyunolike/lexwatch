@@ -1,13 +1,14 @@
 "use client";
 import { useState } from "react";
-import type { Draft, EditedSentence, EvidenceItem } from "@/lib/api";
+import { safeHttpUrl, type Draft, type EditedSentence, type EvidenceItem } from "@/lib/api";
 
 function Chip({ ev, id, onRemove }: { ev?: EvidenceItem; id: string; onRemove?: () => void }) {
   const label = ev?.title ?? id;
+  const href = safeHttpUrl(ev?.sourceUrl);
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-800">
-      {ev?.sourceUrl ? (
-        <a href={ev.sourceUrl} target="_blank" rel="noreferrer" className="underline">{label}</a>
+      {href ? (
+        <a href={href} target="_blank" rel="noreferrer" className="underline">{label}</a>
       ) : (
         <span>{label}</span>
       )}

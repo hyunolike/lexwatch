@@ -11,6 +11,7 @@ export interface ReviewSummary {
   status: string;
   confidence: number | null;
   findingCount: number;
+  evidenceCount: number;
   providerKinds: ProviderKind[];
   isReplay: boolean;
 }
@@ -66,10 +67,17 @@ export interface ApiError {
 
 export type ApiResult<T> = { waking: true } | { waking: false; status: number; data: T };
 
+export const WAKING_STATUSES = [502, 503, 504];
+
+/** http(s) 주소만 링크로 허용한다. */
+export function safeHttpUrl(url: string | null | undefined): string | null {
+  return url && /^https?:\/\//i.test(url) ? url : null;
+}
+
 export const RETRY_INTERVAL_MS = 5000;
 export const MAX_RETRIES = 24;
 
-const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5000";
+const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5080";
 
 export function getRole(): Role {
   if (typeof document === "undefined") return "lawyer";
@@ -91,8 +99,40 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   } catch {
     return { waking: true };
   }
-  if (res.status === 502 || res.status === 503) return { waking: true };
-  const text = await res.text();
-  const data = (text ? JSON.parse(text) : null) as T;
-  return { waking: false, status: res.status, data };
+  if (WAKING_STATUSES.includes(res.status)) return { waking: true };
+  let data: unknown = null;
+  try {
+    const text = await res.text();
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = { code: "NON_JSON_RESPONSE", message: `서버가 올바르지 않은 응답을 보냈어요. (${res.status})` } satisfies ApiError;
+  }
+  return { waking: false, status: res.status, data: data as T };
+}
+
+export type DecisionOutcome =
+  | { kind: "waking" }
+  | { kind: "conflict" }
+  | { kind: "error"; message: string }
+  | { kind: "ok" };
+
+/** 승인·반려 요청을 보내고 화면이 다룰 결과로 접는다. */
+export async function submitDecision(
+  id: string,
+  kind: "approve" | "reject",
+  version: number,
+  opts: { editedSentences?: EditedSentence[]; comment?: string },
+): Promise<DecisionOutcome> {
+  const body =
+    kind === "approve"
+      ? { version, editedSentences: opts.editedSentences }
+      : { version, comment: opts.comment };
+  const res = await apiFetch<ApiError | { status: string }>(`/api/reviews/${id}/${kind}`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (res.waking) return { kind: "waking" };
+  if (res.status === 409) return { kind: "conflict" };
+  if (res.status >= 400) return { kind: "error", message: (res.data as ApiError | null)?.message ?? "처리하지 못했어요." };
+  return { kind: "ok" };
 }

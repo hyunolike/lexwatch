@@ -23,6 +23,7 @@ function Inbox({ items }: { items: ReviewSummary[] }) {
                     <span className="font-medium">{r.lawName}</span>
                     <span className="text-sm text-slate-500">{r.promulgationDate} 공포</span>
                     <span className="text-sm">신뢰도 {r.confidence == null ? "—" : Math.round(r.confidence * 100) + "%"}</span>
+                    <span className="text-sm">근거 {r.evidenceCount}건</span>
                     <span className="text-sm">크리틱 {r.findingCount}건</span>
                     {kinds.map((k) => <ProviderBadge key={k} kind={k} />)}
                   </Link>

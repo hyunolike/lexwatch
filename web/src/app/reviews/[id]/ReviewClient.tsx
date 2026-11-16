@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { apiFetch, type ApiError, type EditedSentence, type ReviewDetail } from "@/lib/api";
+import { apiFetch, submitDecision, type ApiError, type EditedSentence, type ReviewDetail } from "@/lib/api";
 import { DraftEditor } from "@/components/DraftEditor";
 import { OldNewDiff } from "@/components/OldNewDiff";
 import { ProviderBadge } from "@/components/ProviderBadge";
@@ -29,20 +29,19 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
   async function decide(kind: "approve" | "reject") {
     setBusy(true);
     setMsg(null);
-    const body =
-      kind === "approve"
-        ? { version: review.version, editedSentences: editing ? edited : undefined }
-        : { version: review.version, comment };
-    const res = await apiFetch<ApiError | { status: string }>(`/api/reviews/${review.id}/${kind}`, {
-      method: "POST",
-      body: JSON.stringify(body),
+    const out = await submitDecision(review.id, kind, review.version, {
+      editedSentences: editing ? edited : undefined,
+      comment,
     });
     setBusy(false);
-    if (res.waking) return setMsg("서버를 깨우는 중이에요. 잠시 뒤에 다시 눌러 주세요.");
-    if (res.status === 409) return setConflict(true);
-    if (res.status >= 400) return setMsg((res.data as ApiError).message ?? "처리하지 못했어요.");
+    if (out.kind === "waking") return setMsg("서버를 깨우는 중이에요. 잠시 뒤에 다시 눌러 주세요.");
+    if (out.kind === "conflict") return setConflict(true);
+    if (out.kind === "error") return setMsg(out.message);
     reload();
   }
+
+  const resetEdits = () =>
+    setEdited(draft?.sentences.map((s) => ({ sentence: s.sentence, citations: s.citations })) ?? []);
 
   return (
     <div className="space-y-4">
@@ -58,7 +57,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
       {conflict && (
         <div className="flex items-center gap-3 rounded border border-red-300 bg-red-50 p-3 text-sm">
           다른 사람이 먼저 결정했어요.
-          <button onClick={reload} className="rounded border bg-white px-2 py-0.5">새로고침</button>
+          <button onClick={() => { setConflict(false); reload(); }} className="rounded border bg-white px-2 py-0.5">새로고침</button>
         </div>
       )}
       {msg && <div className="rounded border bg-yellow-50 p-3 text-sm">{msg}</div>}
@@ -82,7 +81,10 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
         <div className="space-y-3 rounded border bg-white p-3">
           <div className="flex flex-wrap gap-2">
             <button disabled={busy || editing} onClick={() => decide("approve")} className="rounded bg-green-700 px-3 py-1 text-white disabled:opacity-40">승인</button>
-            <button disabled={busy} onClick={() => setEditing((e) => !e)} className="rounded border px-3 py-1">
+            <button disabled={busy} onClick={() => {
+              if (editing) resetEdits();
+              setEditing((e) => !e);
+            }} className="rounded border px-3 py-1">
               {editing ? "수정 취소" : "수정"}
             </button>
             {editing && (

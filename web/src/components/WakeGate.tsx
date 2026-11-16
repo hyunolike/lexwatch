@@ -14,6 +14,7 @@ export function WakeGate<T>({
   const [res, setRes] = useState<Ready<T> | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [gaveUp, setGaveUp] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [nonce, setNonce] = useState(0);
   const loadRef = useRef(load);
   useEffect(() => {
@@ -24,7 +25,13 @@ export function WakeGate<T>({
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const run = async (n: number) => {
-      const r = await loadRef.current();
+      let r: ApiResult<T>;
+      try {
+        r = await loadRef.current();
+      } catch {
+        if (!cancelled) setFailed(true);
+        return;
+      }
       if (cancelled) return;
       if (!r.waking) {
         setRes({ status: r.status, data: r.data });
@@ -47,10 +54,18 @@ export function WakeGate<T>({
 
   const reload = useCallback(() => {
     setGaveUp(false);
+    setFailed(false);
     setNonce((n) => n + 1);
   }, []);
 
   if (res) return <>{children(res, reload)}</>;
+  if (failed)
+    return (
+      <div className="p-8 text-center">
+        <p>화면을 불러오지 못했어요.</p>
+        <button onClick={reload} className="mt-3 rounded border px-3 py-1">다시 시도</button>
+      </div>
+    );
   if (gaveUp)
     return (
       <div className="p-8 text-center">

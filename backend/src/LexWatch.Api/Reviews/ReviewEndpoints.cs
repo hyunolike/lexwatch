@@ -213,6 +213,7 @@ public static class ReviewEndpoints
             .Select(p => p.Name).FirstOrDefaultAsync(ct) ?? g.GroupCode;
         var draft = await LatestDraftAsync(db, id, ct);
         var findingCount = draft is null ? 0 : await db.CriticFindings.CountAsync(f => f.MemoDraftId == draft.Id, ct);
+        var evidenceCount = await db.Evidence.AsNoTracking().CountAsync(e => e.RunId == g.RunId, ct);
         var kinds = await db.StepRuns.AsNoTracking()
             .Where(s => s.RunId == g.RunId && (s.GroupReviewId == id || s.GroupReviewId == null) && s.ProviderKind != "none")
             .Select(s => s.ProviderKind).Distinct().ToListAsync(ct);
@@ -220,7 +221,7 @@ public static class ReviewEndpoints
         {
             ["id"] = g.Id, ["runId"] = g.RunId, ["groupCode"] = g.GroupCode, ["groupName"] = groupName,
             ["lawName"] = law.LawName, ["promulgationDate"] = law.PromulgationDate, ["status"] = g.Status.ToString(),
-            ["confidence"] = g.Confidence, ["findingCount"] = findingCount, ["providerKinds"] = kinds,
+            ["confidence"] = g.Confidence, ["findingCount"] = findingCount, ["evidenceCount"] = evidenceCount, ["providerKinds"] = kinds,
             ["isReplay"] = run.IsReplay,
         };
     }
