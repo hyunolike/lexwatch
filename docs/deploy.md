@@ -105,7 +105,7 @@ ai 서비스는 NVIDIA 크레딧과 `LAW_OC`를 쓰므로 공개 주소를 누�
 - ai: `AI_TOKEN`이 있으면 `/health`를 뺀 모든 경로가 같은 값의 `X-Ai-Token` 헤더를 요구한다(상수 시간 비교, 틀리면 401). `/docs`, `/redoc`, `/openapi.json`은 404다.
 - ai: `AI_TOKEN`이 비어 있으면 검사하지 않는다(로컬·테스트용). `AI_REQUIRE_TOKEN=true`이면 대신 503으로 닫힌다.
 - Render: `AI_TOKEN`이 있으면 AI 호출마다 `X-Ai-Token`을 붙인다(`AiTokenHandler`). 계약 생성(`scripts/gen-ai-client.sh`)은 `app.openapi()`를 직접 부르므로 영향이 없다.
-- 값: `openssl rand -hex 32`. Render와 Vercel ai에 **같은 값**을 넣고, 순서는 Vercel ai 재배포와 Render 재시작을 연달아 한다(사이에 AI 호출은 401로 재시도된다). 로그에는 남기지 않는다.
+- 값: `openssl rand -hex 32`. Render와 Vercel ai에 **같은 값**을 넣고, 순서는 Vercel ai 재배포와 Render 재시작을 연달아 한다. 사이에 들어온 AI 호출은 401이고, 백엔드는 이를 재시도하지 않고 단계 실패(`AI_REQUEST_REJECTED`)로 남긴다 — 실행 이력에서 관리자가 다시 실행한다. 수집이 없는 시간(07:00 KST 근처를 피해서)에 바꾼다. 로그에는 남기지 않는다.
 
 실제 `/analyze` 한 건은 요청 본문이 크므로 `fixtures/` 아래 기록이나 `ai/openapi.json`의 `AnalyzeRequest` 스키마로 만들어 호출하고, 응답 시간을 기록한다.
 
