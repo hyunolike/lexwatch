@@ -55,7 +55,13 @@ public class WorkflowWorker(IServiceScopeFactory scopes, TimeProvider time, ILog
             try
             {
                 result = await handler.ExecuteAsync(new StepContext(step, run, db), ct);
-                if (result is StepResult.Succeeded { ProviderKind: var kind } && !ProviderKinds.Contains(kind))
+                var kind = result switch
+                {
+                    StepResult.Succeeded sr => sr.ProviderKind,
+                    StepResult.NeedsReview nr => nr.ProviderKind,
+                    _ => null,
+                };
+                if (kind is not null && !ProviderKinds.Contains(kind))
                     throw new ArgumentException($"알 수 없는 ProviderKind: {kind}");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -134,6 +140,8 @@ public class WorkflowWorker(IServiceScopeFactory scopes, TimeProvider time, ILog
                 step.ErrorCode = null;
                 step.ErrorMessage = nr.Reason;
                 step.OutputJson = nr.Output is null ? null : JsonSerializer.Serialize(nr.Output, StepQueue.Json);
+                step.ProviderKind = nr.ProviderKind;
+                step.ProviderName = nr.ProviderName;
                 await SetGroupStatusAsync(db, step.GroupReviewId, ReviewStatus.NeedsReview, ct);
                 break;
 

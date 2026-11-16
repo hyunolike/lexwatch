@@ -80,7 +80,10 @@ public class ClassifyStep(AiGateway ai, TimeProvider time) : IStepHandler
         foreach (var g in groups)
         {
             verdicts.TryGetValue(g.Code, out var verdict);
-            var confidence = verdict?.Confidence ?? 0.0;
+            var raw = verdict?.Confidence ?? 0.0;
+            var relevant = verdict?.Relevant ?? false;
+            // confidence는 '관련성일 확률'이다. 관련 없음 판정은 어떤 값이어도 진행 문턱 아래로 누른다.
+            var confidence = relevant ? raw : Math.Min(raw, ReviewAt - 0.001);
             var reason = verdict?.Reason ?? "분류 응답에 이 그룹이 없다";
             var status = confidence >= ProceedAt ? ReviewStatus.Analyzing
                 : confidence >= ReviewAt ? ReviewStatus.NeedsReview
@@ -94,7 +97,7 @@ public class ClassifyStep(AiGateway ai, TimeProvider time) : IStepHandler
             review.Status = status;
             review.Confidence = confidence;
             review.Reason = reason;
-            summaryOut.Add(new { group = g.Code, confidence, status = status.ToString() });
+            summaryOut.Add(new { group = g.Code, confidence, status = status.ToString(), modelRelevant = relevant, modelConfidence = raw });
             if (status != ReviewStatus.ClosedIrrelevant) next.Add(new NextStep("analyze", review.Id, null));
         }
 

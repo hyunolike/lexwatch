@@ -12,7 +12,11 @@ public abstract record StepResult
 
     public sealed record Retry(string ErrorCode, string Message, TimeSpan? After) : StepResult;
 
-    public sealed record NeedsReview(string Reason, object? Output) : StepResult;
+    public sealed record NeedsReview(
+        string Reason,
+        object? Output,
+        string ProviderKind = "none",
+        string? ProviderName = null) : StepResult;
 
     public sealed record Failed(string ErrorCode, string Message) : StepResult;
 }

@@ -123,6 +123,7 @@ public class AnalyzeStepTests(PostgresFixture pg) : IAsyncLifetime
 
         var nr = Assert.IsType<StepResult.NeedsReview>(result);
         Assert.Equal("INSUFFICIENT_EVIDENCE", nr.Reason);
+        Assert.Equal(("nvidia", "nim"), (nr.ProviderKind, nr.ProviderName));
         await using var v = pg.CreateDb();
         Assert.Empty(await v.MemoDrafts.ToListAsync());
         Assert.Equal(2, await v.AgentToolCalls.CountAsync());

@@ -74,7 +74,8 @@ public class AnalyzeStep(AiGateway ai, TimeProvider time) : IStepHandler
         };
 
         if (r.Status == AnalyzeResponseStatus.Insufficient_evidence)
-            return new StepResult.NeedsReview("INSUFFICIENT_EVIDENCE", output);
+            return new StepResult.NeedsReview("INSUFFICIENT_EVIDENCE", output,
+                AiMapping.ProviderKind(r.Provider), r.Provider.Name);
 
         var version = (await db.MemoDrafts.Where(d => d.GroupReviewId == groupId).MaxAsync(d => (int?)d.Version, ct) ?? 0) + 1;
         db.MemoDrafts.Add(new MemoDraft

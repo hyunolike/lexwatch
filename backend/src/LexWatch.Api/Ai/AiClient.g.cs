@@ -1075,6 +1075,9 @@ namespace LexWatch.Api.Ai
         [System.Text.Json.Serialization.JsonPropertyName("relevant")]
         public bool Relevant { get; set; } = default!;
 
+        /// <summary>
+        /// 관련성일 확률(0~1). 관련 없다고 판단하면 0에 가깝게, 관련 있다고 확신하면 1에 가깝게.
+        /// </summary>
         [System.Text.Json.Serialization.JsonPropertyName("confidence")]
         [System.ComponentModel.DataAnnotations.Range(0.0D, 1.0D)]
         public double Confidence { get; set; } = default!;

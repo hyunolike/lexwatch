@@ -165,6 +165,26 @@ public class WorkflowWorkerTests(PostgresFixture pg) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Needs_review_persists_provider_and_rejects_unknown_kind()
+    {
+        var run = await Seed.RunAsync(pg);
+        var time = new FakeTime(T0);
+        var ok = await EnqueueAsync(run, "analyze", time);
+        var bad = await EnqueueAsync(run, "critic_judge", time);
+        var worker = Seed.Worker(pg, time,
+            new LambdaHandler("analyze", _ => new StepResult.NeedsReview("x", null, "nvidia", "nim")),
+            new LambdaHandler("critic_judge", _ => new StepResult.NeedsReview("x", null, "bogus", null)));
+
+        await worker.RunOnceAsync();
+        await worker.RunOnceAsync();
+
+        var a = await LoadAsync(ok.Id);
+        Assert.Equal((StepStatus.NeedsReview, "nvidia", "nim"), (a.Status, a.ProviderKind, a.ProviderName));
+        var b = await LoadAsync(bad.Id);
+        Assert.NotEqual("bogus", b.ProviderKind);
+    }
+
+    [Fact]
     public async Task Stale_worker_result_is_discarded_after_reclaim()
     {
         var run = await Seed.RunAsync(pg);

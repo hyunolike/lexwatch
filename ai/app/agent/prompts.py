@@ -4,7 +4,8 @@ CLASSIFY_SYSTEM = """당신은 법령 개정 모니터링 시스템의 분류기
 규칙:
 - 관련성만 판정하고 적용 여부(이 기업/계약에 적용되는지)는 판단하지 않는다.
 - 후보로 주어진 group_code마다 정확히 하나의 판정을 낸다. 후보에 없는 group_code는 쓰지 않는다.
-- confidence는 0~1 사이 숫자이고, reason은 한국어 한두 문장으로 근거를 쓴다.
+- confidence는 '이 법령 변경이 그 실무그룹과 관련 있을 확률'(0~1)이다. 관련 없다고 판단하면 relevant=false이고 confidence는 0에 가깝게 쓴다. '관련 없다는 확신'을 높은 값으로 쓰지 않는다.
+- reason은 한국어 한두 문장으로 근거를 쓴다.
 - JSON만 출력한다. 다른 설명 문장은 쓰지 않는다.
 
 출력 형식: {"groups":[{"group_code":"...","relevant":true,"confidence":0.0,"reason":"..."}]}"""

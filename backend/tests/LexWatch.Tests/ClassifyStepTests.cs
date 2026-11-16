@@ -66,6 +66,34 @@ public class ClassifyStepTests(PostgresFixture pg) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Not_relevant_verdict_never_proceeds_even_with_high_confidence()
+    {
+        using var ai = new AiStub();
+        StubEmbed(ai);
+        ai.Json("/classify", 200, new
+        {
+            groups = new object[]
+            {
+                new { group_code = "labor", relevant = false, confidence = 0.9, reason = "관련 없음 확신" },
+                new { group_code = "privacy", relevant = true, confidence = 0.8, reason = "r" },
+                new { group_code = "finance", relevant = false, confidence = 0.1, reason = "r" },
+            },
+            provider = AiStub.Provider(),
+        });
+        var (run, _) = await AiSeed.RunWithEvidenceAsync(pg);
+        var step = await AiSeed.StepAsync(pg, run.Id, "classify");
+
+        var ok = Assert.IsType<StepResult.Succeeded>(await AiSeed.ExecuteAsync(pg, Step(ai), step.Id));
+
+        Assert.Single(ok.Next);
+        await using var v = pg.CreateDb();
+        var labor = await v.GroupReviews.SingleAsync(g => g.GroupCode == "labor");
+        Assert.Equal(ReviewStatus.ClosedIrrelevant, labor.Status);
+        Assert.True(labor.Confidence < 0.4);
+        Assert.Contains("modelConfidence", System.Text.Json.JsonSerializer.Serialize(ok.Output));
+    }
+
+    [Fact]
     public async Task All_below_threshold_closes_run_without_next_steps()
     {
         using var ai = new AiStub();
