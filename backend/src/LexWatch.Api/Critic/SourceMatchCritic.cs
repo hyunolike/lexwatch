@@ -10,8 +10,7 @@ public static partial class SourceMatchCritic
     [GeneratedRegex(@"제\d+조(?:의\d+)?")] private static partial Regex ArticleRx();
     [GeneratedRegex(@"(\d{4})\.\s?(\d{1,2})\.\s?(\d{1,2})\.?")] private static partial Regex DateDotRx();
     [GeneratedRegex(@"(\d{4})년\s?(\d{1,2})월\s?(\d{1,2})일")] private static partial Regex DateKoRx();
-    [GeneratedRegex(@"(?:\d[\d,]*\s?(?:억|천만|만|천)?\s?)+원")] private static partial Regex AmountRx();
-    [GeneratedRegex(@"(\d[\d,]*)\s?(억|천만|만|천)?")] private static partial Regex AmountPartRx();
+    [GeneratedRegex(@"\d[\d,]*(?:\s?(?:\d[\d,]*|[억만천백십]))*\s?원")] private static partial Regex AmountRx();
     [GeneratedRegex(@"(?<!\d)\d{1,3}\s?(?:일|개월|년)")] private static partial Regex PeriodRx();
     [GeneratedRegex(@"\d{4}년(?:\s?\d{1,2}월(?:\s?\d{1,2}일)?)?|\d{1,2}월\s?\d{1,2}일|\d{1,2}월")] private static partial Regex PartialDateRx();
     [GeneratedRegex(@"시행(?!령|규칙)")] private static partial Regex EnforceRx();
@@ -72,16 +71,29 @@ public static partial class SourceMatchCritic
         DateDotRx().Matches(text).Concat(DateKoRx().Matches(text))
             .Select(m => $"{m.Groups[1].Value}-{int.Parse(m.Groups[2].Value):00}-{int.Parse(m.Groups[3].Value):00}");
 
+    /// <summary>한국어 수 표기를 원 단위 값으로 바꾼다: 억·만 묶음 안에서 천·백·십과 숫자를 모아 곱한다.</summary>
     private static string AmountValue(string text)
     {
-        decimal total = 0;
-        foreach (Match m in AmountPartRx().Matches(text.Replace("원", "")))
+        decimal total = 0, group = 0, num = 0;
+        foreach (Match m in AmountTokenRx().Matches(text))
         {
-            var n = decimal.Parse(m.Groups[1].Value.Replace(",", ""));
-            total += n * m.Groups[2].Value switch { "억" => 100_000_000m, "천만" => 10_000_000m, "만" => 10_000m, "천" => 1_000m, _ => 1m };
+            var t = m.Value;
+            if (char.IsDigit(t[0])) { num = decimal.Parse(t.Replace(",", "")); continue; }
+            switch (t[0])
+            {
+                case '천': group += (num == 0 ? 1 : num) * 1000; num = 0; break;
+                case '백': group += (num == 0 ? 1 : num) * 100; num = 0; break;
+                case '십': group += (num == 0 ? 1 : num) * 10; num = 0; break;
+                default:
+                    group += num;
+                    total += (group == 0 ? 1 : group) * (t[0] == '억' ? 100_000_000m : 10_000m);
+                    group = 0; num = 0; break;
+            }
         }
-        return total.ToString("0");
+        return (total + group + num).ToString("0");
     }
+
+    [GeneratedRegex(@"\d[\d,]*|[억만천백십]")] private static partial Regex AmountTokenRx();
 
     private static string Compact(string s) => s.Replace(" ", "").Replace(",", "");
 

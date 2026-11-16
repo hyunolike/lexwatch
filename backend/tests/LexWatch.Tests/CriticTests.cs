@@ -78,6 +78,26 @@ public class CriticTests
         Assert.Contains(Src("과태료 2천만 원.", "과태료 1,000만원"), x => x.RuleId == "C2-MISMATCH");
     }
 
+    [Theory]
+    [InlineData("500원", "500원")]
+    [InlineData("3천만원", "30,000,000원")]
+    [InlineData("3천500만 원", "35,000,000원")]
+    [InlineData("1억 2천만 원", "120,000,000원")]
+    [InlineData("1억 2천500만 원", "125,000,000원")]
+    [InlineData("5백만원", "5,000,000원")]
+    [InlineData("2천 5백만원", "25,000,000원")]
+    [InlineData("1,000만원", "10,000,000원")]
+    [InlineData("5천원", "5,000원")]
+    public void Mixed_korean_amounts_parse_to_won(string a, string b)
+    {
+        Assert.Empty(Src($"과태료 {a}.", $"과태료 {b}"));
+        Assert.Empty(Src($"과태료 {b}.", $"과태료 {a}"));
+    }
+
+    [Fact]
+    public void Wrong_mixed_amount_is_flagged() =>
+        Assert.Contains(Src("과태료 3천500만 원.", "과태료 5,003,000원"), x => x.RuleId == "C2-MISMATCH");
+
     [Fact]
     public void Enforcement_decree_sentence_is_not_effective_check() =>
         Assert.DoesNotContain(Src("시행령 개정안은 2030년 1월 1일 공포된다.", "2030. 1. 1."), x => x.RuleId == "C2-EFFECTIVE");
