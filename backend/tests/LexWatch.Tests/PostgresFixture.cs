@@ -6,11 +6,6 @@ namespace LexWatch.Tests;
 
 public sealed class PostgresFixture : IAsyncLifetime
 {
-    // 구형 Docker 데몬(API 1.41)은 Docker.DotNet의 기본 클라이언트 버전(1.44)을 거부한다.
-    static PostgresFixture() =>
-        Environment.SetEnvironmentVariable("DOCKER_API_VERSION",
-            Environment.GetEnvironmentVariable("DOCKER_API_VERSION") ?? "1.41");
-
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("pgvector/pgvector:pg16").Build();
 
     public string ConnectionString => _container.GetConnectionString();
