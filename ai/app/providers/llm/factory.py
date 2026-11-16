@@ -15,5 +15,5 @@ def get_llm() -> LLMProvider:
     return NvidiaNimProvider(
         key,
         os.environ.get("NIM_BASE_URL", "https://integrate.api.nvidia.com/v1"),
-        os.environ.get("NIM_MODEL", "nvidia/nemotron-3-super-120b-a12b"),
+        os.environ.get("NIM_MODEL", "nvidia/nemotron-3.5-super-vl-120b-a12b"),
     )

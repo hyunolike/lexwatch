@@ -23,7 +23,7 @@ services:
       NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
       LAW_OC: ${LAW_OC:-}
       NIM_BASE_URL: ${NIM_BASE_URL:-https://integrate.api.nvidia.com/v1}
-      NIM_MODEL: ${NIM_MODEL:-nvidia/nemotron-3-super-120b-a12b}
+      NIM_MODEL: ${NIM_MODEL:-nvidia/nemotron-3.5-super-vl-120b-a12b}
       EMBED_MODEL: ${EMBED_MODEL:-nvidia/nemotron-3-embed-1b}
       RERANK_MODEL: ${RERANK_MODEL:-nvidia/llama-nemotron-rerank-vl-1b-v2}
       LLM_PROVIDER: ${LLM_PROVIDER:-auto}
