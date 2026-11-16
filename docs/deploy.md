@@ -20,7 +20,9 @@
 - Render 서비스 이름은 블루프린트가 붙인 접미사 때문에 `lexwatch-api-qinh`다.
 - `sync: false` 항목은 값이 비면 블루프린트 승인이 거부된다. 그래서 `LAW_OC`는 블루프린트에서 뺐고, 키를 받으면 따로 넣는다(아래 3단계).
 - Vercel ai의 rewrite를 걷어냈다(2단계 참고).
-- 예약 워크플로(`collect`, `reset-demo`)는 기본 브랜치(`main`)에 있어야 돈다. `feat/mvp`가 `main`에 합쳐지기 전에는 예약 실행도 수동 실행도 되지 않는다.
+- 예약 워크플로(`collect`, `reset-demo`)는 저장소의 **기본 브랜치**에서만 돈다. 처음 push한 `feat/mvp`가 기본 브랜치로 잡혀 있었고, `main`에 합친 뒤 기본 브랜치를 `main`으로 바꿨다. `reset-demo` 수동 실행으로 확인했다.
+- CLI로 만든 Vercel 프로젝트는 Root Directory가 비어 있어서, 저장소 루트에서 빌드하는 Git 연동 배포가 실패했다(web: `NEXT_NO_VERSION`, ai: `FASTAPI_ENTRYPOINT_NOT_FOUND`). 두 프로젝트에 `web`, `ai`를 넣은 뒤 Git 연동 배포가 성공한다. 이제 `main`에 push하면 Vercel 두 곳은 자동으로 배포된다.
+- Render 배포 브랜치는 `main`이다.
 - Render 자동 배포가 push에 반응하지 않는다(저장소를 URL로 연결해 GitHub 앱 웹훅이 없다). 새 커밋은 `POST /v1/services/<id>/deploys`에 `commitId`를 넣거나 대시보드에서 배포한다.
 - AI 토큰: 백엔드를 먼저 새 코드로 올리고(이전 ai는 헤더를 무시한다) 그다음 Vercel ai에 `AI_TOKEN`, `AI_REQUIRE_TOKEN=true`를 넣고 재배포했다. 토큰 없는 호출 401, `/docs`·`/openapi.json` 404, 백엔드 경유 채팅 200을 확인했다.
 - 아직 확인하지 않은 것: 실제 `/analyze` 한 건의 응답 시간(키 필요), Render 메모리 추이, `CLIENT_IP_HEADER` 값(키가 없으면 채팅이 할당량을 쓰지 않아 실험할 수 없다), UptimeRobot.
