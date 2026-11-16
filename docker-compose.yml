@@ -28,6 +28,7 @@ services:
       RERANK_MODEL: ${RERANK_MODEL:-nvidia/llama-nemotron-rerank-vl-1b-v2}
       LLM_PROVIDER: ${LLM_PROVIDER:-auto}
       RETRIEVER_PROVIDER: ${RETRIEVER_PROVIDER:-auto}
+      AI_TOKEN: ${AI_TOKEN:-}
     ports: ["127.0.0.1:8000:8000"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -51,6 +52,8 @@ services:
       MIGRATE_ON_STARTUP: "true"
       DEMO_SEED_ON_STARTUP: "true"
       JOB_TOKEN: ${JOB_TOKEN:-local-dev-job-token}
+      AI_TOKEN: ${AI_TOKEN:-}
+      CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-}
       LAW_OC: ${LAW_OC:-}
     ports: ["127.0.0.1:5080:8080"]
 

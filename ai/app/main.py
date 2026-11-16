@@ -5,6 +5,7 @@ import logging
 from fastapi import FastAPI
 
 from app.agent.loop import AnalyzeRequest, AnalyzeResponse, analyze
+from app.auth import TokenAuthMiddleware, configured_token
 from app.classify import ClassifyRequest, ClassifyResponse, classify
 from app.critique.judge import CritiqueRequest, CritiqueResponse, critique
 from app.errors import register_handlers
@@ -20,8 +21,11 @@ for _name in ("httpx", "httpcore"):
 
 configure_logging()
 
-app = FastAPI(title="LexWatch AI")
-app.add_middleware(TraceContextMiddleware)
+# 토큰을 건 배포에서는 문서 경로를 열지 않는다. 계약 생성은 app.openapi()를 직접 부르므로 영향이 없다.
+_docs = {} if not configured_token() else {"docs_url": None, "redoc_url": None, "openapi_url": None}
+app = FastAPI(title="LexWatch AI", **_docs)
+app.add_middleware(TokenAuthMiddleware)
+app.add_middleware(TraceContextMiddleware)  # 바깥쪽: 거절된 요청도 접근 로그에 남는다
 register_handlers(app)
 install(app)
 

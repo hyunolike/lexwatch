@@ -12,7 +12,7 @@ public static class AiServiceCollectionExtensions
         {
             c.BaseAddress = new Uri(baseUrl);
             c.Timeout = TimeSpan.FromSeconds(130);
-        });
+        }).AddHttpMessageHandler(() => new AiTokenHandler());
         services.AddTransient<AiGateway>();
         return services;
     }

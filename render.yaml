@@ -17,6 +17,8 @@ services:
         sync: false
       - key: JOB_TOKEN
         sync: false
+      - key: AI_TOKEN            # Vercel ai 프로젝트의 AI_TOKEN과 같은 값. AI 호출에 X-Ai-Token으로 붙는다
+        sync: false
       # LAW_OC는 블루프린트에 두지 않는다. sync:false 항목은 값이 비면 승인이 거부되는데,
       # 키가 없을 때는 비워 두는 것이 정답이다. 키를 받으면 대시보드나
       # `render services update <id> --env-var LAW_OC=...`로 넣는다.
@@ -28,3 +30,5 @@ services:
         value: "true"
       - key: TRUST_FORWARDED_FOR # Render의 X-Forwarded-For를 확인하기 전에는 켜지 않는다
         value: "false"
+      # CLIENT_IP_HEADER(예: True-Client-IP, CF-Connecting-IP)는 Render가 실제로 넘기는 헤더를
+      # 확인한 뒤 대시보드에서 넣는다. 비어 있으면 TRUST_FORWARDED_FOR/원격 IP를 쓴다(docs/deploy.md).

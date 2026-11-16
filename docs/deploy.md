@@ -40,6 +40,9 @@ Render  --Postgres(세션 풀러)-->  Supabase (pgvector)
 | `DATABASE_URL` | Render | DB 연결. `Host=...;...` 형식 또는 `postgresql://` URI 모두 받는다 | 비밀. 코드가 URI를 Npgsql 형식으로 바꾼다 (`ConnectionStringNormalizer`) |
 | `AI_BASE_URL` | Render | Vercel ai 주소 | 예: `https://lexwatch-ai.vercel.app` |
 | `JOB_TOKEN` | Render, GitHub 시크릿 | `/jobs/*` 인증, 채팅 IP 해시 솔트 | 비밀. 비어 있으면 잡과 채팅이 닫힌다 |
+| `AI_TOKEN` | Render, Vercel ai (같은 값) | Render → ai 호출의 `X-Ai-Token` 공유 토큰 | 비밀. 아래 "AI_TOKEN" 절. **`NVIDIA_API_KEY`·`LAW_OC`를 ai에 넣기 전에 먼저 설정** |
+| `AI_REQUIRE_TOKEN` | Vercel ai | `true`면 `AI_TOKEN`이 비었을 때 ai가 503으로 닫힌다 | 배포에서는 `true` 권장. 로컬·테스트는 비워 둔다 |
+| `CLIENT_IP_HEADER` | Render | 채팅 할당량이 클라이언트 IP를 읽을 헤더 하나(예: `True-Client-IP`) | 기본 비움. 아래 "클라이언트 IP" 절 먼저 읽을 것 |
 | `LAW_OC` | Render, (Vercel ai) | 법제처 OPEN API 인증값 | 비밀. 없으면 수집이 실패하고 재현 실행만 동작 |
 | `Web__Origins` | Render | CORS 허용 오리진(쉼표 구분) | Vercel web 주소. 기본값은 `http://localhost:3000` |
 | `MIGRATE_ON_STARTUP` | Render | 시작 시 EF 마이그레이션 적용 | `true` (render.yaml이 설정) |
@@ -79,7 +82,7 @@ Render는 배포 중 헬스체크가 통과할 때까지 이전 인스턴스와 
 2. `ai/vercel.json`이 `api/index.py`의 `maxDuration: 150`, `fluid: true`, `regions: ["sin1"]`을 정한다. `api/index.py`는 `app.main:app`을 가져온다.
    **rewrite를 두지 않는다.** Vercel이 FastAPI를 감지해 모든 경로를 앱으로 보내는데, `/(.*) → /api/index` rewrite를 걸면 앱이 받는 경로가 `/api/index`로 바뀌어 모든 요청이 404가 된다(2026-11-16 실제 배포에서 겪었다).
 3. 의존성은 `ai/pyproject.toml`의 `dependencies`만 설치된다. 선택 그룹 `guardrails`(`nemoguardrails`)는 설치되지 않는다 — 번들에 넣지 않는다(ai/README.md 참고). `tests/`, `.venv/` 등은 `excludeFiles`로 뺀다.
-4. 환경변수: `NVIDIA_API_KEY`(없어도 됨), `LAW_OC`(ai 서비스가 법제처를 직접 부르는 경로가 있을 때만), 필요 시 `LLM_PROVIDER`.
+4. 환경변수: `AI_TOKEN`(Render와 같은 값), `AI_REQUIRE_TOKEN=true`, `NVIDIA_API_KEY`(없어도 됨), `LAW_OC`(ai 서비스가 법제처를 직접 부르는 경로가 있을 때만), 필요 시 `LLM_PROVIDER`.
 5. 배포 후 주소(예: `https://lexwatch-ai.vercel.app`)를 기록한다.
 
 **함수 최대 실행 시간 (중요, `[미검증]`)**: 백엔드는 `/analyze`를 최대 130초까지 기다린다(`AiGatewayOptions.Analyze`). 그래서 `maxDuration`을 150으로 두었다.
@@ -90,9 +93,20 @@ Vercel 문서 기준(작성 시점 기억에 의존, 직접 확인하지 못했�
 
 확인:
 ```bash
-curl -s https://<ai>.vercel.app/health            # {"status":"ok"}
-curl -s -X POST https://<ai>.vercel.app/classify -H 'content-type: application/json' -d '{}'   # 422 (스키마 검증이 동작)
+curl -s https://<ai>.vercel.app/health            # {"status":"ok"} (토큰 없이 열린 유일한 경로)
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://<ai>.vercel.app/classify -H 'content-type: application/json' -d '{}'   # 401 (토큰 없음)
+curl -s -o /dev/null -w '%{http_code}\n' https://<ai>.vercel.app/docs        # 404 (토큰을 건 배포는 문서를 열지 않는다)
+curl -s -X POST https://<ai>.vercel.app/classify -H "X-Ai-Token: $AI_TOKEN" -H 'content-type: application/json' -d '{}'   # 422 (스키마 검증이 동작)
 ```
+
+### AI_TOKEN
+
+ai 서비스는 NVIDIA 크레딧과 `LAW_OC`를 쓰므로 공개 주소를 누구나 부르면 채팅 할당량을 우회하고 키를 소진할 수 있다. 그래서 `.NET API`만 부르게 한다.
+- ai: `AI_TOKEN`이 있으면 `/health`를 뺀 모든 경로가 같은 값의 `X-Ai-Token` 헤더를 요구한다(상수 시간 비교, 틀리면 401). `/docs`, `/redoc`, `/openapi.json`은 404다.
+- ai: `AI_TOKEN`이 비어 있으면 검사하지 않는다(로컬·테스트용). `AI_REQUIRE_TOKEN=true`이면 대신 503으로 닫힌다.
+- Render: `AI_TOKEN`이 있으면 AI 호출마다 `X-Ai-Token`을 붙인다(`AiTokenHandler`). 계약 생성(`scripts/gen-ai-client.sh`)은 `app.openapi()`를 직접 부르므로 영향이 없다.
+- 값: `openssl rand -hex 32`. Render와 Vercel ai에 **같은 값**을 넣고, 순서는 Vercel ai 재배포와 Render 재시작을 연달아 한다(사이에 AI 호출은 401로 재시도된다). 로그에는 남기지 않는다.
+
 실제 `/analyze` 한 건은 요청 본문이 크므로 `fixtures/` 아래 기록이나 `ai/openapi.json`의 `AnalyzeRequest` 스키마로 만들어 호출하고, 응답 시간을 기록한다.
 
 ## 3. Render — 백엔드 `[미검증]`
@@ -116,6 +130,14 @@ curl -s -H 'X-Demo-Role: lawyer' https://<render>.onrender.com/api/reviews   # �
 `TRUST_FORWARDED_FOR=true`로 바꾸면 `X-Forwarded-For`의 **마지막** 항목을 쓴다. 이것이 실제 클라이언트 IP일 때만 안전하다.
 **켜기 전에 확인할 것** `[미검증]`: Render 프록시가 클라이언트 요청의 `X-Forwarded-For` 뒤에 실제 클라이언트 IP를 덧붙이는지(마지막 항목이 프록시가 본 연결 IP인지). 임시 엔드포인트나 로그로 서로 다른 두 IP에서 호출해 마지막 항목이 각각 다른지 확인한다.
 확인하기 전까지는 `false`로 둔다 — 이때의 부작용은 데모 사용자 전체가 일일 10회 한도를 나눠 쓴다는 것뿐이다.
+주의: Render 앞에 Cloudflare가 있다(응답 헤더 `server: cloudflare`, `cf-ray`). 그래서 XFF의 마지막 항목이 클라이언트가 아니라 프록시 홉일 수 있다. 이 경우 아래 `CLIENT_IP_HEADER`를 쓴다.
+
+### 클라이언트 IP (`CLIENT_IP_HEADER`)
+
+`CLIENT_IP_HEADER`에 헤더 이름 하나(예: `True-Client-IP` 또는 `CF-Connecting-IP`)를 넣으면 할당량은 그 헤더만 읽고, `TRUST_FORWARDED_FOR`는 무시된다.
+값이 IP 주소 하나로 읽히지 않으면(빈 값, 쉼표 목록, 문자열) 연결의 원격 IP로 내려간다. 비어 있으면 위 `TRUST_FORWARDED_FOR`/원격 IP 규칙 그대로다.
+**넣기 전에 확인할 것** `[미검증]`: Render(Cloudflare)가 그 헤더를 **덮어써서** 넘기는지(클라이언트가 보낸 같은 이름의 헤더를 지우는지). 서로 다른 두 네트워크에서 호출해 헤더 값이 달라지는지, 클라이언트가 임의 값을 보내면 그대로 통과하는지를 본다. 값 자체는 로그에 남기지 않는다(헤더가 있었는지, IP로 읽혔는지만 본다). 덮어쓰지 않는 헤더를 고르면 누구나 할당량을 우회할 수 있다.
+`render.yaml`에는 넣지 않았다. 확인한 뒤 대시보드에서 넣는다.
 
 ## 4. Vercel — `web` `[미검증]`
 
@@ -148,7 +170,8 @@ curl -s -H 'X-Demo-Role: lawyer' https://<render>.onrender.com/api/reviews   # �
 
 ## 로컬 compose 메모
 
-`docker compose up --build` → http://localhost:3000. 키 없이 mock/lexical로 뜨고 재현 실행이 시드된다. Docker 20.10 + Compose v2.10 에서는 `export DOCKER_API_VERSION=1.41`이 필요할 수 있다.
+`docker compose up --build` → http://localhost:3000. 키 없이 mock/lexical로 뜨고 재현 실행이 시드된다. 셸에 `AI_TOKEN`이 있으면 ai와 api에 같은 값으로 넘어간다.
+compose의 `JOB_TOKEN` 기본값(`local-dev-job-token`)은 공개된 값이다. compose를 공개 주소로 열지 않는다(포트는 `127.0.0.1`에만 묶여 있다). Docker 20.10 + Compose v2.10 에서는 `export DOCKER_API_VERSION=1.41`이 필요할 수 있다.
 첫 기동 로그에 `libgssapi_krb5.so.2` 경고와, 마이그레이션 이력 테이블이 아직 없어서 나는 `Failed executing DbCommand ... __EFMigrationsHistory` 오류 한 줄이 보인다. 둘 다 정상이다.
 (작성 환경에서는 Docker Desktop의 자격 증명 도우미가 Docker Hub 이미지 조회에서 멈춰, 빈 `DOCKER_CONFIG` 디렉터리를 지정해 우회했다. 이 저장소와 무관한 로컬 문제다.)
 
