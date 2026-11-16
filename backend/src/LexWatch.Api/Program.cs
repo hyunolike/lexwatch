@@ -1,5 +1,6 @@
 using LexWatch.Api.Ai;
 using LexWatch.Api.Data;
+using LexWatch.Api.Demo;
 using LexWatch.Api.Jobs;
 using LexWatch.Api.Runs;
 using LexWatch.Api.LawApi;
@@ -25,6 +26,7 @@ builder.Services.AddHostedService<WorkflowWorker>();
 
 builder.Services.AddLawApi();
 builder.Services.AddAiGateway();
+builder.Services.AddScoped<DemoSeeder>();
 builder.Services.AddScoped<IStepHandler, FetchArticlesStep>();
 builder.Services.AddScoped<IStepHandler, ClassifyStep>();
 builder.Services.AddScoped<IStepHandler, AnalyzeStep>();
@@ -36,6 +38,19 @@ builder.Services.AddScoped(sp => new CollectService(
     sp.GetRequiredService<LexWatchDb>(), sp.GetRequiredService<LawApiClient>(), sp.GetRequiredService<TimeProvider>()));
 
 var app = builder.Build();
+// 새 배포 직후 데모 화면이 비지 않도록 재현 실행을 한 번 넣는다. 켜는 쪽은 환경변수(DEMO_SEED_ON_STARTUP=true)다.
+if (app.Configuration.GetValue<bool>("DEMO_SEED_ON_STARTUP"))
+{
+    try
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<DemoSeeder>().SeedIfEmptyAsync();
+    }
+    catch (Exception e)
+    {
+        app.Logger.LogWarning(e, "데모 시드 실패 (서비스는 계속 시작한다)");
+    }
+}
 app.UseCors();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapJobEndpoints();

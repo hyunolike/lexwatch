@@ -18,3 +18,8 @@ dotnet test backend/LexWatch.sln
 export DOCKER_API_VERSION=1.41
 dotnet test backend/LexWatch.sln
 ```
+
+## 데모 시드
+
+- `POST /jobs/reset-demo` (`X-Job-Token`): 승인·알림·채팅 할당량·재현 실행을 지우고 `fixtures/demo/replays/*.json`을 다시 넣는다. 실제 수집 실행은 지우지 않고 결정된 그룹만 대기 상태로 되돌린다. AI 서비스 없이도 동작한다.
+- `DEMO_SEED_ON_STARTUP=true`이면 재현 실행이 하나도 없을 때 기동 시 한 번 넣는다(배포 환경변수로 켠다).

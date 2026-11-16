@@ -1,0 +1,178 @@
+{
+  "agoMinutes": 80,
+  "law": {
+    "lawId": "011357",
+    "lawName": "개인정보 보호법",
+    "mst": "100002",
+    "promulgationDate": "2026-11-04",
+    "effectiveDate": "2027-05-05"
+  },
+  "runStatus": "InReview",
+  "evidence": [
+    {
+      "id": "law:011357:제34조",
+      "kind": "law",
+      "title": "개인정보 보호법 제34조",
+      "body": "제34조(개인정보 유출 등의 통지·신고) ① 개인정보처리자는 개인정보가 유출되었음을 알게 되었을 때에는 지체 없이 해당 정보주체에게 알려야 한다."
+    },
+    {
+      "id": "oldnew:011357:제34조",
+      "kind": "oldnew",
+      "title": "개인정보 보호법 제34조 신구조문 대비",
+      "body": "[구조문]\n(구조문 예시 — 재구성 데이터)\n\n[신조문]\n제34조(개인정보 유출 등의 통지·신고) ① 개인정보처리자는 개인정보가 유출되었음을 알게 되었을 때에는 지체 없이 해당 정보주체에게 알려야 한다."
+    }
+  ],
+  "steps": [
+    {
+      "step": "fetch_articles",
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 0,
+      "durationMs": 820,
+      "output": {
+        "evidence": 2,
+        "oldnewStatus": {
+          "oldnew": "ok"
+        }
+      }
+    },
+    {
+      "step": "classify",
+      "group": null,
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 6,
+      "durationMs": 310,
+      "output": {
+        "relevant": [
+          "privacy"
+        ]
+      },
+      "toolCalls": []
+    },
+    {
+      "step": "analyze",
+      "group": "privacy",
+      "attempt": 0,
+      "status": "Failed",
+      "at": 12,
+      "durationMs": 1200,
+      "output": null,
+      "toolCalls": [],
+      "errorCode": "LLM_RATE_LIMITED",
+      "errorMessage": "LLM 호출 한도 초과(429). 잠시 뒤 다시 시도한다."
+    },
+    {
+      "step": "analyze",
+      "group": "privacy",
+      "attempt": 1,
+      "status": "Succeeded",
+      "at": 72,
+      "durationMs": 9100,
+      "output": {
+        "toolCalls": 3,
+        "newEvidence": 0,
+        "draftVersion": 1
+      },
+      "toolCalls": [
+        {
+          "tool": "get_group_interest",
+          "args": {
+            "group": "privacy"
+          },
+          "resultSummary": "그룹 관심사 문구를 불러왔다",
+          "evidenceIds": []
+        },
+        {
+          "tool": "get_article",
+          "args": {
+            "law_id": "011357",
+            "article": "제34조"
+          },
+          "resultSummary": "제34조 본문을 근거 저장소에서 확인했다",
+          "evidenceIds": [
+            "law:011357:제34조"
+          ]
+        },
+        {
+          "tool": "compare_old_new",
+          "args": {
+            "law_id": "011357",
+            "article": "제34조"
+          },
+          "resultSummary": "제34조 신구조문 대비를 확인했다",
+          "evidenceIds": [
+            "oldnew:011357:제34조"
+          ]
+        }
+      ]
+    },
+    {
+      "step": "critic_citation",
+      "group": "privacy",
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 90,
+      "durationMs": 40,
+      "output": {
+        "findings": 0
+      },
+      "toolCalls": []
+    },
+    {
+      "step": "critic_source",
+      "group": "privacy",
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 92,
+      "durationMs": 55,
+      "output": {
+        "findings": 0
+      },
+      "toolCalls": []
+    },
+    {
+      "step": "critic_judge",
+      "group": "privacy",
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 96,
+      "durationMs": 1900,
+      "output": {
+        "findings": 0
+      },
+      "toolCalls": []
+    }
+  ],
+  "groups": [
+    {
+      "code": "privacy",
+      "status": "WaitingApproval",
+      "confidence": 0.81,
+      "reason": "유출 통지 조문 개정이 개인정보 그룹 관심사와 맞는다(재현 예시).",
+      "draft": {
+        "createdBy": "agent",
+        "sentences": [
+          {
+            "sentence": "개인정보 보호법 제34조에 따라 개인정보처리자는 유출을 알게 되었을 때 지체 없이 정보주체에게 알려야 한다.",
+            "citations": [
+              "law:011357:제34조"
+            ]
+          },
+          {
+            "sentence": "신구조문 대비 결과가 있어 개정 전후 문구를 나란히 확인할 수 있다.",
+            "citations": [
+              "oldnew:011357:제34조"
+            ]
+          }
+        ],
+        "openQuestions": [
+          "통지 방법과 기한의 세부 기준은 하위 법령 확인이 필요하다."
+        ],
+        "findings": []
+      }
+    }
+  ],
+  "slug": "02-rate-limit-retry",
+  "note": "재현 예시 — 법령 본문은 문서 기반 재구성 자료(fixtures/lawapi)이며 실제 API 호출 결과가 아니다."
+}

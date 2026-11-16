@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using LexWatch.Api.Demo;
 using LexWatch.Api.Workflow.Steps;
 
 namespace LexWatch.Api.Jobs;
@@ -23,6 +24,14 @@ public static class JobEndpoints
             {
                 return Results.Json(new { code = e.Code, message = e.Message }, statusCode: StatusCodes.Status502BadGateway);
             }
+        });
+
+        app.MapPost("/jobs/reset-demo", async (HttpContext http, IConfiguration cfg, DemoSeeder seeder, CancellationToken ct) =>
+        {
+            if (!TokenOk(cfg["JOB_TOKEN"], http.Request.Headers["X-Job-Token"].ToString()))
+                return Results.Unauthorized();
+            await seeder.ResetAsync(ct);
+            return Results.Ok(new { reset = true });
         });
     }
 

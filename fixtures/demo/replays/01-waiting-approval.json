@@ -1,0 +1,166 @@
+{
+  "agoMinutes": 95,
+  "law": {
+    "lawId": "001872",
+    "lawName": "근로기준법",
+    "mst": "100001",
+    "promulgationDate": "2026-11-04",
+    "effectiveDate": "2027-05-05"
+  },
+  "runStatus": "InReview",
+  "evidence": [
+    {
+      "id": "law:001872:제50조",
+      "kind": "law",
+      "title": "근로기준법 제50조",
+      "body": "제50조(근로시간) ① 1주 간의 근로시간은 휴게시간을 제외하고 40시간을 초과할 수 없다."
+    },
+    {
+      "id": "oldnew:001872:제50조",
+      "kind": "oldnew",
+      "title": "근로기준법 제50조 신구조문 대비",
+      "body": "[구조문]\n(구조문 예시 — 재구성 데이터)\n\n[신조문]\n제50조(근로시간) ① 1주 간의 근로시간은 휴게시간을 제외하고 40시간을 초과할 수 없다."
+    }
+  ],
+  "steps": [
+    {
+      "step": "fetch_articles",
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 0,
+      "durationMs": 820,
+      "output": {
+        "evidence": 2,
+        "oldnewStatus": {
+          "oldnew": "ok"
+        }
+      }
+    },
+    {
+      "step": "classify",
+      "group": null,
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 6,
+      "durationMs": 310,
+      "output": {
+        "relevant": [
+          "labor"
+        ]
+      },
+      "toolCalls": []
+    },
+    {
+      "step": "analyze",
+      "group": "labor",
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 12,
+      "durationMs": 8400,
+      "output": {
+        "toolCalls": 3,
+        "newEvidence": 0,
+        "draftVersion": 1
+      },
+      "toolCalls": [
+        {
+          "tool": "get_group_interest",
+          "args": {
+            "group": "labor"
+          },
+          "resultSummary": "그룹 관심사 문구를 불러왔다",
+          "evidenceIds": []
+        },
+        {
+          "tool": "get_article",
+          "args": {
+            "law_id": "001872",
+            "article": "제50조"
+          },
+          "resultSummary": "제50조 본문을 근거 저장소에서 확인했다",
+          "evidenceIds": [
+            "law:001872:제50조"
+          ]
+        },
+        {
+          "tool": "compare_old_new",
+          "args": {
+            "law_id": "001872",
+            "article": "제50조"
+          },
+          "resultSummary": "제50조 신구조문 대비를 확인했다",
+          "evidenceIds": [
+            "oldnew:001872:제50조"
+          ]
+        }
+      ]
+    },
+    {
+      "step": "critic_citation",
+      "group": "labor",
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 24,
+      "durationMs": 40,
+      "output": {
+        "findings": 0
+      },
+      "toolCalls": []
+    },
+    {
+      "step": "critic_source",
+      "group": "labor",
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 26,
+      "durationMs": 55,
+      "output": {
+        "findings": 0
+      },
+      "toolCalls": []
+    },
+    {
+      "step": "critic_judge",
+      "group": "labor",
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 30,
+      "durationMs": 1900,
+      "output": {
+        "findings": 0
+      },
+      "toolCalls": []
+    }
+  ],
+  "groups": [
+    {
+      "code": "labor",
+      "status": "WaitingApproval",
+      "confidence": 0.86,
+      "reason": "근로시간 조문 개정이 노동 그룹 관심사와 직접 맞는다(재현 예시).",
+      "draft": {
+        "createdBy": "agent",
+        "sentences": [
+          {
+            "sentence": "근로기준법 제50조의 1주 근로시간 한도는 휴게시간을 제외하고 40시간이다.",
+            "citations": [
+              "law:001872:제50조"
+            ]
+          },
+          {
+            "sentence": "신구조문 대비 기준으로 개정 후 조문은 2027-05-05 시행 예정이다.",
+            "citations": [
+              "oldnew:001872:제50조"
+            ]
+          }
+        ],
+        "openQuestions": [
+          "사업장별 시행 시점과 경과규정은 별도 확인이 필요하다."
+        ],
+        "findings": []
+      }
+    }
+  ],
+  "slug": "01-waiting-approval",
+  "note": "재현 예시 — 법령 본문은 문서 기반 재구성 자료(fixtures/lawapi)이며 실제 API 호출 결과가 아니다."
+}

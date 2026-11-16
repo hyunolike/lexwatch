@@ -15,4 +15,9 @@
     <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
   </ItemGroup>
 
+  <!-- 재현 실행 기록은 저장소의 fixtures/demo/replays를 그대로 실행 파일에 포함한다. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\..\fixtures\demo\replays\*.json" LogicalName="replay/%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

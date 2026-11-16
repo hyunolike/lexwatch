@@ -54,4 +54,28 @@ public class JobEndpointTests(PostgresFixture pg) : IAsyncLifetime
             Assert.Equal(i == 0 ? 0 : 3, body["skipped"]);
         }
     }
+
+    [Fact]
+    public async Task ResetDemo_requires_token_and_seeds_replays()
+    {
+        await using var f = Factory();
+        var c = f.CreateClient();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await c.PostAsync("/jobs/reset-demo", null)).StatusCode);
+        var req = new HttpRequestMessage(HttpMethod.Post, "/jobs/reset-demo");
+        req.Headers.Add("X-Job-Token", "secret-token");
+        Assert.Equal(HttpStatusCode.OK, (await c.SendAsync(req)).StatusCode);
+        await using var db = pg.CreateDb();
+        Assert.Equal(5, await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(db.WorkflowRuns, r => r.IsReplay));
+    }
+
+    [Fact]
+    public async Task SeedIfEmpty_seeds_once()
+    {
+        await using var db = pg.CreateDb();
+        var seeder = new LexWatch.Api.Demo.DemoSeeder(db, TimeProvider.System);
+        Assert.True(await seeder.SeedIfEmptyAsync());
+        await using var db2 = pg.CreateDb();
+        Assert.False(await new LexWatch.Api.Demo.DemoSeeder(db2, TimeProvider.System).SeedIfEmptyAsync());
+        Assert.Equal(5, await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(db2.WorkflowRuns));
+    }
 }
