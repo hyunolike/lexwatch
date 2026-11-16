@@ -17,8 +17,9 @@ services:
         sync: false
       - key: JOB_TOKEN
         sync: false
-      - key: LAW_OC
-        sync: false
+      # LAW_OC는 블루프린트에 두지 않는다. sync:false 항목은 값이 비면 승인이 거부되는데,
+      # 키가 없을 때는 비워 두는 것이 정답이다. 키를 받으면 대시보드나
+      # `render services update <id> --env-var LAW_OC=...`로 넣는다.
       - key: Web__Origins        # Vercel web 프로젝트 주소(쉼표로 여러 개)
         sync: false
       - key: MIGRATE_ON_STARTUP
