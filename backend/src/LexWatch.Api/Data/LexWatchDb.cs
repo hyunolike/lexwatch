@@ -20,6 +20,7 @@ public class LexWatchDb(DbContextOptions<LexWatchDb> options) : DbContext(option
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<PracticeGroup> PracticeGroups => Set<PracticeGroup>();
     public DbSet<ChatQuota> ChatQuotas => Set<ChatQuota>();
+    public DbSet<CollectLog> CollectLogs => Set<CollectLog>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -101,5 +102,7 @@ public class LexWatchDb(DbContextOptions<LexWatchDb> options) : DbContext(option
         });
 
         b.Entity<ChatQuota>(e => e.HasKey(x => new { x.Day, x.IpHash }));
+
+        b.Entity<CollectLog>(e => e.HasKey(x => x.Day));
     }
 }

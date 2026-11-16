@@ -115,7 +115,8 @@ public class Approval
 public class Notification
 {
     public Guid Id { get; set; }
-    public Guid GroupReviewId { get; set; }
+    /// <summary>관리자 알림(channel=admin)은 그룹 검토와 무관하므로 null.</summary>
+    public Guid? GroupReviewId { get; set; }
     public string Channel { get; set; } = "demo_inbox";
     public string Status { get; set; } = "";
     public string Body { get; set; } = "";
@@ -137,4 +138,11 @@ public class ChatQuota
     public DateOnly Day { get; set; }
     public string IpHash { get; set; } = "";
     public int Count { get; set; }
+}
+
+public class CollectLog
+{
+    public DateOnly Day { get; set; }
+    public int ItemCount { get; set; }
+    public DateTimeOffset At { get; set; }
 }

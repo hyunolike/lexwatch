@@ -26,7 +26,7 @@ public sealed class PostgresFixture : IAsyncLifetime
         await using var db = CreateDb();
         await db.Database.ExecuteSqlRawAsync("""
             TRUNCATE "LawChanges","WorkflowRuns","GroupReviews","StepRuns","Evidence","AgentToolCalls",
-                     "MemoDrafts","CriticFindings","Approvals","Notifications","ChatQuotas" RESTART IDENTITY CASCADE;
+                     "MemoDrafts","CriticFindings","Approvals","Notifications","ChatQuotas","CollectLogs" RESTART IDENTITY CASCADE;
             DELETE FROM "PracticeGroups" WHERE "Code" NOT IN ('labor','privacy','finance');
             UPDATE "PracticeGroups" SET "Embedding" = NULL;
             """);

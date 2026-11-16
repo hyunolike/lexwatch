@@ -109,6 +109,22 @@ namespace LexWatch.Api.Data.Migrations
                     b.ToTable("ChatQuotas");
                 });
 
+            modelBuilder.Entity("LexWatch.Api.Data.Entities.CollectLog", b =>
+                {
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ItemCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Day");
+
+                    b.ToTable("CollectLogs");
+                });
+
             modelBuilder.Entity("LexWatch.Api.Data.Entities.CriticFinding", b =>
                 {
                     b.Property<Guid>("Id")
@@ -301,7 +317,7 @@ namespace LexWatch.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid>("GroupReviewId")
+                    b.Property<Guid?>("GroupReviewId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset?>("SentAt")
@@ -526,9 +542,7 @@ namespace LexWatch.Api.Data.Migrations
                 {
                     b.HasOne("LexWatch.Api.Data.Entities.GroupReview", null)
                         .WithMany()
-                        .HasForeignKey("GroupReviewId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("GroupReviewId");
                 });
 
             modelBuilder.Entity("LexWatch.Api.Data.Entities.StepRun", b =>

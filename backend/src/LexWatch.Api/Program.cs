@@ -1,4 +1,7 @@
 using LexWatch.Api.Data;
+using LexWatch.Api.Jobs;
+using LexWatch.Api.LawApi;
+using LexWatch.Api.Workflow.Steps;
 using LexWatch.Api.Workflow;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,8 +15,15 @@ builder.Services.AddDbContext<LexWatchDb>(o =>
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHostedService<WorkflowWorker>();
 
+builder.Services.AddSingleton(new LawApiOptions(Environment.GetEnvironmentVariable("LAW_OC") ?? ""));
+builder.Services.AddHttpClient<LawApiClient>();
+builder.Services.AddScoped<IStepHandler, FetchArticlesStep>();
+builder.Services.AddScoped(sp => new CollectService(
+    sp.GetRequiredService<LexWatchDb>(), sp.GetRequiredService<LawApiClient>(), sp.GetRequiredService<TimeProvider>()));
+
 var app = builder.Build();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+app.MapJobEndpoints();
 app.Run();
 
 public partial class Program;
