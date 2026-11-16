@@ -17,3 +17,13 @@ with provider `fallback` and a message saying the assistant needs the NVIDIA key
 never the question.
 
 Answers may cite only evidence IDs sent in the request; others are stripped, and an answer left with no valid citation is refused.
+
+## Chat quota and client IP (backend `POST /api/reviews/{id}/chat`)
+
+- Limits: 10 requests per IP hash per day, 200 per day overall (sentinel row `__global__`). The day is **UTC** (it resets at 09:00 KST).
+- `IpHash = SHA256(ip + day + JOB_TOKEN)`. If `JOB_TOKEN` is empty the endpoint fails closed with 503 `CHAT_DISABLED`.
+- Client IP is the connection's remote IP. With `TRUST_FORWARDED_FOR=true` the **last** `X-Forwarded-For` entry is used instead.
+  That is only safe when the origin is reachable solely through one proxy that appends the real client address; if the origin is
+  directly reachable or several proxies sit in front, leave it off (or all users behind the proxy share one bucket).
+- A request that does not end with an answer from the AI service (upstream failure, cancellation, exception) is refunded; guardrail and keyless refusals are answers and stay counted.
+- Chat history: only user turns reach the model, inside one labelled "prior UI transcript" user block; client-supplied assistant turns are dropped.

@@ -271,4 +271,42 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
         await using var db = pg.CreateDb();
         Assert.All(await db.ChatQuotas.ToListAsync(), q => Assert.Equal(0, q.Count));
     }
+
+    [Fact]
+    public async Task Chat_without_job_token_fails_closed()
+    {
+        var g = await SeedAsync();
+        using var ai = new AiStub();
+        ai.Json("/review-chat", 200, ChatOk);
+        Environment.SetEnvironmentVariable("AI_BASE_URL", ai.Server.Url);
+        await using var f = Factory().WithWebHostBuilder(b => b.UseSetting("JOB_TOKEN", ""));
+        var r = await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/chat", new { question = "제23조?" });
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, r.StatusCode);
+        Assert.Equal("CHAT_DISABLED", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString());
+        await using var db = pg.CreateDb();
+        Assert.Empty(await db.ChatQuotas.ToListAsync());
+        Assert.Empty(ai.Requests("/review-chat"));
+    }
+
+    [Fact]
+    public async Task Chat_cancelled_between_acquire_and_answer_is_refunded()
+    {
+        var g = await SeedAsync();
+        using var ai = new AiStub();
+        ai.Json("/review-chat", 200, ChatOk, delayMs: 5000);
+        await using var f = ChatFactory(ai);
+        using var cts = new CancellationTokenSource(500);
+        try { await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/chat", new { question = "제23조?" }, cts.Token); }
+        catch (OperationCanceledException) { }
+        for (var i = 0; i < 50; i++)
+        {
+            await using var db = pg.CreateDb();
+            var rows = await db.ChatQuotas.ToListAsync();
+            if (rows.Count > 0 && rows.All(q => q.Count == 0)) return;
+            await Task.Delay(100);
+        }
+        await using var last = pg.CreateDb();
+        Assert.All(await last.ChatQuotas.ToListAsync(), q => Assert.Equal(0, q.Count));
+        Assert.NotEmpty(await last.ChatQuotas.ToListAsync());
+    }
 }

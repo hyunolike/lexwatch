@@ -161,34 +161,44 @@ public static class ReviewEndpoints
             var review = await db.GroupReviews.AsNoTracking().SingleOrDefaultAsync(g => g.Id == id, ct);
             if (review is null) return Err(404, "NOT_FOUND", "검토를 찾을 수 없다");
 
+            var jobToken = cfg["JOB_TOKEN"];
+            if (string.IsNullOrEmpty(jobToken)) // 빈 솔트로 IP를 해시하지 않는다
+                return Err(503, "CHAT_DISABLED", "검토 보조가 이 배포에서 설정되지 않았다");
             var day = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
-            var ipHash = ChatQuotaService.HashIp(ClientIp(http, cfg), day, cfg["JOB_TOKEN"] ?? "");
+            var ipHash = ChatQuotaService.HashIp(ClientIp(http, cfg), day, jobToken);
             if (!await ChatQuotaService.TryAcquireAsync(db, day, ipHash, ct))
                 return Err(429, "CHAT_QUOTA_EXCEEDED", "오늘 사용 한도를 다 썼다");
 
-            var evidence = await db.Evidence.AsNoTracking().Where(e => e.RunId == review.RunId).ToListAsync(ct);
-            var history = (req.History ?? []).Where(h => (h.Role is "user" or "assistant") && !string.IsNullOrWhiteSpace(h.Content))
-                .TakeLast(6).Select(h => new ChatTurn
+            // 한도를 올린 뒤 답을 받지 못하면(실패·취소·예외) 어떤 경로든 되돌린다. 답을 받은 거절은 되돌리지 않는다.
+            var answered = false;
+            try
+            {
+                var evidence = await db.Evidence.AsNoTracking().Where(e => e.RunId == review.RunId).ToListAsync(ct);
+                var history = (req.History ?? []).Where(h => (h.Role is "user" or "assistant") && !string.IsNullOrWhiteSpace(h.Content))
+                    .TakeLast(6).Select(h => new ChatTurn
+                    {
+                        Role = h.Role == "user" ? ChatTurnRole.User : ChatTurnRole.Assistant,
+                        Content = (h.Content ?? "")[..Math.Min((h.Content ?? "").Length, 2000)],
+                    }).ToList();
+                var outcome = await ai.CallAsync((c, t) => c.ReviewChatAsync(new ReviewChatRequest
                 {
-                    Role = h.Role == "user" ? ChatTurnRole.User : ChatTurnRole.Assistant,
-                    Content = (h.Content ?? "")[..Math.Min((h.Content ?? "").Length, 2000)],
-                }).ToList();
-            var outcome = await ai.CallAsync((c, t) => c.ReviewChatAsync(new ReviewChatRequest
-            {
-                Run_id = review.RunId.ToString(), Question = question,
-                Evidence = AiMapping.Evidence(evidence), History = history,
-            }, t), 1, TimeSpan.FromSeconds(40), ct);
-            if (outcome.Failure is not null)
-            {
-                await ChatQuotaService.RefundAsync(db, day, ipHash);
-                return Err(424, "AI_UNAVAILABLE", "검토 보조를 지금 쓸 수 없다");
+                    Run_id = review.RunId.ToString(), Question = question,
+                    Evidence = AiMapping.Evidence(evidence), History = history,
+                }, t), 1, TimeSpan.FromSeconds(40), ct);
+                if (outcome.Failure is not null)
+                    return Err(424, "AI_UNAVAILABLE", "검토 보조를 지금 쓸 수 없다");
+                answered = true;
+                var r = outcome.Value!;
+                return Results.Ok(new
+                {
+                    answer = r.Answer, citations = r.Citations, refused = r.Refused,
+                    provider = new { name = r.Provider.Name, kind = AiMapping.ProviderKind(r.Provider) },
+                });
             }
-            var r = outcome.Value!;
-            return Results.Ok(new
+            finally
             {
-                answer = r.Answer, citations = r.Citations, refused = r.Refused,
-                provider = new { name = r.Provider.Name, kind = AiMapping.ProviderKind(r.Provider) },
-            });
+                if (!answered) await ChatQuotaService.RefundAsync(db, day, ipHash);
+            }
         });
 
         api.MapGet("/inbox", async (LexWatchDb db, CancellationToken ct) =>
