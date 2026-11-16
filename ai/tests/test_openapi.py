@@ -5,7 +5,7 @@ def test_operation_ids_and_nullable_downgrade():
     spec = app.openapi()
     assert spec["openapi"].startswith("3.0")
     ops = {m["operationId"] for p in spec["paths"].values() for m in p.values()}
-    assert ops == {"health", "embed", "classify", "analyze", "critique"}
+    assert ops == {"health", "embed", "classify", "analyze", "critique", "reviewChat"}
     mst = spec["components"]["schemas"]["LawSummary"]["properties"]["mst"]
     assert mst["type"] == "string" and mst["nullable"] is True
     assert "anyOf" not in mst

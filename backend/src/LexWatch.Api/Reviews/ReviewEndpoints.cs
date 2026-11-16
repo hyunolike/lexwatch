@@ -10,6 +10,8 @@ namespace LexWatch.Api.Reviews;
 public record EditedSentence(string Sentence, List<string>? Citations);
 public record ApproveRequest(uint Version, List<EditedSentence>? EditedSentences, string? Comment);
 public record RejectRequest(uint Version, string? Comment);
+public record ChatTurnInput(string? Role, string? Content);
+public record ChatRequest(string? Question, List<ChatTurnInput>? History);
 
 public static class ReviewEndpoints
 {
@@ -148,6 +150,47 @@ public static class ReviewEndpoints
             return await SaveDecisionAsync(db, review, req.Version, now, ct);
         });
 
+        // 검토 보조 채팅: 저장하지 않는다. IP·질문은 기록하지 않는다(해시만 할당량 표에 남는다).
+        api.MapPost("/reviews/{id:guid}/chat", async (Guid id, ChatRequest req, HttpContext http, LexWatchDb db,
+            AiGateway ai, IConfiguration cfg, TimeProvider time, CancellationToken ct) =>
+        {
+            if (Role(http) != "lawyer") return Err(403, "FORBIDDEN", "검토 보조는 변호사만 쓸 수 있다");
+            var question = req.Question?.Trim();
+            if (string.IsNullOrEmpty(question) || question.Length > 500)
+                return Err(400, "INVALID_QUESTION", "질문은 1~500자여야 한다");
+            var review = await db.GroupReviews.AsNoTracking().SingleOrDefaultAsync(g => g.Id == id, ct);
+            if (review is null) return Err(404, "NOT_FOUND", "검토를 찾을 수 없다");
+
+            var day = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
+            var ipHash = ChatQuotaService.HashIp(ClientIp(http, cfg), day, cfg["JOB_TOKEN"] ?? "");
+            if (!await ChatQuotaService.TryAcquireAsync(db, day, ipHash, ct))
+                return Err(429, "CHAT_QUOTA_EXCEEDED", "오늘 사용 한도를 다 썼다");
+
+            var evidence = await db.Evidence.AsNoTracking().Where(e => e.RunId == review.RunId).ToListAsync(ct);
+            var history = (req.History ?? []).Where(h => (h.Role is "user" or "assistant") && !string.IsNullOrWhiteSpace(h.Content))
+                .TakeLast(6).Select(h => new ChatTurn
+                {
+                    Role = h.Role == "user" ? ChatTurnRole.User : ChatTurnRole.Assistant,
+                    Content = (h.Content ?? "")[..Math.Min((h.Content ?? "").Length, 2000)],
+                }).ToList();
+            var outcome = await ai.CallAsync((c, t) => c.ReviewChatAsync(new ReviewChatRequest
+            {
+                Run_id = review.RunId.ToString(), Question = question,
+                Evidence = AiMapping.Evidence(evidence), History = history,
+            }, t), 1, TimeSpan.FromSeconds(40), ct);
+            if (outcome.Failure is not null)
+            {
+                await ChatQuotaService.RefundAsync(db, day, ipHash);
+                return Err(424, "AI_UNAVAILABLE", "검토 보조를 지금 쓸 수 없다");
+            }
+            var r = outcome.Value!;
+            return Results.Ok(new
+            {
+                answer = r.Answer, citations = r.Citations, refused = r.Refused,
+                provider = new { name = r.Provider.Name, kind = AiMapping.ProviderKind(r.Provider) },
+            });
+        });
+
         api.MapGet("/inbox", async (LexWatchDb db, CancellationToken ct) =>
         {
             var rows = await db.Notifications.AsNoTracking().Where(n => n.Channel == "demo_inbox")
@@ -162,6 +205,22 @@ public static class ReviewEndpoints
                 isReplay = n.GroupReviewId is { } g && replayGroups.Contains(g),
             }));
         });
+    }
+
+    /// <summary>
+    /// 할당량용 클라이언트 주소. 기본은 연결의 원격 IP다. 헤더는 위조할 수 있으므로
+    /// TRUST_FORWARDED_FOR=true일 때만(리버스 프록시 뒤에서만 켠다) X-Forwarded-For의 마지막 항목을 쓴다 —
+    /// 마지막 항목은 신뢰하는 프록시가 덧붙인 값이라 클라이언트가 고를 수 없다.
+    /// </summary>
+    private static string ClientIp(HttpContext http, IConfiguration cfg)
+    {
+        if (cfg.GetValue<bool>("TRUST_FORWARDED_FOR"))
+        {
+            var last = http.Request.Headers["X-Forwarded-For"].ToString().Split(',',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault();
+            if (!string.IsNullOrEmpty(last)) return last;
+        }
+        return http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
     }
 
     private static string Role(HttpContext http) => http.Request.Headers["X-Demo-Role"].ToString();

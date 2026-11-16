@@ -5,6 +5,7 @@ import { apiFetch, submitDecision, type ApiError, type EditedSentence, type Revi
 import { DraftEditor } from "@/components/DraftEditor";
 import { OldNewDiff } from "@/components/OldNewDiff";
 import { ReplayNote } from "@/components/ReplayNote";
+import { ReviewChat } from "@/components/ReviewChat";
 import { ProviderBadge } from "@/components/ProviderBadge";
 import { RoleSwitch, useRole } from "@/components/RoleSwitch";
 import { WakeGate } from "@/components/WakeGate";
@@ -78,6 +79,8 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
           )}
         </section>
       </div>
+
+      {role === "lawyer" && <ReviewChat reviewId={review.id} evidence={review.evidence} />}
 
       {canDecide && draft && (
         <div className="space-y-3 rounded border bg-white p-3">

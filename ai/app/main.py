@@ -10,6 +10,7 @@ from app.critique.judge import CritiqueRequest, CritiqueResponse, critique
 from app.errors import register_handlers
 from app.openapi_compat import install
 from app.rag.factory import get_retriever
+from app.review_chat import ReviewChatRequest, ReviewChatResponse, review_chat
 from app.schemas import EmbedRequest, EmbedResponse
 
 # httpx logs full request URLs (incl. the law API OC) at INFO/DEBUG
@@ -46,3 +47,8 @@ async def analyze_endpoint(req: AnalyzeRequest) -> AnalyzeResponse:
 @app.post("/critique", response_model=CritiqueResponse, operation_id="critique")
 async def critique_endpoint(req: CritiqueRequest) -> CritiqueResponse:
     return await critique(req)
+
+
+@app.post("/review-chat", response_model=ReviewChatResponse, operation_id="reviewChat")
+async def review_chat_endpoint(req: ReviewChatRequest) -> ReviewChatResponse:
+    return await review_chat(req)

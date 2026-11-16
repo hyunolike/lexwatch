@@ -195,4 +195,80 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal(0, diff[0].GetProperty("index").GetInt32());
         Assert.Equal("해고가 제한된다.", diff[0].GetProperty("before").GetProperty("sentence").GetString());
     }
+
+    private static readonly object ChatOk = new
+    {
+        answer = "해고 제한이 강화돼요.", citations = new[] { "law:L1:제23조" }, refused = false, provider = AiStub.Provider(),
+    };
+
+    private WebApplicationFactory<Program> ChatFactory(AiStub ai)
+    {
+        Environment.SetEnvironmentVariable("AI_BASE_URL", ai.Server.Url);
+        return Factory().WithWebHostBuilder(b => b.UseSetting("JOB_TOKEN", "secret-token"));
+    }
+
+    [Fact]
+    public async Task Chat_quota_per_ip_returns_429_after_10()
+    {
+        var g = await SeedAsync();
+        using var ai = new AiStub();
+        ai.Json("/review-chat", 200, ChatOk);
+        await using var f = ChatFactory(ai);
+        var c = As(f, "lawyer");
+        for (var i = 0; i < 10; i++)
+        {
+            var ok = await c.PostAsJsonAsync($"/api/reviews/{g.Id}/chat", new { question = "제23조 해고 규정은?" });
+            Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+            var body = await ok.Content.ReadFromJsonAsync<JsonElement>();
+            Assert.Equal("law:L1:제23조", body.GetProperty("citations")[0].GetString());
+            Assert.Equal("nvidia", body.GetProperty("provider").GetProperty("kind").GetString());
+        }
+        var over = await c.PostAsJsonAsync($"/api/reviews/{g.Id}/chat", new { question = "제23조 해고 규정은?" });
+        Assert.Equal(HttpStatusCode.TooManyRequests, over.StatusCode);
+        Assert.Equal("CHAT_QUOTA_EXCEEDED", (await over.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString());
+        Assert.Equal(10, ai.Requests("/review-chat").Count);
+
+        await using var db = pg.CreateDb();
+        var rows = await db.ChatQuotas.ToListAsync();
+        Assert.Equal(2, rows.Count);
+        Assert.Equal(10, rows.Single(r => r.IpHash == "__global__").Count);
+        Assert.DoesNotContain(rows, r => r.IpHash.Contains("127.0.0.1"));
+    }
+
+    [Fact]
+    public async Task Chat_global_cap_returns_429_and_does_not_charge_ip()
+    {
+        var g = await SeedAsync();
+        await using (var db0 = pg.CreateDb())
+        {
+            db0.ChatQuotas.Add(new ChatQuota { Day = DateOnly.FromDateTime(DateTime.UtcNow), IpHash = "__global__", Count = 200 });
+            await db0.SaveChangesAsync();
+        }
+        using var ai = new AiStub();
+        ai.Json("/review-chat", 200, ChatOk);
+        await using var f = ChatFactory(ai);
+        var r = await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/chat", new { question = "제23조 해고 규정은?" });
+        Assert.Equal(HttpStatusCode.TooManyRequests, r.StatusCode);
+        await using var db = pg.CreateDb();
+        Assert.Single(await db.ChatQuotas.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Chat_ai_failure_is_refunded_and_role_and_input_are_checked()
+    {
+        var g = await SeedAsync();
+        using var ai = new AiStub();
+        ai.Json("/review-chat", 500, new { code = "X" });
+        await using var f = ChatFactory(ai);
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await As(f, "admin").PostAsJsonAsync($"/api/reviews/{g.Id}/chat", new { question = "q" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/chat", new { question = new string('가', 501) })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{Guid.NewGuid()}/chat", new { question = "q" })).StatusCode);
+        var r = await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/chat", new { question = "제23조?" });
+        Assert.Equal((HttpStatusCode)424, r.StatusCode);
+        await using var db = pg.CreateDb();
+        Assert.All(await db.ChatQuotas.ToListAsync(), q => Assert.Equal(0, q.Count));
+    }
 }

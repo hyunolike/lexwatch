@@ -1,0 +1,14 @@
+# NeMo Guardrails configuration (declarative twin of app/guardrails/__init__.py).
+# NOT loaded by the service: nemoguardrails is an optional dependency group ("guardrails"),
+# excluded from the Vercel bundle. See ai/README.md.
+models:
+  - type: main
+    engine: nvidia_ai_endpoints
+    model: nvidia/nemotron-3-super-120b-a12b
+rails:
+  input:
+    flows:
+      - self check input
+      - refuse off topic
+      - refuse legal advice
+      - refuse prompt injection
