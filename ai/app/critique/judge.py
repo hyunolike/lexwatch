@@ -75,6 +75,8 @@ def _clean(findings: list[Finding], n: int, use_rules: bool) -> list[Finding]:
         if not 0 <= f.sentence_index < n:
             log.warning("critique: sentence_index %s 범위 밖, 버림", f.sentence_index)
             continue
+        # use_rules=False(비교용)에서는 모델이 규칙 ID를 모르므로 "GENERAL" 등 알 수 없는 rule_id를 허용한다.
+        # 범위 밖 sentence_index는 두 모드 모두 버린다.
         if use_rules and f.rule_id not in RULES:
             log.warning("critique: 알 수 없는 rule_id %s, 버림", f.rule_id)
             continue

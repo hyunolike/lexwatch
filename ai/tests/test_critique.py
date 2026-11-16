@@ -70,5 +70,9 @@ def test_cases_file_has_two_per_rule_and_six_clean():
     assert sum(1 for c in cases if c["expected_rule_ids"] == []) == 6
     for c in cases:
         assert c["source"] == "placeholder-fixture"
+        if c["expected_rule_ids"]:
+            assert 0 <= c["overclaim_sentence_index"] < len(c["memo"])
+        else:
+            assert "overclaim_sentence_index" not in c
         ids = {e["id"] for e in c["evidence"]}
         assert all(cit in ids for m in c["memo"] for cit in m["citations"])

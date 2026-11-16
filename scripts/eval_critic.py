@@ -21,29 +21,46 @@ CASES = ROOT / "eval" / "critic_cases.jsonl"
 OUT = ROOT / "eval" / "results"
 
 
+NOTE = ("self-fit pattern result written by the same author as the cases; NOT model accuracy; "
+        "real-model run pending NVIDIA_API_KEY")
+
+
 async def run_mode(cases: list[dict], use_rules: bool) -> dict:
     rows, provider = [], None
     for c in cases:
         req = CritiqueRequest(run_id=c["id"], memo=c["memo"], evidence=c["evidence"], use_rules=use_rules)
         resp = await critique(req)
         provider = resp.provider.name
-        got = sorted({f.rule_id for f in resp.findings})
         exp = c["expected_rule_ids"]
-        # 규칙 없음 모드는 rule_id를 모르므로 '무언가 적발했는가'로 센다
-        hit = bool(got) if not use_rules else set(exp) <= set(got)
-        rows.append({"id": c["id"], "expected": exp, "got": got, "hit": hit, "findings": [f.model_dump() for f in resp.findings]})
+        idx = c.get("overclaim_sentence_index")
+        at_idx = [f for f in resp.findings if f.sentence_index == idx] if exp else []
+        other = [f for f in resp.findings if f not in at_idx]
+        hit = bool(at_idx)  # 두 모드 공통: 과잉해석 문장에 적발이 있어야 적발
+        rule_ok = any(f.rule_id in exp for f in at_idx)
+        rows.append({
+            "id": c["id"], "expected": exp, "overclaim_sentence_index": idx, "hit": hit, "rule_correct": rule_ok,
+            "false_positive_findings": len(other), "findings": [f.model_dump() for f in resp.findings],
+        })
     over = [r for r in rows if r["expected"]]
     clean = [r for r in rows if not r["expected"]]
-    return {
+    fallback = provider == "pattern-fallback"
+    result = {
         "mode": "rules" if use_rules else "norules",
         "provider": provider,
         "source": "placeholder-fixture",
         "detected": sum(r["hit"] for r in over),
         "overclaims": len(over),
-        "false_positives": sum(bool(r["got"]) for r in clean),
+        "rule_id_correct": sum(r["rule_correct"] for r in over) if use_rules else None,
+        "false_positive_findings": sum(r["false_positive_findings"] for r in rows),
+        "clean_cases_flagged": sum(bool(r["false_positive_findings"]) for r in clean),
         "clean": len(clean),
         "rows": rows,
     }
+    if fallback:
+        result["note"] = NOTE
+        if not use_rules:
+            result["comparison_valid"] = False
+    return result
 
 
 async def main() -> None:
@@ -53,10 +70,15 @@ async def main() -> None:
         res = await run_mode(cases, use_rules)
         name = f"critic_{res['mode']}_{res['provider']}_{date.today().isoformat()}.json"
         (OUT / name).write_text(json.dumps(res, ensure_ascii=False, indent=2) + "\n")
-        print(f"[{res['mode']}] provider={res['provider']} 적발 {res['detected']}/{res['overclaims']}, "
-              f"거짓 양성 {res['false_positives']}/{res['clean']} -> eval/results/{name}")
+        acc = f", 규칙ID 정확 {res['rule_id_correct']}/{res['overclaims']}" if use_rules else ""
+        print(f"[{res['mode']}] provider={res['provider']} 적발 {res['detected']}/{res['overclaims']}{acc}, "
+              f"거짓 양성 finding {res['false_positive_findings']}건 (정상 케이스 {res['clean_cases_flagged']}/{res['clean']}) "
+              f"-> eval/results/{name}")
         if res["provider"] == "pattern-fallback" and not use_rules:
             print("  (키 없음: 규칙 없음 모드도 같은 패턴 판정이라 비교 의미 없음)")
+    if res["provider"] == "pattern-fallback":
+        print("!!! 경고: " + NOTE)
+        print("!!! 규칙 없음 모드는 패턴 판정이 use_rules를 무시하므로 비교 무효(comparison_valid=false)")
     print("주의: 케이스는 placeholder 조문 기반이다. 실녹화 후 재실행 전까지 수치는 placeholder 기준이다.")
 
 

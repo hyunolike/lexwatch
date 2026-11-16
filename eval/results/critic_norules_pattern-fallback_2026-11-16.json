@@ -4,7 +4,9 @@
   "source": "placeholder-fixture",
   "detected": 10,
   "overclaims": 10,
-  "false_positives": 0,
+  "rule_id_correct": null,
+  "false_positive_findings": 0,
+  "clean_cases_flagged": 0,
   "clean": 6,
   "rows": [
     {
@@ -12,10 +14,10 @@
       "expected": [
         "OC-01"
       ],
-      "got": [
-        "OC-01"
-      ],
+      "overclaim_sentence_index": 0,
       "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
       "findings": [
         {
           "sentence_index": 0,
@@ -29,10 +31,10 @@
       "expected": [
         "OC-01"
       ],
-      "got": [
-        "OC-01"
-      ],
+      "overclaim_sentence_index": 0,
       "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
       "findings": [
         {
           "sentence_index": 0,
@@ -46,10 +48,10 @@
       "expected": [
         "OC-02"
       ],
-      "got": [
-        "OC-02"
-      ],
+      "overclaim_sentence_index": 0,
       "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
       "findings": [
         {
           "sentence_index": 0,
@@ -63,10 +65,10 @@
       "expected": [
         "OC-02"
       ],
-      "got": [
-        "OC-02"
-      ],
+      "overclaim_sentence_index": 0,
       "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
       "findings": [
         {
           "sentence_index": 0,
@@ -80,10 +82,10 @@
       "expected": [
         "OC-03"
       ],
-      "got": [
-        "OC-03"
-      ],
+      "overclaim_sentence_index": 0,
       "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
       "findings": [
         {
           "sentence_index": 0,
@@ -97,10 +99,10 @@
       "expected": [
         "OC-03"
       ],
-      "got": [
-        "OC-03"
-      ],
+      "overclaim_sentence_index": 0,
       "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
       "findings": [
         {
           "sentence_index": 0,
@@ -114,10 +116,10 @@
       "expected": [
         "OC-04"
       ],
-      "got": [
-        "OC-04"
-      ],
+      "overclaim_sentence_index": 0,
       "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
       "findings": [
         {
           "sentence_index": 0,
@@ -131,10 +133,10 @@
       "expected": [
         "OC-04"
       ],
-      "got": [
-        "OC-04"
-      ],
+      "overclaim_sentence_index": 0,
       "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
       "findings": [
         {
           "sentence_index": 0,
@@ -148,10 +150,10 @@
       "expected": [
         "OC-05"
       ],
-      "got": [
-        "OC-05"
-      ],
+      "overclaim_sentence_index": 0,
       "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
       "findings": [
         {
           "sentence_index": 0,
@@ -165,10 +167,10 @@
       "expected": [
         "OC-05"
       ],
-      "got": [
-        "OC-05"
-      ],
+      "overclaim_sentence_index": 0,
       "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
       "findings": [
         {
           "sentence_index": 0,
@@ -180,44 +182,58 @@
     {
       "id": "clean-1",
       "expected": [],
-      "got": [],
+      "overclaim_sentence_index": null,
       "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
       "findings": []
     },
     {
       "id": "clean-2",
       "expected": [],
-      "got": [],
+      "overclaim_sentence_index": null,
       "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
       "findings": []
     },
     {
       "id": "clean-3",
       "expected": [],
-      "got": [],
+      "overclaim_sentence_index": null,
       "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
       "findings": []
     },
     {
       "id": "clean-4",
       "expected": [],
-      "got": [],
+      "overclaim_sentence_index": null,
       "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
       "findings": []
     },
     {
       "id": "clean-5",
       "expected": [],
-      "got": [],
+      "overclaim_sentence_index": null,
       "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
       "findings": []
     },
     {
       "id": "clean-6",
       "expected": [],
-      "got": [],
+      "overclaim_sentence_index": null,
       "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
       "findings": []
     }
-  ]
+  ],
+  "note": "self-fit pattern result written by the same author as the cases; NOT model accuracy; real-model run pending NVIDIA_API_KEY",
+  "comparison_valid": false
 }
