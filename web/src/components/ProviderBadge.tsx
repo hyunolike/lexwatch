@@ -7,7 +7,9 @@ const STYLES: Record<Exclude<ProviderKind, "none">, { label: string; cls: string
 };
 
 export function ProviderBadge({ kind }: { kind: ProviderKind }) {
-  if (kind === "none" || !(kind in STYLES)) return null;
+  if (kind === "none" || !kind) return null;
+  if (!(kind in STYLES))
+    return <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{String(kind)}</span>;
   const s = STYLES[kind];
   return <span className={`rounded px-2 py-0.5 text-xs font-semibold ${s.cls}`}>{s.label}</span>;
 }

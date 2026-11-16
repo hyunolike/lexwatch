@@ -83,6 +83,7 @@ public class RunEndpointTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal(at.OrderBy(x => x).ToList(), at);
         Assert.True(tl[1].GetProperty("summary").GetString()!.Length <= 300);
         Assert.Equal("근로기준법", detail.GetProperty("lawChange").GetProperty("lawName").GetString());
+        Assert.True(detail.GetProperty("groups").GetArrayLength() >= 1);
         Assert.Equal(HttpStatusCode.NotFound, (await c.GetAsync($"/api/runs/{Guid.NewGuid()}")).StatusCode);
     }
 

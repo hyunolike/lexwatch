@@ -113,3 +113,33 @@ describe("formatDuration", () => {
     expect(formatDuration(2500)).toBe("2.5초");
   });
 });
+
+import { hasRetryableStep, stepLabel, type TimelineItem } from "./api";
+
+const st = (step: string, attempt: number, status: string, groupCode: string | null = "g1"): TimelineItem => ({
+  kind: "step", at: "t", step, attempt, status, durationMs: null, errorCode: null, errorMessage: null,
+  providerKind: "none", providerName: null, groupCode, summary: null,
+});
+
+describe("hasRetryableStep", () => {
+  it("superseded_failure_has_no_button", () => {
+    expect(hasRetryableStep([st("analyze", 1, "Failed"), st("analyze", 2, "Succeeded")], [{ groupCode: "g1", status: "WaitingApproval" }])).toBe(false);
+  });
+  it("decided_groups_have_no_button", () => {
+    for (const status of ["Rejected", "Notified", "ClosedIrrelevant"])
+      expect(hasRetryableStep([st("notify", 1, "Failed")], [{ groupCode: "g1", status }])).toBe(false);
+    expect(hasRetryableStep([st("analyze", 1, "Failed")], [{ groupCode: "g1", status: "Approved" }])).toBe(false);
+  });
+  it("notify_on_approved_and_undecided_failed_have_button", () => {
+    expect(hasRetryableStep([st("notify", 1, "Failed")], [{ groupCode: "g1", status: "Approved" }])).toBe(true);
+    expect(hasRetryableStep([st("analyze", 1, "Failed")], [{ groupCode: "g1", status: "Analyzing" }])).toBe(true);
+    expect(hasRetryableStep([st("fetch_articles", 1, "Failed", null)], [])).toBe(true);
+  });
+});
+
+describe("stepLabel", () => {
+  it("maps_known_and_falls_back", () => {
+    expect(stepLabel("critic_judge")).toBe("크리틱 판정");
+    expect(stepLabel("zzz")).toBe("zzz");
+  });
+});

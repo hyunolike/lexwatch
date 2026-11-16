@@ -1,15 +1,6 @@
 "use client";
-import { formatDuration, type ProviderKind, type TimelineItem } from "@/lib/api";
+import { formatDuration, stepLabel, type TimelineItem } from "@/lib/api";
 import { ProviderBadge } from "@/components/ProviderBadge";
-
-const STEP_LABELS: Record<string, string> = {
-  classify: "분류",
-  analyze: "분석",
-  notify: "알림",
-};
-
-const stepLabel = (s: string) => STEP_LABELS[s] ?? s;
-const KINDS: ProviderKind[] = ["nvidia", "fallback", "replay", "none"];
 
 function StatusPill({ status }: { status: string }) {
   const cls =
@@ -19,14 +10,8 @@ function StatusPill({ status }: { status: string }) {
 
 export function Timeline({
   items,
-  isAdmin,
-  onRetry,
-  retrying,
 }: {
   items: TimelineItem[];
-  isAdmin: boolean;
-  onRetry: () => void;
-  retrying: boolean;
 }) {
   if (items.length === 0) return <p className="text-slate-500">기록된 단계가 없어요.</p>;
   return (
@@ -34,7 +19,6 @@ export function Timeline({
       {items.map((it, i) => {
         const group = it.groupCode ? <span className="rounded bg-slate-100 px-1.5 text-xs">{it.groupCode}</span> : null;
         if (it.kind === "step") {
-          const kind = KINDS.includes(it.providerKind) ? it.providerKind : "none";
           return (
             <li key={i} className="flex flex-wrap items-center gap-3 rounded border bg-white p-2">
               <span className="font-medium">{stepLabel(it.step)}</span>
@@ -42,16 +26,11 @@ export function Timeline({
               <span className="text-sm text-slate-500">시도 {it.attempt}</span>
               <span className="text-sm text-slate-500">{formatDuration(it.durationMs)}</span>
               <StatusPill status={it.status} />
-              <ProviderBadge kind={kind} />
+              <ProviderBadge kind={it.providerKind} />
               {it.errorCode && (
                 <span className="text-sm text-red-700" title={it.errorMessage ?? undefined}>
                   {it.errorCode}
                 </span>
-              )}
-              {isAdmin && it.status === "Failed" && (
-                <button onClick={onRetry} disabled={retrying} className="ml-auto rounded border px-2 py-0.5 text-sm disabled:opacity-50">
-                  다시 실행
-                </button>
               )}
             </li>
           );

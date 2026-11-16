@@ -178,6 +178,7 @@ export type TimelineItem =
 export interface RunDetail {
   run: { id: string; status: string; isReplay: boolean; traceId: string | null; createdAt: string; finishedAt: string | null };
   lawChange: { id: string; lawId: string; lawName: string; promulgationDate: string; effectiveDate: string | null };
+  groups: { groupCode: string; status: string }[];
   timeline: TimelineItem[];
 }
 
@@ -212,4 +213,39 @@ export async function retryRun(runId: string): Promise<RetryOutcome> {
 export function formatDuration(ms: number | null | undefined): string {
   if (ms == null) return "—";
   return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}초`;
+}
+
+const STEP_LABELS: Record<string, string> = {
+  fetch_articles: "조문 수집",
+  classify: "분류",
+  analyze: "분석",
+  critic_citation: "인용 검증",
+  critic_source: "출처 검증",
+  critic_judge: "크리틱 판정",
+  notify: "알림",
+};
+
+/** 백엔드가 내는 단계 이름을 한국어로. 모르면 원래 이름. */
+export const stepLabel = (s: string) => STEP_LABELS[s] ?? s;
+
+/**
+ * 백엔드 RunEndpoints.Retryable과 같은 규칙으로 다시 실행할 수 있는 실패 단계가 있는지 본다.
+ * (단계, 그룹)별 가장 늦은 시도가 Failed여야 하고, 결정된 그룹은 Approved의 notify만 허용한다.
+ */
+export function hasRetryableStep(timeline: TimelineItem[], groups: { groupCode: string; status: string }[]): boolean {
+  const latest = new Map<string, Extract<TimelineItem, { kind: "step" }>>();
+  for (const it of timeline) {
+    if (it.kind !== "step") continue;
+    const key = `${it.step}|${it.groupCode ?? ""}`;
+    const prev = latest.get(key);
+    if (!prev || it.attempt >= prev.attempt) latest.set(key, it);
+  }
+  const status = new Map(groups.map((g) => [g.groupCode, g.status]));
+  return [...latest.values()].some((s) => {
+    if (s.status !== "Failed") return false;
+    const g = s.groupCode ? status.get(s.groupCode) : undefined;
+    if (g === undefined) return true;
+    if (g === "Approved") return s.step === "notify";
+    return !["Rejected", "Notified", "ClosedIrrelevant"].includes(g);
+  });
 }

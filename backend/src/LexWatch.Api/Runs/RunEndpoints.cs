@@ -116,6 +116,7 @@ public static class RunEndpoints
                     createdAt = run.CreatedAt, finishedAt = run.FinishedAt },
                 lawChange = new { id = law.Id, lawId = law.LawId, lawName = law.LawName,
                     promulgationDate = law.PromulgationDate, effectiveDate = law.EffectiveDate },
+                groups = groups.OrderBy(g => g.GroupCode).Select(g => new { groupCode = g.GroupCode, status = g.Status.ToString() }),
                 timeline,
             });
         });
