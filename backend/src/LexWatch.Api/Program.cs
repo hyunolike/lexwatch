@@ -1,6 +1,7 @@
 using LexWatch.Api.Ai;
 using LexWatch.Api.Data;
 using LexWatch.Api.Jobs;
+using LexWatch.Api.Runs;
 using LexWatch.Api.LawApi;
 using LexWatch.Api.Reviews;
 using LexWatch.Api.Workflow.Steps;
@@ -33,6 +34,7 @@ var app = builder.Build();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapJobEndpoints();
 app.MapReviewEndpoints();
+app.MapRunEndpoints();
 app.Run();
 
 public partial class Program;
