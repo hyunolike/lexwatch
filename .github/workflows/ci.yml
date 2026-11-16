@@ -65,6 +65,7 @@ jobs:
           cache: pnpm
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - run: pnpm exec next typegen   # PageProps/LayoutProps 전역 타입은 .next/types에 생성된다
       - run: pnpm exec tsc --noEmit
       - run: pnpm lint
       - run: pnpm test
