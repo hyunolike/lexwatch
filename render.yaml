@@ -5,6 +5,7 @@ services:
     name: lexwatch-api
     runtime: docker
     plan: free
+    region: singapore      # Supabase(ap-southeast-1)와 Vercel ai(sin1)에 맞춘다
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     healthCheckPath: /health
