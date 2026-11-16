@@ -144,12 +144,21 @@ public class WorkflowWorker(IServiceScopeFactory scopes, TimeProvider time, ILog
                 break;
 
             case StepResult.NeedsReview nr:
-                step.Status = StepStatus.NeedsReview;
-                step.ErrorCode = null;
-                step.ErrorMessage = nr.Reason;
                 step.OutputJson = nr.Output is null ? null : JsonSerializer.Serialize(nr.Output, StepQueue.Json);
                 step.ProviderKind = nr.ProviderKind;
                 step.ProviderName = nr.ProviderName;
+                if (step.GroupReviewId is null)
+                {
+                    // 실행 단위 단계(분류)에는 "검토 필요"로 표시할 그룹이 없다. 그대로 두면 그룹 0개로
+                    // 실행이 completed가 되어 개정 한 건이 조용히 사라진다. 실패로 남겨 이력에 보이고 다시 실행할 수 있게 한다.
+                    step.ErrorCode = IsErrorCode(nr.Reason) ? nr.Reason : "NEEDS_REVIEW_WITHOUT_GROUP";
+                    step.ErrorMessage = $"{StepLabel(step.Step)} 결과를 검증하지 못해 그룹 검토를 만들지 못했다({nr.Reason}). 관리자가 다시 실행할 수 있다";
+                    await FailAsync(db, step, run, now, ct);
+                    break;
+                }
+                step.Status = StepStatus.NeedsReview;
+                step.ErrorCode = null;
+                step.ErrorMessage = nr.Reason;
                 await SetGroupStatusAsync(db, step.GroupReviewId, ReviewStatus.NeedsReview, ct);
                 break;
 
@@ -165,7 +174,19 @@ public class WorkflowWorker(IServiceScopeFactory scopes, TimeProvider time, ILog
         CancellationToken ct)
     {
         step.Status = StepStatus.Failed;
-        if (step.GroupReviewId is not null)
+        if (step.Step == "notify" && step.GroupReviewId is { } notifyGroup)
+        {
+            // 발송 실패가 승인을 되돌리지 않는다(설계 §6 10단계). 그룹은 Approved로 두고 관리자 알림을 남긴다.
+            // 실패한 알림 단계는 기존 재실행 규칙(Approved 그룹의 notify)으로 다시 실행할 수 있다.
+            var groupCode = await db.GroupReviews.Where(g => g.Id == notifyGroup).Select(g => g.GroupCode)
+                .FirstOrDefaultAsync(ct) ?? "?";
+            db.Notifications.Add(new Notification
+            {
+                Id = Guid.NewGuid(), GroupReviewId = notifyGroup, Channel = "admin", Status = "pending", SentAt = now,
+                Body = $"승인된 메모의 알림 발송이 실패했습니다(그룹 {groupCode}, {step.ErrorCode}). 승인은 유지되며 실행 이력에서 다시 실행할 수 있습니다.",
+            });
+        }
+        else if (step.GroupReviewId is not null)
         {
             await SetGroupStatusAsync(db, step.GroupReviewId, ReviewStatus.NeedsReview, ct);
         }
@@ -188,7 +209,7 @@ public class WorkflowWorker(IServiceScopeFactory scopes, TimeProvider time, ILog
     private static readonly ReviewStatus[] TerminalReviews =
         [ReviewStatus.Approved, ReviewStatus.Rejected, ReviewStatus.Notified, ReviewStatus.ClosedIrrelevant];
 
-    /// <summary>남은 단계가 없고 모든 그룹이 종결이면 Completed. 이후 작업이 확장할 수 있도록 한 곳에 둔다.</summary>
+    /// <summary>남은 단계가 없고 모든 그룹이 종결이면 Completed(알림이 실패해 Approved로 남은 그룹이 있으면 Failed).</summary>
     public static async Task UpdateRunStatusAsync(LexWatchDb db, WorkflowRun run, DateTimeOffset now,
         CancellationToken ct)
     {
@@ -196,8 +217,22 @@ public class WorkflowWorker(IServiceScopeFactory scopes, TimeProvider time, ILog
         var hasActive = await db.StepRuns.AnyAsync(s => s.RunId == run.Id && ActiveSteps.Contains(s.Status), ct);
         if (hasActive) return;
         var openGroup = await db.GroupReviews.AnyAsync(g => g.RunId == run.Id && !TerminalReviews.Contains(g.Status), ct);
-        if (openGroup) return;
-        run.Status = RunStatus.Completed;
+        if (openGroup)
+        {
+            // 남은 단계가 없고 열린 그룹이 전부 결정 대기면 변호사를 기다리는 중이다(재실행 뒤 Running으로 남지 않게).
+            var allDecidable = !await db.GroupReviews.AnyAsync(g => g.RunId == run.Id && !TerminalReviews.Contains(g.Status)
+                && g.Status != ReviewStatus.WaitingApproval && g.Status != ReviewStatus.NeedsReview, ct);
+            if (allDecidable && run.Status == RunStatus.Running) run.Status = RunStatus.InReview;
+            return;
+        }
+        // 남은 단계가 없는데 Approved로 남은 그룹은 알림 단계가 끝내 실패한 그룹이다. 완료로 보이지 않게 한다.
+        var undelivered = await db.GroupReviews.AnyAsync(g => g.RunId == run.Id && g.Status == ReviewStatus.Approved, ct);
+        run.Status = undelivered ? RunStatus.Failed : RunStatus.Completed;
         run.FinishedAt = now;
     }
+
+    private static bool IsErrorCode(string s) =>
+        s.Length is > 0 and <= 64 && s.All(c => c is (>= 'A' and <= 'Z') or (>= '0' and <= '9') or '_');
+
+    private static string StepLabel(string step) => step == "classify" ? "분류" : step;
 }

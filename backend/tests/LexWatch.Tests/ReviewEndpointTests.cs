@@ -135,6 +135,28 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Approved_group_whose_notify_failed_cannot_be_approved_again()
+    {
+        var g = await SeedAsync();
+        await using var f = Factory();
+        var c = As(f, "lawyer");
+        Assert.Equal(HttpStatusCode.OK, (await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version })).StatusCode);
+        await using (var db = pg.CreateDb())
+        {
+            var step = await db.StepRuns.SingleAsync(s => s.Step == "notify");
+            step.Status = StepStatus.Failed; // 알림 실패 뒤에도 그룹은 Approved다
+            await db.SaveChangesAsync();
+        }
+        uint version;
+        await using (var db = pg.CreateDb()) version = (await db.GroupReviews.SingleAsync()).Version;
+        var again = await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version });
+        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+        await using var chk = pg.CreateDb();
+        Assert.Equal(1, await chk.Approvals.CountAsync());
+        Assert.Equal(1, await chk.StepRuns.CountAsync(s => s.Step == "notify"));
+    }
+
+    [Fact]
     public async Task Admin_cannot_approve()
     {
         var g = await SeedAsync();

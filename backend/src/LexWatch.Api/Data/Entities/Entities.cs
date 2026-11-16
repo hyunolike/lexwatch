@@ -117,7 +117,7 @@ public class Approval
 public class Notification
 {
     public Guid Id { get; set; }
-    /// <summary>관리자 알림(channel=admin)은 그룹 검토와 무관하므로 null.</summary>
+    /// <summary>수집 이상 같은 관리자 알림(channel=admin)은 null. 알림 발송 실패 관리자 알림은 해당 그룹을 가리킨다.</summary>
     public Guid? GroupReviewId { get; set; }
     public string Channel { get; set; } = "demo_inbox";
     public string Status { get; set; } = "";

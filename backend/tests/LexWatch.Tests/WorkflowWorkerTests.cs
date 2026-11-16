@@ -169,7 +169,8 @@ public class WorkflowWorkerTests(PostgresFixture pg) : IAsyncLifetime
     {
         var run = await Seed.RunAsync(pg);
         var time = new FakeTime(T0);
-        var ok = await EnqueueAsync(run, "analyze", time);
+        var gid = (await AiSeed.GroupAsync(pg, run.Id)).Id;
+        var ok = await EnqueueAsync(run, "analyze", time, gid);
         var bad = await EnqueueAsync(run, "critic_judge", time);
         var worker = Seed.Worker(pg, time,
             new LambdaHandler("analyze", _ => new StepResult.NeedsReview("x", null, "nvidia", "nim")),
@@ -226,5 +227,84 @@ public class WorkflowWorkerTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal("HANDLER_EXCEPTION", s.ErrorCode);
         await using var db = pg.CreateDb();
         Assert.Equal(1, await db.StepRuns.CountAsync());
+    }
+
+    [Fact]
+    public async Task Notify_failure_keeps_group_approved_alerts_admin_and_blocks_second_approval()
+    {
+        var run = await Seed.RunAsync(pg);
+        var time = new FakeTime(T0);
+        var g = await AiSeed.GroupAsync(pg, run.Id, "labor", ReviewStatus.Approved);
+        var step = await EnqueueAsync(run, "notify", time, g.Id);
+        var worker = Seed.Worker(pg, time, new LambdaHandler("notify", _ => new StepResult.Failed("NO_DRAFT", "알릴 초안이 없다")));
+
+        await worker.RunOnceAsync();
+
+        await using var db = pg.CreateDb();
+        Assert.Equal(ReviewStatus.Approved, (await db.GroupReviews.SingleAsync()).Status);
+        var s = await db.StepRuns.SingleAsync(x => x.Id == step.Id);
+        Assert.Equal((StepStatus.Failed, "NO_DRAFT"), (s.Status, s.ErrorCode));
+        var alert = await db.Notifications.SingleAsync();
+        Assert.Equal(("admin", g.Id), (alert.Channel, alert.GroupReviewId));
+        Assert.Equal(RunStatus.Failed, (await db.WorkflowRuns.SingleAsync()).Status); // 완료로 보이지 않는다
+    }
+
+    [Fact]
+    public async Task Notify_exhausting_retries_keeps_group_approved()
+    {
+        var run = await Seed.RunAsync(pg);
+        var time = new FakeTime(T0);
+        var g = await AiSeed.GroupAsync(pg, run.Id, "labor", ReviewStatus.Approved);
+        var step = await EnqueueAsync(run, "notify", time, g.Id);
+        var worker = Seed.Worker(pg, time, new LambdaHandler("notify", _ => throw new InvalidOperationException("smtp down")));
+
+        for (var i = 0; i < 10 && (await LoadAsync(step.Id)).Status != StepStatus.Failed; i++)
+        {
+            time.Now = time.Now.AddHours(1);
+            await worker.RunOnceAsync();
+        }
+
+        Assert.Equal(StepStatus.Failed, (await LoadAsync(step.Id)).Status);
+        await using var db = pg.CreateDb();
+        Assert.Equal(ReviewStatus.Approved, (await db.GroupReviews.SingleAsync()).Status);
+    }
+
+    [Fact]
+    public async Task Run_level_needs_review_fails_the_run_instead_of_completing_it()
+    {
+        var run = await Seed.RunAsync(pg);
+        var time = new FakeTime(T0);
+        var step = await EnqueueAsync(run, "classify", time);
+        var worker = Seed.Worker(pg, time,
+            new LambdaHandler("classify", _ => new StepResult.NeedsReview("LLM_OUTPUT_INVALID", null, "nvidia", "nim")));
+
+        await worker.RunOnceAsync();
+
+        var s = await LoadAsync(step.Id);
+        Assert.Equal((StepStatus.Failed, "LLM_OUTPUT_INVALID", "nvidia"), (s.Status, s.ErrorCode, s.ProviderKind));
+        await using var db = pg.CreateDb();
+        var r = await db.WorkflowRuns.SingleAsync();
+        Assert.Equal(RunStatus.Failed, r.Status);
+        Assert.NotNull(r.FinishedAt);
+        Assert.Empty(await db.GroupReviews.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Run_waiting_only_on_lawyer_becomes_in_review()
+    {
+        var run = await Seed.RunAsync(pg);
+        var time = new FakeTime(T0);
+        var g = await AiSeed.GroupAsync(pg, run.Id, "labor", ReviewStatus.Analyzing);
+        await EnqueueAsync(run, "critic_judge", time, g.Id);
+        var worker = Seed.Worker(pg, time, new LambdaHandler("critic_judge", ctx =>
+        {
+            ctx.Db.GroupReviews.Single(x => x.Id == g.Id).Status = ReviewStatus.WaitingApproval;
+            return new StepResult.Succeeded(null, []);
+        }));
+
+        await worker.RunOnceAsync();
+
+        await using var db = pg.CreateDb();
+        Assert.Equal(RunStatus.InReview, (await db.WorkflowRuns.SingleAsync()).Status);
     }
 }
