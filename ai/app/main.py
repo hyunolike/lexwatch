@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from app.agent.loop import AnalyzeRequest, AnalyzeResponse, analyze
 from app.classify import ClassifyRequest, ClassifyResponse, classify
+from app.critique.judge import CritiqueRequest, CritiqueResponse, critique
 from app.errors import register_handlers
 from app.rag.factory import get_retriever
 from app.schemas import EmbedRequest, EmbedResponse
@@ -38,3 +39,8 @@ async def classify_endpoint(req: ClassifyRequest) -> ClassifyResponse:
 @app.post("/analyze", response_model=AnalyzeResponse)
 async def analyze_endpoint(req: AnalyzeRequest) -> AnalyzeResponse:
     return await analyze(req)
+
+
+@app.post("/critique", response_model=CritiqueResponse)
+async def critique_endpoint(req: CritiqueRequest) -> CritiqueResponse:
+    return await critique(req)

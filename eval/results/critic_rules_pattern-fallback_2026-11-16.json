@@ -1,0 +1,223 @@
+{
+  "mode": "rules",
+  "provider": "pattern-fallback",
+  "source": "placeholder-fixture",
+  "detected": 10,
+  "overclaims": 10,
+  "false_positives": 0,
+  "clean": 6,
+  "rows": [
+    {
+      "id": "oc01-a",
+      "expected": [
+        "OC-01"
+      ],
+      "got": [
+        "OC-01"
+      ],
+      "hit": true,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-01",
+          "message": "패턴 판정(키 없음): 경과규정(부칙) 근거 없이 시행일 이전 계약·행위에 새 규정이 적용된다고 단정한다."
+        }
+      ]
+    },
+    {
+      "id": "oc01-b",
+      "expected": [
+        "OC-01"
+      ],
+      "got": [
+        "OC-01"
+      ],
+      "hit": true,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-01",
+          "message": "패턴 판정(키 없음): 경과규정(부칙) 근거 없이 시행일 이전 계약·행위에 새 규정이 적용된다고 단정한다."
+        }
+      ]
+    },
+    {
+      "id": "oc02-a",
+      "expected": [
+        "OC-02"
+      ],
+      "got": [
+        "OC-02"
+      ],
+      "hit": true,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-02",
+          "message": "패턴 판정(키 없음): 하위법령(시행령·고시 등)이 확인되지 않은 위임 조항을 구체적 의무처럼 기술한다."
+        }
+      ]
+    },
+    {
+      "id": "oc02-b",
+      "expected": [
+        "OC-02"
+      ],
+      "got": [
+        "OC-02"
+      ],
+      "hit": true,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-02",
+          "message": "패턴 판정(키 없음): 하위법령(시행령·고시 등)이 확인되지 않은 위임 조항을 구체적 의무처럼 기술한다."
+        }
+      ]
+    },
+    {
+      "id": "oc03-a",
+      "expected": [
+        "OC-03"
+      ],
+      "got": [
+        "OC-03"
+      ],
+      "hit": true,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-03",
+          "message": "패턴 판정(키 없음): 판례 하나를 일반 원칙처럼 기술한다."
+        }
+      ]
+    },
+    {
+      "id": "oc03-b",
+      "expected": [
+        "OC-03"
+      ],
+      "got": [
+        "OC-03"
+      ],
+      "hit": true,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-03",
+          "message": "패턴 판정(키 없음): 판례 하나를 일반 원칙처럼 기술한다."
+        }
+      ]
+    },
+    {
+      "id": "oc04-a",
+      "expected": [
+        "OC-04"
+      ],
+      "got": [
+        "OC-04"
+      ],
+      "hit": true,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-04",
+          "message": "패턴 판정(키 없음): '반드시'·'모든' 등으로 근거 조문보다 적용 범위를 넓힌다."
+        }
+      ]
+    },
+    {
+      "id": "oc04-b",
+      "expected": [
+        "OC-04"
+      ],
+      "got": [
+        "OC-04"
+      ],
+      "hit": true,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-04",
+          "message": "패턴 판정(키 없음): '반드시'·'모든' 등으로 근거 조문보다 적용 범위를 넓힌다."
+        }
+      ]
+    },
+    {
+      "id": "oc05-a",
+      "expected": [
+        "OC-05"
+      ],
+      "got": [
+        "OC-05"
+      ],
+      "hit": true,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-05",
+          "message": "패턴 판정(키 없음): 벌칙·과태료 금액을 개정 전(구조문) 조문에서 인용한다."
+        }
+      ]
+    },
+    {
+      "id": "oc05-b",
+      "expected": [
+        "OC-05"
+      ],
+      "got": [
+        "OC-05"
+      ],
+      "hit": true,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-05",
+          "message": "패턴 판정(키 없음): 벌칙·과태료 금액을 개정 전(구조문) 조문에서 인용한다."
+        }
+      ]
+    },
+    {
+      "id": "clean-1",
+      "expected": [],
+      "got": [],
+      "hit": true,
+      "findings": []
+    },
+    {
+      "id": "clean-2",
+      "expected": [],
+      "got": [],
+      "hit": true,
+      "findings": []
+    },
+    {
+      "id": "clean-3",
+      "expected": [],
+      "got": [],
+      "hit": true,
+      "findings": []
+    },
+    {
+      "id": "clean-4",
+      "expected": [],
+      "got": [],
+      "hit": true,
+      "findings": []
+    },
+    {
+      "id": "clean-5",
+      "expected": [],
+      "got": [],
+      "hit": true,
+      "findings": []
+    },
+    {
+      "id": "clean-6",
+      "expected": [],
+      "got": [],
+      "hit": true,
+      "findings": []
+    }
+  ]
+}

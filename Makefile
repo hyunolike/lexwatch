@@ -2,3 +2,7 @@
 .PHONY: test-backend
 test-backend:
 	cd backend && dotnet test LexWatch.sln
+
+.PHONY: eval-critic
+eval-critic:
+	cd ai && uv run python ../scripts/eval_critic.py
