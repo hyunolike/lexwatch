@@ -1,0 +1,26 @@
+{
+  "_fixture_meta": "NVIDIA 문서·OpenAI 호환 포맷 기반 재구성(실호출 아님).",
+  "_note": "실제 차원 2048(문서 확인). 벡터는 앞 8개만 수록.",
+  "object": "list",
+  "model": "nvidia/nemotron-3-embed-1b",
+  "data": [
+    {
+      "object": "embedding",
+      "index": 0,
+      "embedding": [
+        0.0123,
+        -0.0456,
+        0.0789,
+        -0.0012,
+        0.0345,
+        -0.0678,
+        0.0901,
+        -0.0234
+      ]
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 14,
+    "total_tokens": 14
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "_fixture_meta": "문서 기반 재구성(실호출 아님). 필드명은 open.law.go.kr 활용가이드 기준. ID·일련번호·날짜 값은 예시이며 키 확보 후 scripts/record_lawapi.py로 교체.",
+  "LawSearch": {
+    "target": "law",
+    "키워드": "",
+    "section": "lawNm",
+    "totalCnt": "0",
+    "page": "1"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "_fixture_meta": "NVIDIA 문서·OpenAI 호환 포맷 기반 재구성(실호출 아님).",
+  "status": 429,
+  "headers": {
+    "retry-after": "2",
+    "content-type": "application/json"
+  },
+  "body": {
+    "status": 429,
+    "title": "Too Many Requests",
+    "detail": "Rate limit exceeded"
+  }
+}
