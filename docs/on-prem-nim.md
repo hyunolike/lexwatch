@@ -14,7 +14,7 @@
 | `NIM_BASE_URL` | `https://integrate.api.nvidia.com/v1` | 사내 NIM의 `/v1` 주소. 채팅(`{NIM_BASE_URL}/chat/completions`)과 임베딩(`{NIM_BASE_URL}/embeddings`)이 모두 이 값을 쓴다 |
 | `NIM_MODEL` | `nvidia/nemotron-3-super-120b-a12b` | 사내에 올린 모델의 이름 |
 | `EMBED_MODEL` | `nvidia/nemotron-3-embed-1b` | 사내에 올린 임베딩 모델 이름 |
-| `RERANK_URL` | NVIDIA 호스팅 리랭커 주소 | 리랭커 주소는 `NIM_BASE_URL`을 따르지 않고 별도 변수다. 사내 리랭커 NIM의 reranking 엔드포인트로 바꾼다 |
+| `RERANK_URL` | NVIDIA 호스팅 리랭커 주소 | 리랭커 주소는 `NIM_BASE_URL`을 따르지 않고 별도 변수다(`.env.example`에는 없고 `ai/app/rag/nvidia.py`의 기본값만 있다). 사내 리랭커 NIM의 reranking 엔드포인트로 바꾼다 |
 | `RERANK_MODEL` | `nvidia/llama-nemotron-rerank-vl-1b-v2` | 사내 리랭커 모델 이름 |
 | `NVIDIA_API_KEY` | (비어 있음) | 사내 NIM이 인증을 요구하지 않아도 이 값이 비면 코드가 키 없음으로 보고 대체 구현으로 내려간다. 사내 서버가 받는 아무 비어 있지 않은 값을 넣는다 |
 
@@ -23,7 +23,7 @@
 ## 절차
 
 1. 법인 GPU 서버에 Nemotron 채팅 NIM, 임베딩 NIM, 리랭커 NIM을 NVIDIA 공식 문서대로 올린다. 필요한 GPU 사양과 라이선스는 NVIDIA 문서를 확인한다.
-2. 서버에서 각 엔드포인트가 응답하는지 확인한다. 예를 들어 `GET {NIM_BASE_URL}/models`로 모델 이름을 읽고 그 이름을 `NIM_MODEL`에 쓴다.
+2. 서버에서 각 엔드포인트가 응답하는지 확인한다. `GET {NIM_BASE_URL}/models`로 모델 이름을 읽고 그 이름을 `NIM_MODEL`에 쓴다.
 3. AI 서비스의 환경변수에 위 표의 값을 넣고 재시작한다.
 4. AI 서비스에서 법인 내부망으로 나갈 수 있어야 한다. 현재 데모는 Vercel 서버리스에서 도는데 이것은 사내망에 닿지 않는다. 사내 배포에서는 `ai/Dockerfile`로 사내에서 컨테이너를 띄운다.
 5. `/classify`나 `/analyze`를 호출해 응답의 공급자 종류가 `nvidia`로 나오는지 본다. 화면의 배지는 초록이 된다. 단, 배지는 "NVIDIA 호환 서비스가 응답했다"는 뜻이지 호스팅인지 사내인지는 구분하지 않는다.
