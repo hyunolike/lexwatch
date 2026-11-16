@@ -15,6 +15,11 @@ var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
 builder.Services.AddDbContext<LexWatchDb>(o =>
     o.UseNpgsql(connectionString, n => n.UseVector()));
 
+var webOrigins = (builder.Configuration["Web:Origins"] ?? "http://localhost:3000")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
+    p.WithOrigins(webOrigins).WithHeaders("X-Demo-Role", "Content-Type").WithMethods("GET", "POST")));
+
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHostedService<WorkflowWorker>();
 
@@ -31,6 +36,7 @@ builder.Services.AddScoped(sp => new CollectService(
     sp.GetRequiredService<LexWatchDb>(), sp.GetRequiredService<LawApiClient>(), sp.GetRequiredService<TimeProvider>()));
 
 var app = builder.Build();
+app.UseCors();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapJobEndpoints();
 app.MapReviewEndpoints();
