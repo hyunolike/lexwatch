@@ -106,3 +106,29 @@ def test_system_prompt_states_relevance_only():
     from app.agent.prompts import CLASSIFY_SYSTEM
 
     assert "적용 여부" in CLASSIFY_SYSTEM and "JSON만" in CLASSIFY_SYSTEM
+
+
+async def test_keyless_mock_uses_similarity_fallback(monkeypatch):
+    from app.providers.llm.mock import MockLLMProvider
+
+    body = json.loads(json.dumps(REQ))
+    body["candidates"][0]["similarity"] = 0.87654
+    body["candidates"][1]["similarity"] = 0.49
+    r = await post(MockLLMProvider(), monkeypatch, body)
+    assert r.status_code == 200
+    b = r.json()
+    assert b["provider"] == {"name": "similarity-fallback", "kind": "fallback"}
+    assert b["groups"] == [
+        {"group_code": "privacy", "relevant": True, "confidence": 0.877, "reason": "키 없음: 임베딩 유사도 기준 대체 판정"},
+        {"group_code": "labor", "relevant": False, "confidence": 0.49, "reason": "키 없음: 임베딩 유사도 기준 대체 판정"},
+    ]
+
+
+async def test_keyless_clips_confidence(monkeypatch):
+    from app.providers.llm.mock import MockLLMProvider
+
+    body = json.loads(json.dumps(REQ))
+    body["candidates"][0]["similarity"] = 1.4
+    body["candidates"][1]["similarity"] = -0.2
+    g = (await post(MockLLMProvider(), monkeypatch, body)).json()["groups"]
+    assert (g[0]["confidence"], g[1]["confidence"]) == (1.0, 0.0)

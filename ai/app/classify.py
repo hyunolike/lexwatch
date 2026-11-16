@@ -8,9 +8,12 @@ from pydantic import BaseModel, Field, ValidationError
 from app.agent.prompts import CLASSIFY_SYSTEM
 from app.providers.llm.base import OutputInvalid
 from app.providers.llm.factory import get_llm
+from app.providers.llm.mock import MockLLMProvider
 from app.schemas import LawSummary, ProviderInfo
 
 MISSING_REASON = "판정 누락"
+KEYLESS_REASON = "키 없음: 임베딩 유사도 기준 대체 판정"
+KEYLESS_PROVIDER = ProviderInfo(name="similarity-fallback", kind="fallback")
 
 
 class GroupCandidate(BaseModel):
@@ -71,6 +74,19 @@ def _parse(content: str | None, codes: set[str]) -> dict[str, GroupVerdict]:
 
 async def classify(req: ClassifyRequest) -> ClassifyResponse:
     llm = get_llm()
+    if isinstance(llm, MockLLMProvider):
+        return ClassifyResponse(
+            groups=[
+                GroupVerdict(
+                    group_code=c.group_code,
+                    relevant=c.similarity >= 0.5,
+                    confidence=round(min(max(c.similarity, 0.0), 1.0), 3),
+                    reason=KEYLESS_REASON,
+                )
+                for c in req.candidates
+            ],
+            provider=KEYLESS_PROVIDER,
+        )
     codes = [c.group_code for c in req.candidates]
     messages = [
         {"role": "system", "content": CLASSIFY_SYSTEM},
