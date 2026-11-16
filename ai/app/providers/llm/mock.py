@@ -19,5 +19,6 @@ class MockLLMProvider(LLMProvider):
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
         response_format: dict[str, Any] | None = None,
+        deadline: float | None = None,
     ) -> LLMResponse:
         return LLMResponse(content="", provider=self.info, model="mock")

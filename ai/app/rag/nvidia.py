@@ -74,8 +74,14 @@ class NvidiaRetrieverProvider(RetrieverProvider):
             raise RetrieverError(f"embedding NIM unreachable: {e}") from e
         if r.status_code != 200:
             raise RetrieverError(f"embedding NIM {r.status_code}: {r.text[:200]}")
-        data = sorted(r.json()["data"], key=lambda d: d["index"])
-        return [d["embedding"] for d in data]
+        try:
+            data = sorted(r.json()["data"], key=lambda d: d["index"])
+            vectors = [[float(x) for x in d["embedding"]] for d in data]
+        except (ValueError, KeyError, TypeError) as e:
+            raise RetrieverError(f"malformed embedding response: {e}") from e
+        if len(vectors) != len(texts):
+            raise RetrieverError("embedding count mismatch")
+        return vectors
 
     async def rerank(self, query: str, passages: list[str]) -> list[int]:
         try:
@@ -92,5 +98,24 @@ class NvidiaRetrieverProvider(RetrieverProvider):
             raise RetrieverError(f"rerank NIM unreachable: {e}") from e
         if r.status_code != 200:
             raise RetrieverError(f"rerank NIM {r.status_code}: {r.text[:200]}")
-        ranks = sorted(r.json()["rankings"], key=lambda x: -float(x["logit"]))
-        return [int(x["index"]) for x in ranks]
+        try:
+            rankings = r.json()["rankings"]
+            if not isinstance(rankings, list):
+                raise TypeError("rankings is not a list")
+        except (ValueError, KeyError, TypeError) as e:
+            raise RetrieverError(f"malformed rerank response: {e}") from e
+        scored: list[tuple[float, int]] = []
+        for x in rankings:
+            try:
+                i, logit = int(x["index"]), float(x["logit"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if 0 <= i < len(passages):
+                scored.append((-logit, i))
+        scored.sort()
+        order: list[int] = []
+        for _, i in scored:
+            if i not in order:
+                order.append(i)
+        order += [i for i in range(len(passages)) if i not in order]  # full permutation
+        return order

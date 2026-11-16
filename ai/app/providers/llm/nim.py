@@ -10,13 +10,13 @@ import asyncio
 import json
 import random
 import re
+import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
 import httpx
 
-from app.errors import RateLimited
-from app.providers.llm.base import LLMError, LLMProvider, LLMResponse, ToolCall
+from app.providers.llm.base import LLMError, LLMProvider, LLMResponse, OutputInvalid, RateLimited, ToolCall
 from app.schemas import ProviderInfo
 
 _THINK = re.compile(r"<think>(.*?)</think>", re.S)
@@ -111,6 +111,9 @@ class NvidiaNimProvider(LLMProvider):
         timeout: float = 60.0,
         transport: httpx.AsyncBaseTransport | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        clock: Callable[[], float] = time.monotonic,
+        budget_s: float = 90.0,
+        attempt_timeout_s: float = 30.0,
     ) -> None:
         if not api_key:
             raise LLMError("NVIDIA_API_KEY is required", code="LLM_NO_KEY")
@@ -123,6 +126,9 @@ class NvidiaNimProvider(LLMProvider):
         self.timeout = timeout
         self.transport = transport
         self.sleep = sleep
+        self.clock = clock
+        self.budget_s = budget_s
+        self.attempt_timeout_s = attempt_timeout_s
         self.retry_base_delay = 1.0
         self.retry_max_delay = 8.0
 
@@ -136,36 +142,47 @@ class NvidiaNimProvider(LLMProvider):
             msgs[0]["content"] = f"{tag}\n{msgs[0]['content']}"
         return msgs, extra
 
-    async def _post(self, body: dict[str, Any]) -> httpx.Response:
-        delay = self.retry_base_delay
-        last_retry_after = 0.0
-        async with httpx.AsyncClient(timeout=self.timeout, transport=self.transport) as client:
+    async def _post(self, body: dict[str, Any], deadline: float) -> httpx.Response:
+        backoff = self.retry_base_delay
+        last_429: float | None = None
+        async with httpx.AsyncClient(transport=self.transport) as client:
             for attempt in range(self.max_retries + 1):
+                remaining = deadline - self.clock()
+                if remaining <= 0:
+                    break
+                server_wait = 0.0
                 try:
                     r = await client.post(
                         f"{self.base_url}/chat/completions",
                         headers={"Authorization": f"Bearer {self.api_key}", "Accept": "application/json"},
                         json=body,
+                        timeout=min(self.attempt_timeout_s, remaining),
                     )
                 except httpx.TransportError as e:
+                    last_429 = None
                     if attempt == self.max_retries:
                         raise LLMError(f"NIM unreachable: {e}", code="LLM_UNREACHABLE") from e
                 else:
-                    if r.status_code not in _RETRY_STATUS:
+                    if r.status_code not in _RETRY_STATUS or attempt == self.max_retries:
                         return r
-                    last_retry_after = _retry_after(r)
-                    if attempt == self.max_retries:
-                        return r
-                    delay = max(delay, last_retry_after)
-                await self.sleep(min(delay, self.retry_max_delay) * random.uniform(0.5, 1.0))
-                delay = self.retry_base_delay * 2 ** (attempt + 1)
-        raise LLMError("unreachable")  # pragma: no cover
+                    last_429 = _retry_after(r) if r.status_code == 429 else None
+                    server_wait = min(_retry_after(r), self.retry_max_delay)
+                # never sleep less than the server's Retry-After; jitter only the computed backoff
+                wait = max(server_wait, min(backoff, self.retry_max_delay) * random.uniform(0.5, 1.0))
+                if deadline - self.clock() < wait:
+                    break
+                await self.sleep(wait)
+                backoff = self.retry_base_delay * 2 ** (attempt + 1)
+        if last_429 is not None:
+            raise RateLimited(last_429)
+        raise LLMError("NIM deadline exceeded", code="LLM_TIMEOUT")
 
     async def chat(
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
         response_format: dict[str, Any] | None = None,
+        deadline: float | None = None,
     ) -> LLMResponse:
         msgs, extra = self._prepare(messages)
         body: dict[str, Any] = {
@@ -180,13 +197,16 @@ class NvidiaNimProvider(LLMProvider):
             body["tool_choice"] = "auto"
         if response_format:
             body["response_format"] = response_format
-        r = await self._post(body)
+        r = await self._post(body, deadline if deadline is not None else self.clock() + self.budget_s)
         if r.status_code == 429:
             raise RateLimited(_retry_after(r))
         if r.status_code != 200:
             raise LLMError(f"NIM {r.status_code}: {r.text[:300]}", code="LLM_UPSTREAM")
-        data = r.json()
-        msg = data["choices"][0]["message"]
+        try:
+            data = r.json()
+            msg = data["choices"][0]["message"]
+        except (ValueError, KeyError, IndexError, TypeError) as e:
+            raise OutputInvalid(f"malformed NIM response: {e}") from e
         content, thinking = split_thinking(msg.get("content"))
         calls: list[ToolCall] = []
         for tc in msg.get("tool_calls") or []:
@@ -194,7 +214,7 @@ class NvidiaNimProvider(LLMProvider):
             try:
                 args = json.loads(raw) if isinstance(raw, str) else dict(raw)
             except json.JSONDecodeError as e:
-                raise LLMError(f"invalid tool arguments: {raw[:200]}", code="LLM_OUTPUT_INVALID") from e
+                raise OutputInvalid(f"invalid tool arguments: {raw[:200]}") from e
             calls.append(
                 ToolCall(
                     id=tc.get("id") or f"call_{len(calls)}",

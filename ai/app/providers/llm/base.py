@@ -16,6 +16,17 @@ class LLMError(RuntimeError):
         self.retry_after_s = retry_after_s
 
 
+class RateLimited(LLMError):
+    def __init__(self, retry_after_s: float, message: str = "rate limited") -> None:
+        super().__init__(message, code="LLM_RATE_LIMITED", retry_after_s=retry_after_s)
+
+
+class OutputInvalid(Exception):
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
 @dataclass
 class ToolCall:
     id: str
@@ -43,4 +54,5 @@ class LLMProvider(ABC):
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
         response_format: dict[str, Any] | None = None,
+        deadline: float | None = None,
     ) -> LLMResponse: ...
