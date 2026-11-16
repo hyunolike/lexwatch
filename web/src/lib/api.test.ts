@@ -80,3 +80,36 @@ describe("submitDecision", () => {
     expect(await submitDecision("r1", "approve", 7, { editedSentences: [] })).toEqual({ kind: "error", message });
   });
 });
+
+import { formatDuration, retryRun } from "./api";
+
+describe("retryRun", () => {
+  const stub = (res: Response) => vi.stubGlobal("fetch", vi.fn().mockResolvedValue(res));
+  it("maps_responses_to_ui_state", async () => {
+    stub(Response.json({ id: "r", requeued: ["notify"] }));
+    expect(await retryRun("r")).toEqual({ kind: "ok", requeued: ["notify"] });
+    stub(Response.json({ code: "NOTHING_TO_RETRY", message: "다시 실행할 실패 단계가 없다" }, { status: 409 }));
+    expect(await retryRun("r")).toEqual({ kind: "nothing", message: "다시 실행할 실패 단계가 없다" });
+    stub(Response.json({ code: "FORBIDDEN", message: "x" }, { status: 403 }));
+    expect(await retryRun("r")).toMatchObject({ kind: "forbidden" });
+    stub(Response.json({ code: "NOT_FOUND", message: "없음" }, { status: 404 }));
+    expect(await retryRun("r")).toEqual({ kind: "error", message: "없음" });
+    stub(new Response("", { status: 503 }));
+    expect(await retryRun("r")).toEqual({ kind: "waking" });
+  });
+  it("posts_to_retry_path", async () => {
+    const f = vi.fn().mockResolvedValue(Response.json({ requeued: [] }));
+    vi.stubGlobal("fetch", f);
+    await retryRun("abc");
+    expect(String(f.mock.calls[0][0])).toMatch(/\/api\/runs\/abc\/retry$/);
+    expect(f.mock.calls[0][1].method).toBe("POST");
+  });
+});
+
+describe("formatDuration", () => {
+  it("formats", () => {
+    expect(formatDuration(null)).toBe("—");
+    expect(formatDuration(450)).toBe("450ms");
+    expect(formatDuration(2500)).toBe("2.5초");
+  });
+});

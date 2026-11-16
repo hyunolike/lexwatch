@@ -136,3 +136,80 @@ export async function submitDecision(
   if (res.status >= 400) return { kind: "error", message: (res.data as ApiError | null)?.message ?? "처리하지 못했어요." };
   return { kind: "ok" };
 }
+
+export interface RunSummary {
+  id: string;
+  lawName: string;
+  status: string;
+  isReplay: boolean;
+  createdAt: string;
+  groupStatuses: { groupCode: string; status: string }[];
+}
+
+export type TimelineItem =
+  | {
+      kind: "step";
+      at: string;
+      step: string;
+      attempt: number;
+      status: string;
+      durationMs: number | null;
+      errorCode: string | null;
+      errorMessage: string | null;
+      providerKind: ProviderKind;
+      providerName: string | null;
+      groupCode: string | null;
+      summary: string | null;
+    }
+  | {
+      kind: "tool_call";
+      at: string;
+      step: string;
+      attempt: number;
+      tool: string;
+      groupCode: string | null;
+      resultSummary: string;
+      evidenceIds: string[];
+    }
+  | { kind: "finding"; at: string; groupCode: string | null; tier: number; ruleId: string; message: string }
+  | { kind: "approval"; at: string; groupCode: string | null; decision: string; actorRole: string; comment: string | null }
+  | { kind: "notification"; at: string; groupCode: string | null; status: string; message: string };
+
+export interface RunDetail {
+  run: { id: string; status: string; isReplay: boolean; traceId: string | null; createdAt: string; finishedAt: string | null };
+  lawChange: { id: string; lawId: string; lawName: string; promulgationDate: string; effectiveDate: string | null };
+  timeline: TimelineItem[];
+}
+
+export interface InboxItem {
+  id: string;
+  groupReviewId: string | null;
+  channel: string;
+  status: string;
+  body: string;
+  sentAt: string | null;
+}
+
+export type RetryOutcome =
+  | { kind: "waking" }
+  | { kind: "ok"; requeued: string[] }
+  | { kind: "nothing"; message: string }
+  | { kind: "forbidden"; message: string }
+  | { kind: "error"; message: string };
+
+/** 실패 단계 재실행 요청을 보내고 화면이 다룰 결과로 접는다. */
+export async function retryRun(runId: string): Promise<RetryOutcome> {
+  const res = await apiFetch<ApiError | { requeued: string[] }>(`/api/runs/${runId}/retry`, { method: "POST" });
+  if (res.waking) return { kind: "waking" };
+  const msg = (res.data as ApiError | null)?.message;
+  if (res.status === 403) return { kind: "forbidden", message: "다시 실행은 관리자만 할 수 있어요. 관리자로 보기로 바꿔 주세요." };
+  if (res.status === 409) return { kind: "nothing", message: msg ?? "다시 실행할 실패 단계가 없어요." };
+  if (res.status >= 400) return { kind: "error", message: msg ?? "다시 실행하지 못했어요." };
+  return { kind: "ok", requeued: (res.data as { requeued?: string[] } | null)?.requeued ?? [] };
+}
+
+/** 소요 시간 표시. 끝나지 않았으면 "—". */
+export function formatDuration(ms: number | null | undefined): string {
+  if (ms == null) return "—";
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}초`;
+}

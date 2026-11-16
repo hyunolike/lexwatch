@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { DemoBanner } from "@/components/DemoBanner";
+import { Nav } from "@/components/Nav";
 
 export const metadata: Metadata = {
   title: "LexWatch",
@@ -12,6 +13,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="ko" className="h-full antialiased">
       <body className="min-h-full bg-slate-50 text-slate-900">
         <DemoBanner />
+        <Nav />
         <main className="mx-auto max-w-6xl p-4">{children}</main>
       </body>
     </html>
