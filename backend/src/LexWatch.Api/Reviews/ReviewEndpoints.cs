@@ -64,7 +64,7 @@ public static class ReviewEndpoints
                     .OrderBy(f => f.Tier).ThenBy(f => f.RuleId).ToListAsync(ct);
                 draftDto = new
                 {
-                    version = draft.Version,
+                    version = draft.Version, createdBy = draft.CreatedBy,
                     sentences = sentences.Select((s, i) => new
                     {
                         sentence = s.Sentence, citations = s.Citations,
@@ -126,7 +126,7 @@ public static class ReviewEndpoints
                 Comment = req.Comment, DiffJson = diffJson, DecidedAt = now,
             });
             db.StepRuns.Add(StepQueue.Create(review.RunId, new NextStep("notify", id, null), now));
-            return await SaveDecisionAsync(db, review, req.Version, ct);
+            return await SaveDecisionAsync(db, review, req.Version, now, ct);
         });
 
         api.MapPost("/reviews/{id:guid}/reject", async (Guid id, RejectRequest req, HttpContext http, LexWatchDb db,
@@ -145,11 +145,7 @@ public static class ReviewEndpoints
                 Id = Guid.NewGuid(), GroupReviewId = id, Decision = "reject", ActorRole = "lawyer",
                 Comment = req.Comment, DecidedAt = now,
             });
-            var result = await SaveDecisionAsync(db, review, req.Version, ct);
-            var run = await db.WorkflowRuns.SingleAsync(r => r.Id == review.RunId, ct);
-            await WorkflowWorker.UpdateRunStatusAsync(db, run, now, ct);
-            await db.SaveChangesAsync(ct);
-            return result;
+            return await SaveDecisionAsync(db, review, req.Version, now, ct);
         });
 
         api.MapGet("/inbox", async (LexWatchDb db, CancellationToken ct) =>
@@ -167,12 +163,19 @@ public static class ReviewEndpoints
 
     private static bool Decidable(GroupReview r) => r.Status is ReviewStatus.WaitingApproval or ReviewStatus.NeedsReview;
 
-    private static async Task<IResult> SaveDecisionAsync(LexWatchDb db, GroupReview review, uint version, CancellationToken ct)
+    /// <summary>결정 저장과 실행 종결 판정을 한 트랜잭션으로 묶는다. xmin 충돌이면 전부 되돌린다.</summary>
+    private static async Task<IResult> SaveDecisionAsync(LexWatchDb db, GroupReview review, uint version,
+        DateTimeOffset now, CancellationToken ct)
     {
         db.Entry(review).Property(x => x.Version).OriginalValue = version;
         try
         {
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
             await db.SaveChangesAsync(ct);
+            var run = await db.WorkflowRuns.SingleAsync(r => r.Id == review.RunId, ct);
+            await WorkflowWorker.UpdateRunStatusAsync(db, run, now, ct);
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
             return Results.Ok(new { id = review.Id, status = review.Status.ToString() });
         }
         catch (DbUpdateConcurrencyException)

@@ -77,6 +77,7 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal("제23조", d.GetProperty("oldNew")[0].GetProperty("articleNo").GetString());
         Assert.Equal("OC-01", d.GetProperty("draft").GetProperty("sentences")[0].GetProperty("findings")[0].GetProperty("ruleId").GetString());
         Assert.Equal(2, d.GetProperty("evidence").GetArrayLength());
+        Assert.Equal("agent", d.GetProperty("draft").GetProperty("createdBy").GetString());
     }
 
     [Fact]
@@ -121,6 +122,29 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
             (await c.PostAsJsonAsync($"/api/reviews/{g.Id}/reject", new { version = g.Version, comment = "근거 부족" })).StatusCode);
         await using var db = pg.CreateDb();
         Assert.Equal(ReviewStatus.Rejected, (await db.GroupReviews.SingleAsync()).Status);
+        Assert.Equal(RunStatus.Completed, (await db.WorkflowRuns.SingleAsync()).Status);
+        Assert.NotNull((await db.WorkflowRuns.SingleAsync()).FinishedAt);
+    }
+
+    [Fact]
+    public async Task Approve_keeps_run_open_until_notified()
+    {
+        var g = await SeedAsync();
+        await using var f = Factory();
+        await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version });
+        await using var db = pg.CreateDb();
+        Assert.NotEqual(RunStatus.Completed, (await db.WorkflowRuns.SingleAsync()).Status);
+    }
+
+    [Fact]
+    public async Task Step_handlers_are_wired()
+    {
+        await using var f = Factory();
+        using var scope = f.Services.CreateScope();
+        var steps = scope.ServiceProvider.GetServices<LexWatch.Api.Workflow.IStepHandler>().Select(h => h.Step).ToHashSet();
+        foreach (var s in new[] { "fetch_articles", "classify", "analyze", "notify", "critic_judge" })
+            Assert.Contains(s, steps);
+        Assert.True(steps.Count >= 7, string.Join(",", steps));
     }
 
     [Fact]
