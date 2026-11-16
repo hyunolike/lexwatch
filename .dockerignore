@@ -8,8 +8,9 @@
 .git/
 .github/
 .superpowers/
-.env
-**/.env
+# 모든 .env* (예: web/.env.local, .env.production). 빌드에 필요한 예시 파일은 없다.
+.env*
+**/.env*
 docs/
 eval/
 backend/tests/

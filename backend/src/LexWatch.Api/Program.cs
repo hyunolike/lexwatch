@@ -41,7 +41,7 @@ builder.Services.AddScoped(sp => new CollectService(
     sp.GetRequiredService<LexWatchDb>(), sp.GetRequiredService<LawApiClient>(), sp.GetRequiredService<TimeProvider>()));
 
 var app = builder.Build();
-// 스키마는 앱이 시작할 때 적용한다(MIGRATE_ON_STARTUP=true). compose와 Render가 켠다. 인스턴스가 하나라 경합이 없다.
+// 스키마는 앱이 시작할 때 적용한다(MIGRATE_ON_STARTUP=true). compose와 Render가 켠다. 동시 시작은 EF의 advisory lock이 직렬화한다.
 if (app.Configuration.GetValue<bool>("MIGRATE_ON_STARTUP"))
 {
     await using var scope = app.Services.CreateAsyncScope();

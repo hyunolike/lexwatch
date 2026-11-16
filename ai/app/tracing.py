@@ -43,8 +43,8 @@ def configure_logging() -> None:
     handler.addFilter(TraceIdFilter())
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s trace_id=%(trace_id)s %(name)s %(message)s"))
     root.addHandler(handler)
-    if root.level == logging.NOTSET or root.level > logging.INFO:
-        root.setLevel(logging.INFO)
+    # 루트는 건드리지 않는다(라이브러리 INFO가 새로 나가지 않게). 접근 로그만 INFO로 연다.
+    log.setLevel(logging.INFO)
 
 
 class TraceContextMiddleware:
@@ -73,7 +73,7 @@ class TraceContextMiddleware:
             if scope.get("path") != "/health":
                 log.info(
                     "%s %s -> %d (%d ms)",
-                    scope.get("method"), scope.get("path"), status["code"],
+                    scope.get("method"), str(scope.get("path")).encode("unicode_escape").decode("ascii"), status["code"],
                     int((time.perf_counter() - started) * 1000),
                 )
             trace_id_var.reset(token)

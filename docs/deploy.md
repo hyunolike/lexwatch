@@ -37,7 +37,7 @@ Render  --Postgres(세션 풀러)-->  Supabase (pgvector)
 ## 마이그레이션 방식
 
 앱이 시작할 때 `MIGRATE_ON_STARTUP=true`이면 `Database.MigrateAsync()`를 실행한다. docker-compose와 Render가 같은 방식이다.
-인스턴스가 하나(Render free)라 동시 마이그레이션 경합이 없다. 인스턴스를 늘릴 때는 마이그레이션을 별도 단계로 분리해야 한다.
+Render는 배포 중 헬스체크가 통과할 때까지 이전 인스턴스와 새 인스턴스가 잠시 겹칠 수 있다. 동시 시작의 안전은 EF Core `Migrate`의 Postgres advisory lock이 맡는다(Supabase 세션 풀러에서 동작 `[미검증]`). 또 그 사이 이전 인스턴스가 새 스키마를 보므로 마이그레이션은 하위 호환이어야 한다(컬럼 삭제·이름 변경은 두 단계로 나눈다).
 마이그레이션은 `CREATE EXTENSION IF NOT EXISTS vector`도 포함한다(`Initial`) — 그래도 아래 1단계에서 먼저 켜 두면 권한 문제를 시작 전에 알 수 있다.
 
 ## 1. Supabase `[미검증]`
@@ -81,7 +81,7 @@ curl -s -X POST https://<ai>.vercel.app/classify -H 'content-type: application/j
 2. `sync: false` 항목 입력: `DATABASE_URL`(1단계), `AI_BASE_URL`(2단계), `JOB_TOKEN`(임의의 긴 문자열, 예: `openssl rand -hex 32`), `LAW_OC`, `Web__Origins`(4단계 주소를 알 때까지 임시로 `http://localhost:3000`).
 3. 첫 배포 로그에서 확인: `MigrateAsync` 적용, 데모 시드 실행, `Now listening on: http://0.0.0.0:<PORT>`.
 4. **메모리 512MB 확인**: Render 대시보드 Metrics의 Memory가 512MB 아래에서 안정적인지 본다. 이미지는 힙을 256MB로 묶었다(`DOTNET_GCHeapHardLimit=10000000`, 16진수=256MiB), `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`, 워크스테이션 GC. OOM으로 재시작하면 `DOTNET_GCHeapHardLimit`을 `C000000`(192MiB)로 낮추고 이 문서에 기록한다.
-   로컬에서 측정한 값은 `.superpowers/.../task-16-report.md`를 참고한다.
+   로컬(docker stats, 재현 승인 1건 뒤 유휴)에서는 api 78~93 MiB였다. 부하나 실제 분석 중 값은 측정하지 않았다.
 5. 무료 플랜은 15분 무요청 시 잠들고 깨울 때 1분쯤 걸린다. 워크플로 `collect.yml`/`reset-demo.yml`이 먼저 `/health`를 재시도로 깨운다.
 
 확인:
@@ -112,6 +112,7 @@ curl -s -H 'X-Demo-Role: lawyer' https://<render>.onrender.com/api/reviews   # �
 - New monitor → HTTP(s) → URL `https://<render>.onrender.com/health` → 간격 **10분**(무료 플랜 최소는 5분이므로 10분 설정 가능).
 - 이것은 **API가 잠들지 않게 하는 핑**일 뿐이다. 수집·초기화 작업은 GitHub Actions가 한다. 모니터가 초록이어도 작업이 돌았다는 뜻은 아니다.
 - `/health`는 추적과 로그에서 제외돼 있어 로그가 불어나지 않는다.
+- 10분 핑은 무료 서비스를 사실상 항상 깨워 둔다. Render 무료 플랜의 월 750 인스턴스 시간(31일 = 744시간)을 거의 다 쓰므로, 같은 계정에 다른 무료 서비스가 있으면 한도를 함께 확인한다.
 
 ### GitHub Actions 시크릿
 - 저장소 Settings → Secrets and variables → Actions → New repository secret:
