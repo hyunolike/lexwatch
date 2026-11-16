@@ -24,24 +24,19 @@ public class DemoSeeder(LexWatchDb db, TimeProvider time)
         ("finance", "금융", "금융소비자 보호·자본시장·전자금융 관련 법령 개정에 관심이 있다."),
     ];
 
-    private static readonly ReviewStatus[] Decided = [ReviewStatus.Approved, ReviewStatus.Rejected, ReviewStatus.Notified];
-
-    /// <summary>결정·알림·채팅 할당량·재현 실행을 지우고 재현 실행을 다시 넣는다. 실제 실행 이력은 지우지 않는다.</summary>
+    /// <summary>
+    /// 재현 실행(결정·알림·초안 포함)과 채팅 할당량을 지우고 재현 실행을 다시 넣는다.
+    /// 실제 실행은 결정·알림·초안·상태를 포함해 건드리지 않는다. 결정된 실제 그룹을 되돌리면
+    /// 크리틱이 걸려 검토 필요였던 초안이 깨끗한 승인 대기처럼 보이게 되기 때문이다(설계 §2, §6).
+    /// </summary>
     public async Task ResetAsync(CancellationToken ct = default)
     {
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         await LockAsync(ct);
 
         await DeleteReplaysAsync(ct);
-        await db.Notifications.ExecuteDeleteAsync(ct);
-        await db.Approvals.ExecuteDeleteAsync(ct);
         await db.ChatQuotas.ExecuteDeleteAsync(ct);
-        // 변호사가 수정해 만든 초안 버전은 결정의 일부다.
-        var edited = db.MemoDrafts.Where(d => d.CreatedBy == "lawyer").Select(d => d.Id);
-        await db.CriticFindings.Where(f => edited.Contains(f.MemoDraftId)).ExecuteDeleteAsync(ct);
-        await db.MemoDrafts.Where(d => d.CreatedBy == "lawyer").ExecuteDeleteAsync(ct);
 
-        await ReopenRealReviewsAsync(ct);
         await EnsureGroupsAsync(ct);
         await InsertReplaysAsync(ct);
         await tx.CommitAsync(ct);
@@ -81,24 +76,6 @@ public class DemoSeeder(LexWatchDb db, TimeProvider time)
         var lawIds = await laws.ToListAsync(ct);
         await db.WorkflowRuns.Where(r => r.IsReplay).ExecuteDeleteAsync(ct);
         await db.LawChanges.Where(l => lawIds.Contains(l.Id) && l.IdempotencyKey.StartsWith(KeyPrefix)).ExecuteDeleteAsync(ct);
-    }
-
-    /// <summary>결정된 실제 그룹을 초기 대기 상태로 되돌리고, 그 결정이 만든 대기 중 알림 단계를 치운다.</summary>
-    private async Task ReopenRealReviewsAsync(CancellationToken ct)
-    {
-        var real = db.WorkflowRuns.Where(r => !r.IsReplay).Select(r => r.Id);
-        var decided = db.GroupReviews.Where(g => real.Contains(g.RunId) && Decided.Contains(g.Status));
-        var decidedIds = decided.Select(g => g.Id);
-        var decidedRuns = await decided.Select(g => g.RunId).Distinct().ToListAsync(ct);
-
-        // 이력(성공·실패 단계)은 남기고 아직 끝나지 않은 알림 단계(대기·재시도·실행 중)만 치운다. 실행 중인 행을 지우면 워커의 결과 쓰기가 소유권 확인에서 걸러져 되돌려진다. 안 치우면 초기화 직후 알림이 다시 나간다.
-        await db.StepRuns.Where(s => s.Step == "notify" && s.GroupReviewId != null && decidedIds.Contains(s.GroupReviewId.Value)
-            && (s.Status == StepStatus.Pending || s.Status == StepStatus.RetryScheduled || s.Status == StepStatus.Running))
-            .ExecuteDeleteAsync(ct);
-        await decided.ExecuteUpdateAsync(s => s.SetProperty(g => g.Status, ReviewStatus.WaitingApproval), ct);
-        await db.WorkflowRuns.Where(r => decidedRuns.Contains(r.Id) && r.Status == RunStatus.Completed)
-            .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, RunStatus.InReview)
-                .SetProperty(r => r.FinishedAt, (DateTimeOffset?)null), ct);
     }
 
     private async Task EnsureGroupsAsync(CancellationToken ct)
