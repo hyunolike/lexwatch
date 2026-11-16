@@ -87,7 +87,8 @@ public class LexWatchDb(DbContextOptions<LexWatchDb> options) : DbContext(option
         });
 
         b.Entity<Notification>(e =>
-            e.HasOne<GroupReview>().WithMany().HasForeignKey(x => x.GroupReviewId));
+            e.HasOne<GroupReview>().WithMany().HasForeignKey(x => x.GroupReviewId)
+                .OnDelete(DeleteBehavior.Cascade));
 
         b.Entity<PracticeGroup>(e =>
         {

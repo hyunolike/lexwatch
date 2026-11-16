@@ -39,7 +39,10 @@ public static class LawFixtures
     {
         var q = r.RequestUri!.Query;
         if (r.RequestUri.AbsolutePath.EndsWith("lawSearch.do")) return Json(Read("list_recent.json"));
-        var id = System.Text.RegularExpressions.Regex.Match(q, @"ID=(\d+)").Groups[1].Value;
+        // 법령일련번호(MST)로만 응답한다. ID= 호출은 실서버처럼 오류 본문.
+        var mst = System.Text.RegularExpressions.Regex.Match(q, @"MST=(\d+)").Groups[1].Value;
+        var id = mst switch { "100001" => "001872", "100002" => "011357", "100003" => "001791", _ => "" };
+        if (id == "") return Json(Read("error_body.json"));
         return q.Contains("target=oldAndNew") ? Json(Read($"oldnew_{id}.json")) : Json(Read($"law_{id}.json"));
     }
 }

@@ -249,6 +249,10 @@ namespace LexWatch.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Mst")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateOnly>("PromulgationDate")
                         .HasColumnType("date");
 
@@ -542,7 +546,8 @@ namespace LexWatch.Api.Data.Migrations
                 {
                     b.HasOne("LexWatch.Api.Data.Entities.GroupReview", null)
                         .WithMany()
-                        .HasForeignKey("GroupReviewId");
+                        .HasForeignKey("GroupReviewId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("LexWatch.Api.Data.Entities.StepRun", b =>

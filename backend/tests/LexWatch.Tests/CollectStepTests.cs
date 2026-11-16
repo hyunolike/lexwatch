@@ -37,6 +37,7 @@ public class CollectStepTests(PostgresFixture pg) : IAsyncLifetime
         Assert.All(steps, s => Assert.Equal("fetch_articles", s.Step));
         var lc = await v.LawChanges.OrderBy(x => x.LawId).FirstAsync();
         Assert.Equal("001791:20261104:20270505", lc.IdempotencyKey);
+        Assert.Equal("100003", lc.Mst);
     }
 
     [Fact]
@@ -125,6 +126,8 @@ public class CollectStepTests(PostgresFixture pg) : IAsyncLifetime
         var handler = new FetchArticlesStep(LawFixtures.Client(LawFixtures.Recorded), Time());
         var res = await handler.ExecuteAsync(new StepContext(step, run, db), default);
         await db.SaveChangesAsync(); // 워커의 역할
+        var outputStatus = System.Text.Json.JsonSerializer.Serialize(((StepResult.Succeeded)res).Output, StepQueue.Json);
+        Assert.Contains("\"oldnew\":\"ok\"", outputStatus);
         var ok = Assert.IsType<StepResult.Succeeded>(res);
         Assert.Equal("none", ok.ProviderKind);
         var next = Assert.Single(ok.Next);
@@ -152,7 +155,9 @@ public class CollectStepTests(PostgresFixture pg) : IAsyncLifetime
                 ? LawFixtures.Json(oldnew) : LawFixtures.Recorded(r));
             var res = await new FetchArticlesStep(client, Time()).ExecuteAsync(new StepContext(step, run, db), default);
             await db.SaveChangesAsync();
-            Assert.IsType<StepResult.Succeeded>(res);
+            var okRes = Assert.IsType<StepResult.Succeeded>(res);
+            var status = System.Text.Json.JsonSerializer.Serialize(okRes.Output, StepQueue.Json);
+            Assert.Contains(oldnew.Contains("신구법존재여부") ? "\"oldnew\":\"absent\"" : "\"oldnew\":\"error\",\"code\":\"LAW_API_ERROR_BODY\"", status);
             await using var v = pg.CreateDb();
             Assert.Equal(["law:001872:제50조", "law:001872:제56조"],
                 (await v.Evidence.Where(e => e.RunId == run.Id).Select(e => e.EvidenceId).ToListAsync()).Order());

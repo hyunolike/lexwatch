@@ -15,7 +15,7 @@ public class FetchArticlesStep(LawApiClient api, TimeProvider time) : IStepHandl
         var change = await db.LawChanges.AsNoTracking().SingleAsync(l => l.Id == ctx.Run.LawChangeId, ct);
 
         // 둘 다 받은 뒤에만 Evidence를 추가한다 (Retry 시 반쯤 쓴 상태를 남기지 않기 위해).
-        var lawResult = await api.GetLawAsync(change.LawId, ct);
+        var lawResult = await api.GetLawAsync(change.LawId, change.Mst, ct);
         if (lawResult is not LawApiResult<LawBody>.Ok law)
         {
             var e = (LawApiResult<LawBody>.Error)lawResult;
@@ -25,8 +25,24 @@ public class FetchArticlesStep(LawApiClient api, TimeProvider time) : IStepHandl
             return new StepResult.Failed("NO_ARTICLES", "법령 본문에서 조문을 찾지 못했다");
 
         // 신구조문이 없거나(신구법존재여부 N) 못 받으면 본문 조문만으로 계속한다.
-        var oldNew = await api.GetOldNewAsync(change.LawId, ct) is LawApiResult<OldNewBody>.Ok { Value.Exists: true } on
-            ? on.Value : null;
+        // 오류는 삼키되 OutputJson에 남겨 저하가 보이게 한다.
+        var oldNewResult = await api.GetOldNewAsync(change.LawId, change.Mst, ct);
+        OldNewBody? oldNew = null;
+        object oldNewStatus;
+        switch (oldNewResult)
+        {
+            case LawApiResult<OldNewBody>.Ok { Value.Exists: true } ok:
+                oldNew = ok.Value;
+                oldNewStatus = new { oldnew = "ok" };
+                break;
+            case LawApiResult<OldNewBody>.Ok:
+                oldNewStatus = new { oldnew = "absent" };
+                break;
+            default:
+                var err = (LawApiResult<OldNewBody>.Error)oldNewResult;
+                oldNewStatus = new { oldnew = "error", code = err.Code };
+                break;
+        }
 
         var now = time.GetUtcNow();
         var existing = (await db.Evidence.Where(x => x.RunId == ctx.Run.Id).Select(x => x.EvidenceId).ToListAsync(ct)).ToHashSet();
@@ -52,7 +68,7 @@ public class FetchArticlesStep(LawApiClient api, TimeProvider time) : IStepHandl
                     $"[구조문]\n{a.OldText ?? "(없음)"}\n\n[신조문]\n{a.NewText ?? "(없음)"}");
 
         return new StepResult.Succeeded(
-            new { evidence = added, oldNew = oldNew is not null },
+            new { evidence = added, oldnewStatus = oldNewStatus },
             [new NextStep("classify", null, null)]);
     }
 

@@ -15,8 +15,7 @@ builder.Services.AddDbContext<LexWatchDb>(o =>
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHostedService<WorkflowWorker>();
 
-builder.Services.AddSingleton(new LawApiOptions(Environment.GetEnvironmentVariable("LAW_OC") ?? ""));
-builder.Services.AddHttpClient<LawApiClient>();
+builder.Services.AddLawApi();
 builder.Services.AddScoped<IStepHandler, FetchArticlesStep>();
 builder.Services.AddScoped(sp => new CollectService(
     sp.GetRequiredService<LexWatchDb>(), sp.GetRequiredService<LawApiClient>(), sp.GetRequiredService<TimeProvider>()));

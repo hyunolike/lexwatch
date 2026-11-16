@@ -7,6 +7,8 @@ public class LawChange
     public Guid Id { get; set; }
     public string LawId { get; set; } = "";
     public string LawName { get; set; } = "";
+    /// <summary>법령일련번호(MST). 신구조문·본문 호출에 쓴다. 비어 있으면 법령ID로 대체한다.</summary>
+    public string Mst { get; set; } = "";
     public DateOnly PromulgationDate { get; set; }
     public DateOnly? EffectiveDate { get; set; }
     public string RawJson { get; set; } = "";

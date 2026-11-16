@@ -76,8 +76,8 @@ public class CollectService(
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         var inserted = await db.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO "LawChanges"
-                ("Id","LawId","LawName","PromulgationDate","EffectiveDate","RawJson","RawSha256","FetchedAt","IdempotencyKey")
-            VALUES ({id},{item.LawId},{item.LawName},{item.PromulgationDate},{item.EffectiveDate}::date,
+                ("Id","LawId","LawName","Mst","PromulgationDate","EffectiveDate","RawJson","RawSha256","FetchedAt","IdempotencyKey")
+            VALUES ({id},{item.LawId},{item.LawName},{item.Mst},{item.PromulgationDate},{item.EffectiveDate}::date,
                     {raw}::jsonb,{sha},{now},{key})
             ON CONFLICT ("IdempotencyKey") DO NOTHING
             """, ct);

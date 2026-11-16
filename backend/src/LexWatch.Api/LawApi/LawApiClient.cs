@@ -14,7 +14,7 @@ public abstract record LawApiResult<T>
 }
 
 public record LawListItem(
-    string LawId, string LawName, DateOnly PromulgationDate, DateOnly? EffectiveDate, string? RawJson = null);
+    string LawId, string LawName, DateOnly PromulgationDate, DateOnly? EffectiveDate, string? RawJson = null, string Mst = "");
 
 /// <summary>Number는 "제23조의2" 형식.</summary>
 public record LawArticle(string Number, string Title, string Text);
@@ -69,17 +69,17 @@ public class LawApiClient
                 var id = Str(e, "법령ID");
                 var pd = ParseDate(Str(e, "공포일자"));
                 if (id == "" || pd is null) continue;
-                items.Add(new LawListItem(id, Str(e, "법령명한글"), pd.Value, ParseDate(Str(e, "시행일자")), e.GetRawText()));
+                items.Add(new LawListItem(id, Str(e, "법령명한글"), pd.Value, ParseDate(Str(e, "시행일자")), e.GetRawText(), Str(e, "법령일련번호")));
             }
             if (got == 0 || items.Count >= total || got < PageSize) break;
         }
         return new LawApiResult<IReadOnlyList<LawListItem>>.Ok(items, string.Join("\n", raw));
     }
 
-    public async Task<LawApiResult<LawBody>> GetLawAsync(string lawId, CancellationToken ct = default)
+    public async Task<LawApiResult<LawBody>> GetLawAsync(string lawId, string mst = "", CancellationToken ct = default)
     {
         var r = await GetJsonAsync(
-            $"lawService.do?OC={Uri.EscapeDataString(_opt.Oc)}&target=law&ID={Uri.EscapeDataString(lawId)}&type=JSON", ct);
+            $"lawService.do?OC={Uri.EscapeDataString(_opt.Oc)}&target=law&{Key(lawId, mst)}&type=JSON", ct);
         if (r.Error is not null) return new LawApiResult<LawBody>.Error(r.Error.Code, r.Error.Message);
         if (!TryProp(r.Doc!.RootElement, "법령", out var root))
             return new LawApiResult<LawBody>.Error("LAW_API_ERROR_BODY", "예상한 최상위 키(법령)가 없다");
@@ -98,10 +98,10 @@ public class LawApiClient
         return new LawApiResult<LawBody>.Ok(new LawBody(lawId, name, articles), r.Body!);
     }
 
-    public async Task<LawApiResult<OldNewBody>> GetOldNewAsync(string lawId, CancellationToken ct = default)
+    public async Task<LawApiResult<OldNewBody>> GetOldNewAsync(string lawId, string mst = "", CancellationToken ct = default)
     {
         var r = await GetJsonAsync(
-            $"lawService.do?OC={Uri.EscapeDataString(_opt.Oc)}&target=oldAndNew&ID={Uri.EscapeDataString(lawId)}&type=JSON", ct);
+            $"lawService.do?OC={Uri.EscapeDataString(_opt.Oc)}&target=oldAndNew&{Key(lawId, mst)}&type=JSON", ct);
         if (r.Error is not null) return new LawApiResult<OldNewBody>.Error(r.Error.Code, r.Error.Message);
         if (!TryProp(r.Doc!.RootElement, "OldAndNewService", out var root))
             return new LawApiResult<OldNewBody>.Error("LAW_API_ERROR_BODY", "예상한 최상위 키(OldAndNewService)가 없다");
@@ -116,6 +116,10 @@ public class LawApiClient
             .ToList();
         return new LawApiResult<OldNewBody>.Ok(new OldNewBody(true, list), r.Body!);
     }
+
+    /// <summary>문서 기준 MST(법령일련번호)를 우선하고, 없으면 법령ID로 대체한다.</summary>
+    private static string Key(string lawId, string mst) =>
+        mst != "" ? $"MST={Uri.EscapeDataString(mst)}" : $"ID={Uri.EscapeDataString(lawId)}";
 
     private static Dictionary<string, string> ArticleTexts(JsonElement root, string listKey)
     {
