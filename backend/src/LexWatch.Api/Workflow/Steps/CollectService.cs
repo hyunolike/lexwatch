@@ -90,7 +90,7 @@ public class CollectService(
         var run = new WorkflowRun
         {
             Id = Guid.NewGuid(), LawChangeId = id, Status = RunStatus.Queued,
-            TraceId = Guid.NewGuid().ToString("N"), CreatedAt = now,
+            TraceId = LexWatch.Api.Observability.Telemetry.NewTraceId(), CreatedAt = now,
         };
         db.WorkflowRuns.Add(run);
         db.StepRuns.Add(StepQueue.Create(run.Id, new NextStep("fetch_articles", null, null), now));

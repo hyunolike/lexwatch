@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using LexWatch.Api.Data;
 using LexWatch.Api.Data.Entities;
+using LexWatch.Api.Observability;
 using Microsoft.EntityFrameworkCore;
 
 namespace LexWatch.Api.Workflow;
@@ -45,6 +46,12 @@ public class WorkflowWorker(IServiceScopeFactory scopes, TimeProvider time, ILog
         var handler = scope.ServiceProvider.GetServices<IStepHandler>().FirstOrDefault(h => h.Step == step.Step);
         var claimedAttempt = step.Attempt;
         var sw = Stopwatch.StartNew();
+        // 실행의 TraceId에서 이어지는 span과 run_id/step/attempt 로그 범위. 나가는 HTTP 호출이 traceparent로 같은 trace를 전파한다.
+        using var activity = Telemetry.StartStep(run.TraceId, step.Step, claimedAttempt);
+        using var logScope = log.BeginScope(new Dictionary<string, object>
+        {
+            ["run_id"] = run.Id, ["step"] = step.Step, ["attempt"] = claimedAttempt,
+        });
         StepResult result;
         if (handler is null)
         {
@@ -97,6 +104,7 @@ public class WorkflowWorker(IServiceScopeFactory scopes, TimeProvider time, ILog
         await UpdateRunStatusAsync(db, run, now, ct);
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
+        log.LogInformation("단계 처리 완료 status={Status} duration_ms={DurationMs}", step.Status, step.DurationMs);
         return true;
     }
 

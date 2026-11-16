@@ -1,0 +1,68 @@
+# 키 없이 전체가 뜬다: LLM은 mock, 검색은 lexical, 법제처는 재현 기록(데모 시드)으로 채운다.
+# 실제 키를 쓰려면 저장소 루트의 .env에 NVIDIA_API_KEY, LAW_OC를 적는다(.env는 커밋하지 않는다).
+# 이 파일은 Compose v2.10 문법만 쓴다.
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: lexwatch
+    volumes: ["dbdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lexwatch"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  ai:
+    build:
+      context: .
+      dockerfile: ai/Dockerfile
+    environment:
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
+      LAW_OC: ${LAW_OC:-}
+      NIM_BASE_URL: ${NIM_BASE_URL:-https://integrate.api.nvidia.com/v1}
+      NIM_MODEL: ${NIM_MODEL:-nvidia/nemotron-3-super-120b-a12b}
+      EMBED_MODEL: ${EMBED_MODEL:-nvidia/nemotron-3-embed-1b}
+      RERANK_MODEL: ${RERANK_MODEL:-nvidia/llama-nemotron-rerank-vl-1b-v2}
+      LLM_PROVIDER: ${LLM_PROVIDER:-auto}
+      RETRIEVER_PROVIDER: ${RETRIEVER_PROVIDER:-auto}
+    ports: ["8000:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      ai:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: Host=db;Database=lexwatch;Username=postgres;Password=postgres
+      AI_BASE_URL: http://ai:8000
+      Web__Origins: http://localhost:3000
+      MIGRATE_ON_STARTUP: "true"
+      DEMO_SEED_ON_STARTUP: "true"
+      JOB_TOKEN: ${JOB_TOKEN:-local-dev-job-token}
+      LAW_OC: ${LAW_OC:-}
+    ports: ["5080:8080"]
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      args:
+        # 브라우저가 호출하는 주소라 호스트에서 본 api 주소다.
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:5080
+    depends_on: [api]
+    ports: ["3000:3000"]
+
+volumes:
+  dbdata:

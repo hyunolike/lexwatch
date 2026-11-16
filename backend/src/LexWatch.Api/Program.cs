@@ -2,6 +2,7 @@ using LexWatch.Api.Ai;
 using LexWatch.Api.Data;
 using LexWatch.Api.Demo;
 using LexWatch.Api.Jobs;
+using LexWatch.Api.Observability;
 using LexWatch.Api.Runs;
 using LexWatch.Api.LawApi;
 using LexWatch.Api.Reviews;
@@ -11,7 +12,9 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+builder.AddLexWatchObservability();
+
+var connectionString = ConnectionStringNormalizer.Normalize(Environment.GetEnvironmentVariable("DATABASE_URL"))
     ?? builder.Configuration.GetConnectionString("LexWatch");
 builder.Services.AddDbContext<LexWatchDb>(o =>
     o.UseNpgsql(connectionString, n => n.UseVector()));
@@ -38,6 +41,12 @@ builder.Services.AddScoped(sp => new CollectService(
     sp.GetRequiredService<LexWatchDb>(), sp.GetRequiredService<LawApiClient>(), sp.GetRequiredService<TimeProvider>()));
 
 var app = builder.Build();
+// 스키마는 앱이 시작할 때 적용한다(MIGRATE_ON_STARTUP=true). compose와 Render가 켠다. 인스턴스가 하나라 경합이 없다.
+if (app.Configuration.GetValue<bool>("MIGRATE_ON_STARTUP"))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<LexWatchDb>().Database.MigrateAsync();
+}
 // 새 배포 직후 데모 화면이 비지 않도록 재현 실행을 한 번 넣는다. 켜는 쪽은 환경변수(DEMO_SEED_ON_STARTUP=true)다.
 if (app.Configuration.GetValue<bool>("DEMO_SEED_ON_STARTUP"))
 {

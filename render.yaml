@@ -1,0 +1,28 @@
+# Render Blueprint. 백엔드 한 서비스만 올린다(ai와 web은 Vercel, DB는 Supabase).
+# 값이 sync:false인 항목은 대시보드에서 직접 넣는다. 비밀은 저장소에 두지 않는다.
+services:
+  - type: web
+    name: lexwatch-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL        # Supabase 세션 풀러 URI (docs/deploy.md 참고)
+        sync: false
+      - key: AI_BASE_URL         # Vercel ai 프로젝트 주소
+        sync: false
+      - key: JOB_TOKEN
+        sync: false
+      - key: LAW_OC
+        sync: false
+      - key: Web__Origins        # Vercel web 프로젝트 주소(쉼표로 여러 개)
+        sync: false
+      - key: MIGRATE_ON_STARTUP
+        value: "true"
+      - key: DEMO_SEED_ON_STARTUP
+        value: "true"
+      - key: TRUST_FORWARDED_FOR # Render의 X-Forwarded-For를 확인하기 전에는 켜지 않는다
+        value: "false"

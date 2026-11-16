@@ -12,12 +12,16 @@ from app.openapi_compat import install
 from app.rag.factory import get_retriever
 from app.review_chat import ReviewChatRequest, ReviewChatResponse, review_chat
 from app.schemas import EmbedRequest, EmbedResponse
+from app.tracing import TraceContextMiddleware, configure_logging
 
 # httpx logs full request URLs (incl. the law API OC) at INFO/DEBUG
 for _name in ("httpx", "httpcore"):
     logging.getLogger(_name).setLevel(logging.WARNING)
 
+configure_logging()
+
 app = FastAPI(title="LexWatch AI")
+app.add_middleware(TraceContextMiddleware)
 register_handlers(app)
 install(app)
 
