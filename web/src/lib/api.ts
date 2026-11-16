@@ -132,9 +132,22 @@ export async function submitDecision(
     body: JSON.stringify(body),
   });
   if (res.waking) return { kind: "waking" };
+  if (res.status === 409 && (res.data as ApiError | null)?.code === "NO_DRAFT")
+    return { kind: "error", message: "초안이 없어 승인할 수 없어요. 반려만 할 수 있어요." };
   if (res.status === 409) return { kind: "conflict" };
   if (res.status >= 400) return { kind: "error", message: (res.data as ApiError | null)?.message ?? "처리하지 못했어요." };
   return { kind: "ok" };
+}
+
+const DECIDABLE_STATUSES = ["WaitingApproval", "NeedsReview"];
+
+/**
+ * 검토 화면에서 보일 결정 버튼. 백엔드와 같은 규칙이다: 결정 대기 상태에서 변호사만,
+ * 초안이 없으면 승인·수정은 못 하고(409 NO_DRAFT) 반려만 할 수 있다.
+ */
+export function decisionActions(role: string | null | undefined, status: string, hasDraft: boolean) {
+  const canDecide = role === "lawyer" && DECIDABLE_STATUSES.includes(status);
+  return { approve: canDecide && hasDraft, edit: canDecide && hasDraft, reject: canDecide };
 }
 
 export interface RunSummary {

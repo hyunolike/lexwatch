@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { apiFetch, submitDecision, type ApiError, type EditedSentence, type ReviewDetail } from "@/lib/api";
+import { apiFetch, decisionActions, submitDecision, type ApiError, type EditedSentence, type ReviewDetail } from "@/lib/api";
 import { DraftEditor } from "@/components/DraftEditor";
 import { OldNewDiff } from "@/components/OldNewDiff";
 import { ReplayNote } from "@/components/ReplayNote";
@@ -9,8 +9,6 @@ import { ReviewChat } from "@/components/ReviewChat";
 import { ProviderBadge } from "@/components/ProviderBadge";
 import { RoleSwitch, useRole } from "@/components/RoleSwitch";
 import { WakeGate } from "@/components/WakeGate";
-
-const DECIDABLE = ["WaitingApproval", "NeedsReview"];
 
 function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }) {
   const role = useRole();
@@ -25,7 +23,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
   const [conflict, setConflict] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const canDecide = role === "lawyer" && DECIDABLE.includes(review.status);
+  const actions = decisionActions(role, review.status, draft != null);
   const kinds = review.isReplay && !review.providerKinds.includes("replay") ? [...review.providerKinds, "replay" as const] : review.providerKinds;
 
   async function decide(kind: "approve" | "reject") {
@@ -82,17 +80,24 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
 
       {role === "lawyer" && <ReviewChat reviewId={review.id} evidence={review.evidence} />}
 
-      {canDecide && draft && (
+      {actions.reject && (
         <div className="space-y-3 rounded border bg-white p-3">
+          {!actions.approve && (
+            <p className="text-sm text-slate-600">초안이 없어 승인하거나 수정할 수 없어요. 근거가 부족하면 사유를 적어 반려할 수 있어요.</p>
+          )}
           <div className="flex flex-wrap gap-2">
-            <button disabled={busy || editing} onClick={() => decide("approve")} className="rounded bg-green-700 px-3 py-1 text-white disabled:opacity-40">승인</button>
-            <button disabled={busy} onClick={() => {
-              if (editing) resetEdits();
-              setEditing((e) => !e);
-            }} className="rounded border px-3 py-1">
-              {editing ? "수정 취소" : "수정"}
-            </button>
-            {editing && (
+            {actions.approve && (
+              <button disabled={busy || editing} onClick={() => decide("approve")} className="rounded bg-green-700 px-3 py-1 text-white disabled:opacity-40">승인</button>
+            )}
+            {actions.edit && (
+              <button disabled={busy} onClick={() => {
+                if (editing) resetEdits();
+                setEditing((e) => !e);
+              }} className="rounded border px-3 py-1">
+                {editing ? "수정 취소" : "수정"}
+              </button>
+            )}
+            {actions.edit && editing && (
               <button disabled={busy} onClick={() => decide("approve")} className="rounded bg-green-700 px-3 py-1 text-white disabled:opacity-40">수정 후 승인</button>
             )}
             <button disabled={busy} onClick={() => setRejecting((r) => !r)} className="rounded border border-red-400 px-3 py-1 text-red-700">반려</button>

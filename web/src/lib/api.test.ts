@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiFetch } from "./api";
+import { apiFetch, decisionActions } from "./api";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -147,5 +147,30 @@ describe("stepLabel", () => {
   it("maps_known_and_falls_back", () => {
     expect(stepLabel("critic_judge")).toBe("크리틱 판정");
     expect(stepLabel("zzz")).toBe("zzz");
+  });
+});
+
+describe("decisionActions", () => {
+  it("draftless_group_can_only_be_rejected", () => {
+    expect(decisionActions("lawyer", "NeedsReview", false)).toEqual({ approve: false, edit: false, reject: true });
+  });
+  it("group_with_draft_allows_all_three", () => {
+    expect(decisionActions("lawyer", "WaitingApproval", true)).toEqual({ approve: true, edit: true, reject: true });
+  });
+  it("admin_or_decided_group_gets_nothing", () => {
+    const none = { approve: false, edit: false, reject: false };
+    expect(decisionActions("admin", "NeedsReview", true)).toEqual(none);
+    expect(decisionActions("lawyer", "Approved", true)).toEqual(none);
+    expect(decisionActions("lawyer", "Rejected", false)).toEqual(none);
+  });
+});
+
+describe("submitDecision", () => {
+  it("no_draft_409_is_an_error_not_a_conflict", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ code: "NO_DRAFT", message: "x" }, { status: 409 })));
+    const out = await submitDecision("g", "approve", 1, {});
+    expect(out.kind).toBe("error");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ code: "REVIEW_ALREADY_DECIDED", message: "x" }, { status: 409 })));
+    expect((await submitDecision("g", "approve", 1, {})).kind).toBe("conflict");
   });
 });
