@@ -1,0 +1,169 @@
+{
+  "agoMinutes": 60,
+  "law": {
+    "lawId": "001872",
+    "lawName": "[재현 예시] 근로기준법",
+    "mst": ""
+  },
+  "runStatus": "InReview",
+  "evidence": [
+    {
+      "id": "law:001872:제56조",
+      "kind": "law",
+      "title": "[재현 예시] 근로기준법 제56조",
+      "body": "(재현 예시 문안) 제56조(연장·야간 및 휴일 근로) ① 사용자는 연장근로에 대하여는 통상임금의 100분의 50 이상을 가산하여 지급하여야 한다."
+    },
+    {
+      "id": "oldnew:001872:제56조",
+      "kind": "oldnew",
+      "title": "[재현 예시] 근로기준법 제56조 신구조문 대비",
+      "body": "[구조문]\n(예시 구조문 — 실제 구조문이 아니다)\n\n[신조문]\n(재현 예시 문안) 제56조(연장·야간 및 휴일 근로) ① 사용자는 연장근로에 대하여는 통상임금의 100분의 50 이상을 가산하여 지급하여야 한다."
+    }
+  ],
+  "steps": [
+    {
+      "step": "fetch_articles",
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 0,
+      "durationMs": 820,
+      "output": {
+        "evidence": 2,
+        "oldnewStatus": {
+          "oldnew": "ok"
+        }
+      }
+    },
+    {
+      "step": "classify",
+      "group": null,
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 6,
+      "durationMs": 310,
+      "output": {
+        "relevant": [
+          "labor"
+        ]
+      },
+      "toolCalls": []
+    },
+    {
+      "step": "analyze",
+      "group": "labor",
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 12,
+      "durationMs": 8800,
+      "output": {
+        "toolCalls": 3,
+        "newEvidence": 0,
+        "draftVersion": 1
+      },
+      "toolCalls": [
+        {
+          "tool": "get_group_interest",
+          "args": {
+            "group": "labor"
+          },
+          "resultSummary": "그룹 관심사 문구를 불러왔다",
+          "evidenceIds": []
+        },
+        {
+          "tool": "get_article",
+          "args": {
+            "law_id": "001872",
+            "article": "제56조"
+          },
+          "resultSummary": "제56조 본문을 근거 저장소에서 확인했다",
+          "evidenceIds": [
+            "law:001872:제56조"
+          ]
+        },
+        {
+          "tool": "compare_old_new",
+          "args": {
+            "law_id": "001872",
+            "article": "제56조"
+          },
+          "resultSummary": "제56조 신구조문 대비를 확인했다",
+          "evidenceIds": [
+            "oldnew:001872:제56조"
+          ]
+        }
+      ]
+    },
+    {
+      "step": "critic_citation",
+      "group": "labor",
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 24,
+      "durationMs": 40,
+      "output": {
+        "findings": 0
+      },
+      "toolCalls": []
+    },
+    {
+      "step": "critic_source",
+      "group": "labor",
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 26,
+      "durationMs": 58,
+      "output": {
+        "findings": 1
+      },
+      "toolCalls": []
+    },
+    {
+      "step": "critic_judge",
+      "group": "labor",
+      "attempt": 0,
+      "status": "Succeeded",
+      "at": 30,
+      "durationMs": 1800,
+      "output": {
+        "findings": 0
+      },
+      "toolCalls": []
+    }
+  ],
+  "groups": [
+    {
+      "code": "labor",
+      "status": "NeedsReview",
+      "confidence": 0.78,
+      "reason": "연장근로 가산 조문이 노동 그룹 관심사와 맞지만 초안에 근거와 다른 수치가 있다(재현 예시).",
+      "draft": {
+        "createdBy": "agent",
+        "sentences": [
+          {
+            "sentence": "연장근로 가산임금은 통상임금의 100분의 70 이상으로 바뀐다.",
+            "citations": [
+              "oldnew:001872:제56조"
+            ]
+          },
+          {
+            "sentence": "개정 조문은 연장·야간·휴일 근로를 다룬다.",
+            "citations": [
+              "law:001872:제56조"
+            ]
+          }
+        ],
+        "openQuestions": [],
+        "findings": [
+          {
+            "tier": 2,
+            "sentenceIndex": 0,
+            "ruleId": "C2-MISMATCH",
+            "message": "인용한 근거 본문에 없는 표기: 100분의 70"
+          }
+        ]
+      }
+    }
+  ],
+  "slug": "04-critic-tier2",
+  "note": "재현 예시 — 실제 공포 법령이 아니다. 문안은 문서 기반 재구성 예시(fixtures/lawapi)이고 실제 API 호출 결과가 아니다."
+}

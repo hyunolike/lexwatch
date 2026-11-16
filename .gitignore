@@ -1,0 +1,8 @@
+.superpowers/
+.env
+__pycache__/
+
+bin/
+obj/
+supabase/
+.vercel

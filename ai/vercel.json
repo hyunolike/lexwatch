@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "fluid": true,
+  "regions": [
+    "sin1"
+  ],
+  "functions": {
+    "api/index.py": {
+      "maxDuration": 150,
+      "excludeFiles": "{tests/**,.venv/**,**/__pycache__/**,openapi.json,uv.lock,README.md}"
+    }
+  }
+}

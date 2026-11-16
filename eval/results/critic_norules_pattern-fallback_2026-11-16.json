@@ -1,0 +1,239 @@
+{
+  "mode": "norules",
+  "provider": "pattern-fallback",
+  "source": "placeholder-fixture",
+  "detected": 10,
+  "overclaims": 10,
+  "rule_id_correct": null,
+  "false_positive_findings": 0,
+  "clean_cases_flagged": 0,
+  "clean": 6,
+  "rows": [
+    {
+      "id": "oc01-a",
+      "expected": [
+        "OC-01"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-01",
+          "message": "패턴 판정(키 없음): 경과규정(부칙) 근거 없이 시행일 이전 계약·행위에 새 규정이 적용된다고 단정한다."
+        }
+      ]
+    },
+    {
+      "id": "oc01-b",
+      "expected": [
+        "OC-01"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-01",
+          "message": "패턴 판정(키 없음): 경과규정(부칙) 근거 없이 시행일 이전 계약·행위에 새 규정이 적용된다고 단정한다."
+        }
+      ]
+    },
+    {
+      "id": "oc02-a",
+      "expected": [
+        "OC-02"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-02",
+          "message": "패턴 판정(키 없음): 하위법령(시행령·고시 등)이 확인되지 않은 위임 조항을 구체적 의무처럼 기술한다."
+        }
+      ]
+    },
+    {
+      "id": "oc02-b",
+      "expected": [
+        "OC-02"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-02",
+          "message": "패턴 판정(키 없음): 하위법령(시행령·고시 등)이 확인되지 않은 위임 조항을 구체적 의무처럼 기술한다."
+        }
+      ]
+    },
+    {
+      "id": "oc03-a",
+      "expected": [
+        "OC-03"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-03",
+          "message": "패턴 판정(키 없음): 판례 하나를 일반 원칙처럼 기술한다."
+        }
+      ]
+    },
+    {
+      "id": "oc03-b",
+      "expected": [
+        "OC-03"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-03",
+          "message": "패턴 판정(키 없음): 판례 하나를 일반 원칙처럼 기술한다."
+        }
+      ]
+    },
+    {
+      "id": "oc04-a",
+      "expected": [
+        "OC-04"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-04",
+          "message": "패턴 판정(키 없음): '반드시'·'모든' 등으로 근거 조문보다 적용 범위를 넓힌다."
+        }
+      ]
+    },
+    {
+      "id": "oc04-b",
+      "expected": [
+        "OC-04"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-04",
+          "message": "패턴 판정(키 없음): '반드시'·'모든' 등으로 근거 조문보다 적용 범위를 넓힌다."
+        }
+      ]
+    },
+    {
+      "id": "oc05-a",
+      "expected": [
+        "OC-05"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-05",
+          "message": "패턴 판정(키 없음): 벌칙·과태료 금액을 개정 전(구조문) 조문에서 인용한다."
+        }
+      ]
+    },
+    {
+      "id": "oc05-b",
+      "expected": [
+        "OC-05"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-05",
+          "message": "패턴 판정(키 없음): 벌칙·과태료 금액을 개정 전(구조문) 조문에서 인용한다."
+        }
+      ]
+    },
+    {
+      "id": "clean-1",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-2",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-3",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-4",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-5",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-6",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    }
+  ],
+  "note": "self-fit pattern result written by the same author as the cases; NOT model accuracy; real-model run pending NVIDIA_API_KEY",
+  "comparison_valid": false
+}

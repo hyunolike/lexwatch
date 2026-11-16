@@ -1,0 +1,35 @@
+name: collect
+
+on:
+  schedule:
+    - cron: "0 22 * * *"   # UTC 22:00 = KST 07:00
+  workflow_dispatch:
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      API_BASE_URL: ${{ secrets.API_BASE_URL }}
+      JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
+    steps:
+      - name: 서버 깨우기 (무료 플랜은 잠들어 있고 첫 요청이 1분쯤 실패할 수 있다)
+        run: |
+          curl --silent --show-error --fail --max-time 30 \
+            --retry 12 --retry-delay 15 --retry-all-errors \
+            "$API_BASE_URL/health"
+
+      - name: 수집 호출
+        run: |
+          curl --silent --show-error --fail --max-time 300 -X POST \
+            --retry 3 --retry-delay 20 --retry-all-errors \
+            -H "X-Job-Token: $JOB_TOKEN" \
+            "$API_BASE_URL/jobs/collect"
+
+      - name: 처리하는 동안 잠들지 않게 10분간 1분마다 /health 호출
+        run: |
+          for i in $(seq 1 10); do
+            sleep 60
+            curl --silent --show-error --fail --max-time 30 --retry 2 --retry-delay 5 \
+              "$API_BASE_URL/health" || echo "health ping $i 실패"
+          done

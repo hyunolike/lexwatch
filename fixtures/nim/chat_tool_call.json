@@ -1,0 +1,32 @@
+{
+  "_fixture_meta": "NVIDIA 문서·OpenAI 호환 포맷 기반 재구성(실호출 아님).",
+  "id": "chatcmpl-fixture-1",
+  "object": "chat.completion",
+  "created": 1763254800,
+  "model": "nvidia/nemotron-3-super-120b-a12b",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "tool_calls",
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_0",
+            "type": "function",
+            "function": {
+              "name": "classify_change",
+              "arguments": "{\"domain\":\"개인정보\",\"confidence\":0.86,\"evidence\":\"제29조 안전조치의무\"}"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 412,
+    "completion_tokens": 38,
+    "total_tokens": 450
+  }
+}

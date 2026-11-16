@@ -1,0 +1,17 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/.next/
+**/.venv/
+**/__pycache__/
+**/*.tsbuildinfo
+.git/
+.github/
+.superpowers/
+# 모든 .env* (예: web/.env.local, .env.production). 빌드에 필요한 예시 파일은 없다.
+.env*
+**/.env*
+docs/
+eval/
+backend/tests/
+web/.vercel/

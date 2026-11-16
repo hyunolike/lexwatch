@@ -1,0 +1,33 @@
+{
+  "runtime": "Default",
+  "documentGenerator": {
+    "fromDocument": {
+      "json": "../ai/openapi.json",
+      "url": "",
+      "output": null
+    }
+  },
+  "codeGenerators": {
+    "openApiToCSharpClient": {
+      "clientBaseClass": null,
+      "className": "AiClient",
+      "namespace": "LexWatch.Api.Ai",
+      "generateClientInterfaces": true,
+      "generateExceptionClasses": true,
+      "exceptionClass": "AiApiException",
+      "generateOptionalParameters": false,
+      "useBaseUrl": false,
+      "injectHttpClient": true,
+      "disposeHttpClient": false,
+      "generateDtoTypes": true,
+      "generateSyncMethods": false,
+      "operationGenerationMode": "SingleClientFromOperationId",
+      "jsonLibrary": "SystemTextJson",
+      "generateNullableReferenceTypes": true,
+      "dateType": "System.DateTimeOffset",
+      "dateTimeType": "System.DateTimeOffset",
+      "classStyle": "Poco",
+      "output": "src/LexWatch.Api/Ai/AiClient.g.cs"
+    }
+  }
+}

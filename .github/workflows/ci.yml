@@ -1,0 +1,81 @@
+name: ci
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: backend/global.json
+      # Testcontainers가 ubuntu 러너의 Docker를 그대로 쓴다.
+      - run: dotnet test backend/LexWatch.sln --nologo
+
+  ai:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+      - run: uv run pytest -q
+
+  openapi-drift:
+    # ai/openapi.json과 C# 클라이언트(AiClient.g.cs)가 FastAPI 앱과 어긋나면 실패한다.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: backend/global.json
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --frozen
+        working-directory: ai
+      - run: ./scripts/gen-ai-client.sh
+      - name: 재생성 결과가 커밋과 같은지 확인
+        run: git diff --exit-code -- ai/openapi.json backend/src/LexWatch.Api/Ai/AiClient.g.cs
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec next typegen   # PageProps/LayoutProps 전역 타입은 .next/types에 생성된다
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f backend/Dockerfile -t lexwatch-api:ci .
+      - run: docker build -f ai/Dockerfile -t lexwatch-ai:ci .
+      - run: docker build -f web/Dockerfile -t lexwatch-web:ci .
