@@ -10,8 +10,11 @@ public static partial class SourceMatchCritic
     [GeneratedRegex(@"제\d+조(?:의\d+)?")] private static partial Regex ArticleRx();
     [GeneratedRegex(@"(\d{4})\.\s?(\d{1,2})\.\s?(\d{1,2})\.?")] private static partial Regex DateDotRx();
     [GeneratedRegex(@"(\d{4})년\s?(\d{1,2})월\s?(\d{1,2})일")] private static partial Regex DateKoRx();
-    [GeneratedRegex(@"[\d,]+\s?(?:만\s?)?원")] private static partial Regex AmountRx();
-    [GeneratedRegex(@"\d+\s?(?:일|개월|년)")] private static partial Regex PeriodRx();
+    [GeneratedRegex(@"(?:\d[\d,]*\s?(?:억|천만|만|천)?\s?)+원")] private static partial Regex AmountRx();
+    [GeneratedRegex(@"(\d[\d,]*)\s?(억|천만|만|천)?")] private static partial Regex AmountPartRx();
+    [GeneratedRegex(@"(?<!\d)\d{1,3}\s?(?:일|개월|년)")] private static partial Regex PeriodRx();
+    [GeneratedRegex(@"\d{4}년(?:\s?\d{1,2}월(?:\s?\d{1,2}일)?)?|\d{1,2}월\s?\d{1,2}일|\d{1,2}월")] private static partial Regex PartialDateRx();
+    [GeneratedRegex(@"시행(?!령|규칙)")] private static partial Regex EnforceRx();
     [GeneratedRegex(@"\s+")] private static partial Regex WsRx();
 
     public static IReadOnlyList<CriticFindingDto> Check(
@@ -32,11 +35,12 @@ public static partial class SourceMatchCritic
                         findings.Add(new CriticFindingDto(i, "C2-MISMATCH", $"인용한 근거 본문에 없는 표기: {t.Display}"));
             }
 
-            if (change.EffectiveDate is { } eff && sentence.Contains("시행"))
+            if (change.EffectiveDate is { } eff && EnforceRx().IsMatch(sentence))
             {
                 var effText = eff.ToString("yyyy-MM-dd");
-                foreach (var d in Dates(sentence).Distinct().Where(d => d != effText))
-                    findings.Add(new CriticFindingDto(i, "C2-EFFECTIVE", $"시행일 {effText}과 다른 날짜: {d}"));
+                var ds = Dates(sentence).Distinct().ToList();
+                if (ds.Count > 0 && !ds.Contains(effText))
+                    findings.Add(new CriticFindingDto(i, "C2-EFFECTIVE", $"시행일 {effText}과 다른 시행 날짜: {string.Join(", ", ds)}"));
             }
         }
         return findings;
@@ -58,14 +62,26 @@ public static partial class SourceMatchCritic
         foreach (Match m in ArticleRx().Matches(text)) set.Add(new Token("art", m.Value, m.Value));
         foreach (var d in Dates(text)) set.Add(new Token("date", d, d));
         var rest = DateKoRx().Replace(DateDotRx().Replace(text, " "), " ");
-        foreach (Match m in AmountRx().Matches(rest)) set.Add(new Token("amt", Compact(m.Value), m.Value));
-        foreach (Match m in PeriodRx().Matches(AmountRx().Replace(rest, " "))) set.Add(new Token("per", Compact(m.Value), m.Value));
+        foreach (Match m in AmountRx().Matches(rest)) set.Add(new Token("amt", AmountValue(m.Value), m.Value));
+        rest = PartialDateRx().Replace(AmountRx().Replace(rest, " "), " ");
+        foreach (Match m in PeriodRx().Matches(rest)) set.Add(new Token("per", Compact(m.Value), m.Value));
         return set;
     }
 
     private static IEnumerable<string> Dates(string text) =>
         DateDotRx().Matches(text).Concat(DateKoRx().Matches(text))
             .Select(m => $"{m.Groups[1].Value}-{int.Parse(m.Groups[2].Value):00}-{int.Parse(m.Groups[3].Value):00}");
+
+    private static string AmountValue(string text)
+    {
+        decimal total = 0;
+        foreach (Match m in AmountPartRx().Matches(text.Replace("원", "")))
+        {
+            var n = decimal.Parse(m.Groups[1].Value.Replace(",", ""));
+            total += n * m.Groups[2].Value switch { "억" => 100_000_000m, "천만" => 10_000_000m, "만" => 10_000m, "천" => 1_000m, _ => 1m };
+        }
+        return total.ToString("0");
+    }
 
     private static string Compact(string s) => s.Replace(" ", "").Replace(",", "");
 

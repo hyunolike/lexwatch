@@ -57,6 +57,37 @@ public class CriticTests
         Assert.Empty(f);
     }
 
+    private static IReadOnlyList<CriticFindingDto> Src(string sentence, string body) =>
+        SourceMatchCritic.Check([S(sentence, "e")], Ev("e", body), Change);
+
+    [Fact]
+    public void Year_only_and_year_month_are_not_periods() =>
+        Assert.Empty(Src("2026년 12월 시행 예정이며 2026년 시행.", "2026년 12월 시행"));
+
+    [Fact]
+    public void Bare_comma_is_not_an_amount() =>
+        Assert.Empty(Src("해고, 원칙적으로 제한된다.", "제23조 해고 제한"));
+
+    [Fact]
+    public void Amount_notations_are_equivalent()
+    {
+        Assert.Empty(Src("과태료 1,000만원.", "과태료 10,000,000원"));
+        Assert.Empty(Src("과태료 1천만 원.", "과태료 1,000만원"));
+        Assert.Empty(Src("과태료 3천만원.", "과태료 30,000,000원"));
+        Assert.Empty(Src("벌금 1억 원.", "벌금 100,000,000원"));
+        Assert.Contains(Src("과태료 2천만 원.", "과태료 1,000만원"), x => x.RuleId == "C2-MISMATCH");
+    }
+
+    [Fact]
+    public void Enforcement_decree_sentence_is_not_effective_check() =>
+        Assert.DoesNotContain(Src("시행령 개정안은 2030년 1월 1일 공포된다.", "2030. 1. 1."), x => x.RuleId == "C2-EFFECTIVE");
+
+    [Fact]
+    public void Effective_date_plus_other_date_is_not_flagged() =>
+        Assert.DoesNotContain(
+            Src("2026년 12월 1일 시행되며 유예는 2027년 6월 1일까지다.", "2026. 12. 1. 시행 2027. 6. 1."),
+            x => x.RuleId == "C2-EFFECTIVE");
+
     [Fact]
     public void Clean_memo_has_no_findings()
     {
