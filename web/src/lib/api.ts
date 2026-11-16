@@ -230,19 +230,16 @@ export const stepLabel = (s: string) => STEP_LABELS[s] ?? s;
 
 /**
  * 백엔드 RunEndpoints.Retryable과 같은 규칙으로 다시 실행할 수 있는 실패 단계가 있는지 본다.
- * (단계, 그룹)별 가장 늦은 시도가 Failed여야 하고, 결정된 그룹은 Approved의 notify만 허용한다.
+ * (단계, 그룹)에 Failed가 아닌 행이 없어야 하고, 결정된 그룹은 Approved의 notify만 허용한다.
  */
 export function hasRetryableStep(timeline: TimelineItem[], groups: { groupCode: string; status: string }[]): boolean {
-  const latest = new Map<string, Extract<TimelineItem, { kind: "step" }>>();
-  for (const it of timeline) {
-    if (it.kind !== "step") continue;
-    const key = `${it.step}|${it.groupCode ?? ""}`;
-    const prev = latest.get(key);
-    if (!prev || it.attempt >= prev.attempt) latest.set(key, it);
-  }
+  const steps = timeline.filter((it): it is Extract<TimelineItem, { kind: "step" }> => it.kind === "step");
+  // 백엔드와 같다: 같은 (단계, 그룹)에 Failed가 아닌 행이 하나라도 있으면 이미 재큐된 것이다.
+  const superseded = (s: (typeof steps)[number]) =>
+    steps.some((o) => o.status !== "Failed" && o.step === s.step && o.groupCode === s.groupCode);
   const status = new Map(groups.map((g) => [g.groupCode, g.status]));
-  return [...latest.values()].some((s) => {
-    if (s.status !== "Failed") return false;
+  return steps.some((s) => {
+    if (s.status !== "Failed" || superseded(s)) return false;
     const g = s.groupCode ? status.get(s.groupCode) : undefined;
     if (g === undefined) return true;
     if (g === "Approved") return s.step === "notify";

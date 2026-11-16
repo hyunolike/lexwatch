@@ -125,6 +125,12 @@ describe("hasRetryableStep", () => {
   it("superseded_failure_has_no_button", () => {
     expect(hasRetryableStep([st("analyze", 1, "Failed"), st("analyze", 2, "Succeeded")], [{ groupCode: "g1", status: "WaitingApproval" }])).toBe(false);
   });
+  it("requeued_row_blocks_button", () => {
+    const g = [{ groupCode: "g1", status: "Analyzing" }];
+    expect(hasRetryableStep([st("analyze", 3, "Failed"), st("analyze", 0, "Pending")], g)).toBe(false);
+    expect(hasRetryableStep([st("analyze", 3, "Failed"), st("analyze", 0, "Succeeded")], g)).toBe(false);
+    expect(hasRetryableStep([st("analyze", 3, "Failed"), st("classify", 0, "Pending")], g)).toBe(true);
+  });
   it("decided_groups_have_no_button", () => {
     for (const status of ["Rejected", "Notified", "ClosedIrrelevant"])
       expect(hasRetryableStep([st("notify", 1, "Failed")], [{ groupCode: "g1", status }])).toBe(false);
