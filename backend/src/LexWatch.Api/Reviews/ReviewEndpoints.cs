@@ -152,9 +152,14 @@ public static class ReviewEndpoints
         {
             var rows = await db.Notifications.AsNoTracking().Where(n => n.Channel == "demo_inbox")
                 .OrderByDescending(n => n.SentAt).Take(50).ToListAsync(ct);
+            var gids = rows.Where(n => n.GroupReviewId != null).Select(n => n.GroupReviewId!.Value).ToList();
+            var replayGroups = (await db.GroupReviews.AsNoTracking()
+                .Where(g => gids.Contains(g.Id) && db.WorkflowRuns.Any(r => r.Id == g.RunId && r.IsReplay))
+                .Select(g => g.Id).ToListAsync(ct)).ToHashSet();
             return Results.Ok(rows.Select(n => new
             {
                 id = n.Id, groupReviewId = n.GroupReviewId, channel = n.Channel, status = n.Status, body = n.Body, sentAt = n.SentAt,
+                isReplay = n.GroupReviewId is { } g && replayGroups.Contains(g),
             }));
         });
     }

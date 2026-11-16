@@ -4,6 +4,7 @@ import { useState } from "react";
 import { apiFetch, submitDecision, type ApiError, type EditedSentence, type ReviewDetail } from "@/lib/api";
 import { DraftEditor } from "@/components/DraftEditor";
 import { OldNewDiff } from "@/components/OldNewDiff";
+import { ReplayNote } from "@/components/ReplayNote";
 import { ProviderBadge } from "@/components/ProviderBadge";
 import { RoleSwitch, useRole } from "@/components/RoleSwitch";
 import { WakeGate } from "@/components/WakeGate";
@@ -48,11 +49,12 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
       <Link href="/" className="text-sm text-blue-700 underline">← 승인 대기함</Link>
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-bold">{review.lawName}</h1>
-        <span className="text-sm text-slate-500">{review.groupName} · {review.promulgationDate} 공포</span>
+        <span className="text-sm text-slate-500">{review.groupName}{review.isReplay ? "" : ` · ${review.promulgationDate} 공포`}</span>
         <span className="rounded bg-slate-200 px-2 py-0.5 text-xs">{review.status}</span>
         {kinds.map((k) => <ProviderBadge key={k} kind={k} />)}
         <div className="ml-auto"><RoleSwitch /></div>
       </div>
+      {review.isReplay && <ReplayNote />}
 
       {conflict && (
         <div className="flex items-center gap-3 rounded border border-red-300 bg-red-50 p-3 text-sm">

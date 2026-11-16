@@ -1,5 +1,6 @@
 using LexWatch.Api.Data.Entities;
 using LexWatch.Api.Demo;
+using LexWatch.Api.Workflow;
 using Microsoft.EntityFrameworkCore;
 
 namespace LexWatch.Tests;
@@ -34,6 +35,18 @@ public class DemoSeederTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Contains(ReviewStatus.NeedsReview, statuses);
         Assert.Contains(ReviewStatus.Rejected, statuses);
         Assert.Equal(3, await db.PracticeGroups.CountAsync());
+
+        // 재현 법령은 실제 공포 법령처럼 보이면 안 된다.
+        var laws = await db.LawChanges.ToListAsync();
+        Assert.Equal(5, laws.Count);
+        Assert.All(laws, l =>
+        {
+            Assert.StartsWith("[재현 예시] ", l.LawName);
+            Assert.Equal("", l.Mst);
+            Assert.Null(l.EffectiveDate);
+        });
+        var bodies = await db.Evidence.Select(e => e.Body).ToListAsync();
+        Assert.All(bodies, b => Assert.Contains("재현 예시", b.Replace("예시 구조문", "재현 예시")));
 
         // 승인·알림·채팅 할당량을 지운다. 두 번 호출해도 같은 상태다.
         var g = await db.GroupReviews.FirstAsync(x => x.Status == ReviewStatus.WaitingApproval);
@@ -85,5 +98,51 @@ public class DemoSeederTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal(0, await chk.StepRuns.CountAsync(s => s.RunId == real.Id && s.Step == "notify")); // 대기 중이던 알림 단계만 치운다
         Assert.Equal(0, await chk.Approvals.CountAsync(a => a.GroupReviewId == gid));
         Assert.Equal(6, await chk.WorkflowRuns.CountAsync());
+    }
+
+    [Fact]
+    public async Task Reset_removes_running_notify_and_stale_worker_write_is_discarded()
+    {
+        var real = await Seed.RunAsync(pg);
+        Guid gid;
+        await using (var db = pg.CreateDb())
+        {
+            var g = new GroupReview { Id = Guid.NewGuid(), RunId = real.Id, GroupCode = "labor", Status = ReviewStatus.Approved };
+            db.AddRange(g, new Approval { Id = Guid.NewGuid(), GroupReviewId = g.Id, Decision = "approve", ActorRole = "lawyer", DecidedAt = DateTimeOffset.UtcNow },
+                new StepRun { Id = Guid.NewGuid(), RunId = real.Id, GroupReviewId = g.Id, Step = "notify", Status = StepStatus.Running, Attempt = 0,
+                    LeaseUntil = DateTimeOffset.UtcNow.AddMinutes(5), ProviderKind = "none", NotBefore = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
+            gid = g.Id;
+        }
+        await using (var db = pg.CreateDb()) await Seeder(db).ResetAsync();
+        await using (var chk = pg.CreateDb())
+        {
+            Assert.Equal(0, await chk.StepRuns.CountAsync(s => s.RunId == real.Id && s.Step == "notify"));
+            Assert.Equal(ReviewStatus.WaitingApproval, (await chk.GroupReviews.SingleAsync(g => g.Id == gid)).Status);
+        }
+
+        // 워커가 알림 단계를 집어 실행하는 도중 초기화가 끝나는 경합. 결과 쓰기는 소유권 확인에서 걸러져야 한다.
+        await using (var db = pg.CreateDb())
+        {
+            db.StepRuns.Add(new StepRun { Id = Guid.NewGuid(), RunId = real.Id, GroupReviewId = gid, Step = "notify",
+                Status = StepStatus.Pending, ProviderKind = "none", NotBefore = DateTimeOffset.UtcNow.AddMinutes(-1) });
+            db.Approvals.Add(new Approval { Id = Guid.NewGuid(), GroupReviewId = gid, Decision = "approve", ActorRole = "lawyer", DecidedAt = DateTimeOffset.UtcNow });
+            (await db.GroupReviews.SingleAsync(g => g.Id == gid)).Status = ReviewStatus.Approved;
+            await db.SaveChangesAsync();
+        }
+        var handler = new LambdaHandler("notify", ctx =>
+        {
+            using (var other = pg.CreateDb()) Seeder(other).ResetAsync().GetAwaiter().GetResult();
+            ctx.Db.Notifications.Add(new Notification { Id = Guid.NewGuid(), GroupReviewId = gid, Status = "sent", Body = "x" });
+            ctx.Db.GroupReviews.Single(g => g.Id == gid).Status = ReviewStatus.Notified;
+            return new StepResult.Succeeded(new { }, [], "none");
+        });
+        var worker = Seed.Worker(pg, TimeProvider.System, handler);
+        Assert.True(await worker.RunOnceAsync());
+
+        await using var after = pg.CreateDb();
+        Assert.Equal(0, await after.Notifications.CountAsync());
+        Assert.Equal(ReviewStatus.WaitingApproval, (await after.GroupReviews.SingleAsync(g => g.Id == gid)).Status);
+        Assert.Equal(0, await after.StepRuns.CountAsync(s => s.RunId == real.Id && s.Step == "notify"));
     }
 }

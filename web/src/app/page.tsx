@@ -1,4 +1,5 @@
 "use client";
+import { REPLAY_NOTE } from "@/components/ReplayNote";
 import Link from "next/link";
 import { apiFetch, type ReviewSummary } from "@/lib/api";
 import { ProviderBadge } from "@/components/ProviderBadge";
@@ -21,7 +22,7 @@ function Inbox({ items }: { items: ReviewSummary[] }) {
                 <li key={r.id}>
                   <Link href={`/reviews/${r.id}`} className="flex flex-wrap items-center gap-3 rounded border bg-white p-3 hover:bg-slate-50">
                     <span className="font-medium">{r.lawName}</span>
-                    <span className="text-sm text-slate-500">{r.promulgationDate} 공포</span>
+                    {r.isReplay ? <span className="text-sm text-gray-700">{REPLAY_NOTE}</span> : <span className="text-sm text-slate-500">{r.promulgationDate} 공포</span>}
                     <span className="text-sm">신뢰도 {r.confidence == null ? "—" : Math.round(r.confidence * 100) + "%"}</span>
                     <span className="text-sm">근거 {r.evidenceCount}건</span>
                     <span className="text-sm">크리틱 {r.findingCount}건</span>

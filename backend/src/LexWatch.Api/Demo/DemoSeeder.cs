@@ -91,9 +91,10 @@ public class DemoSeeder(LexWatchDb db, TimeProvider time)
         var decidedIds = decided.Select(g => g.Id);
         var decidedRuns = await decided.Select(g => g.RunId).Distinct().ToListAsync(ct);
 
-        // 이력(성공·실패 단계)은 남기고 아직 실행되지 않은 알림 단계만 치운다. 안 치우면 초기화 직후 알림이 다시 나간다.
+        // 이력(성공·실패 단계)은 남기고 아직 끝나지 않은 알림 단계(대기·재시도·실행 중)만 치운다. 실행 중인 행을 지우면 워커의 결과 쓰기가 소유권 확인에서 걸러져 되돌려진다. 안 치우면 초기화 직후 알림이 다시 나간다.
         await db.StepRuns.Where(s => s.Step == "notify" && s.GroupReviewId != null && decidedIds.Contains(s.GroupReviewId.Value)
-            && (s.Status == StepStatus.Pending || s.Status == StepStatus.RetryScheduled)).ExecuteDeleteAsync(ct);
+            && (s.Status == StepStatus.Pending || s.Status == StepStatus.RetryScheduled || s.Status == StepStatus.Running))
+            .ExecuteDeleteAsync(ct);
         await decided.ExecuteUpdateAsync(s => s.SetProperty(g => g.Status, ReviewStatus.WaitingApproval), ct);
         await db.WorkflowRuns.Where(r => decidedRuns.Contains(r.Id) && r.Status == RunStatus.Completed)
             .ExecuteUpdateAsync(s => s.SetProperty(r => r.Status, RunStatus.InReview)
@@ -132,8 +133,9 @@ public class DemoSeeder(LexWatchDb db, TimeProvider time)
             var start = now - TimeSpan.FromMinutes(f.AgoMinutes);
             var law = new LawChange
             {
-                Id = Guid.NewGuid(), LawId = f.Law.LawId, LawName = f.Law.LawName, Mst = f.Law.Mst,
-                PromulgationDate = f.Law.PromulgationDate, EffectiveDate = f.Law.EffectiveDate,
+                Id = Guid.NewGuid(), LawId = f.Law.LawId, LawName = f.Law.LawName, Mst = f.Law.Mst ?? "",
+                // 실제 공포일이 아니다. 열이 null을 허용하지 않아 시드 날짜를 넣고, 화면은 재현이면 날짜 대신 안내를 보여준다.
+                PromulgationDate = DateOnly.FromDateTime(start.UtcDateTime), EffectiveDate = null,
                 RawJson = JsonSerializer.Serialize(new { demo = true, replay = f.Slug, note = f.Note }, J),
                 RawSha256 = "replay-" + f.Slug, FetchedAt = start, IdempotencyKey = KeyPrefix + f.Slug,
             };

@@ -189,6 +189,7 @@ export interface InboxItem {
   status: string;
   body: string;
   sentAt: string | null;
+  isReplay?: boolean;
 }
 
 export type RetryOutcome =

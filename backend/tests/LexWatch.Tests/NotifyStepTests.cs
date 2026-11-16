@@ -33,4 +33,27 @@ public class NotifyStepTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal("[노동] 근로기준법 개정 안내\n가나다.\n(승인: 변호사, 2026-11-16 09:30)", n.Body);
         Assert.Equal(ReviewStatus.Notified, (await v.GroupReviews.SingleAsync()).Status);
     }
+
+    [Theory]
+    [InlineData(false, "none")]
+    [InlineData(true, "replay")]
+    public async Task Notify_uses_replay_provider_kind_only_for_replay_runs(bool replay, string expected)
+    {
+        var (run, _) = await AiSeed.RunWithEvidenceAsync(pg);
+        await using (var db = pg.CreateDb())
+        {
+            (await db.WorkflowRuns.SingleAsync(r => r.Id == run.Id)).IsReplay = replay;
+            await db.SaveChangesAsync();
+        }
+        var g = await AiSeed.GroupAsync(pg, run.Id, "labor", ReviewStatus.Approved);
+        await using (var db = pg.CreateDb())
+        {
+            db.MemoDrafts.Add(new MemoDraft { Id = Guid.NewGuid(), GroupReviewId = g.Id, Version = 1, CreatedBy = "agent",
+                OpenQuestionsJson = "[]", SentencesJson = """[{"sentence":"가나다.","citations":["law:L1:제23조"]}]""" });
+            await db.SaveChangesAsync();
+        }
+        var step = await AiSeed.StepAsync(pg, run.Id, "notify", g.Id);
+        var r = await AiSeed.ExecuteAsync(pg, new NotifyStep(), step.Id);
+        Assert.Equal(expected, Assert.IsType<StepResult.Succeeded>(r).ProviderKind);
+    }
 }

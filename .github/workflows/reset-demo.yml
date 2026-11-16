@@ -9,16 +9,19 @@ jobs:
   reset:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      API_BASE_URL: ${{ secrets.API_BASE_URL }}
+      JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
     steps:
       - name: 서버 깨우기 (무료 플랜은 잠들어 있고 첫 요청이 1분쯤 실패할 수 있다)
         run: |
           curl --silent --show-error --fail --max-time 30 \
-            --retry 12 --retry-delay 15 --retry-all-errors --retry-connrefused \
-            "${{ secrets.API_BASE_URL }}/health"
+            --retry 12 --retry-delay 15 --retry-all-errors \
+            "$API_BASE_URL/health"
 
       - name: 데모 초기화
         run: |
           curl --silent --show-error --fail --max-time 120 -X POST \
             --retry 3 --retry-delay 20 --retry-all-errors \
-            -H "X-Job-Token: ${{ secrets.JOB_TOKEN }}" \
-            "${{ secrets.API_BASE_URL }}/jobs/reset-demo"
+            -H "X-Job-Token: $JOB_TOKEN" \
+            "$API_BASE_URL/jobs/reset-demo"

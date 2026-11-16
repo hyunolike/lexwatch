@@ -4,7 +4,7 @@ namespace LexWatch.Api.Demo;
 public record ReplayFile(string Slug, string Note, int AgoMinutes, ReplayLaw Law, string RunStatus,
     List<ReplayEvidence> Evidence, List<ReplayStep> Steps, List<ReplayGroup> Groups);
 
-public record ReplayLaw(string LawId, string LawName, string Mst, DateOnly PromulgationDate, DateOnly? EffectiveDate);
+public record ReplayLaw(string LawId, string LawName, string? Mst);
 
 public record ReplayEvidence(string Id, string Kind, string Title, string Body);
 

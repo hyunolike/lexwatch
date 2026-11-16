@@ -1,6 +1,8 @@
 "use client";
 import { apiFetch, type InboxItem } from "@/lib/api";
 import { RoleSwitch, useRole } from "@/components/RoleSwitch";
+import { ProviderBadge } from "@/components/ProviderBadge";
+import { ReplayNote } from "@/components/ReplayNote";
 import { WakeGate } from "@/components/WakeGate";
 
 export default function InboxPage() {
@@ -25,7 +27,9 @@ export default function InboxPage() {
                   <div className="flex gap-3 text-sm text-slate-500">
                     <span>{n.sentAt ? new Date(n.sentAt).toLocaleString("ko-KR") : "—"}</span>
                     <span>{n.status}</span>
+                    {n.isReplay && <ProviderBadge kind="replay" />}
                   </div>
+                  {n.isReplay && <ReplayNote />}
                   <p className="mt-1 whitespace-pre-wrap">{n.body}</p>
                 </li>
               ))}

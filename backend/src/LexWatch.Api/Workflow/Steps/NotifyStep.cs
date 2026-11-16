@@ -46,6 +46,6 @@ public class NotifyStep(TimeProvider? time = null) : IStepHandler
             });
         }
         review.Status = ReviewStatus.Notified;
-        return new StepResult.Succeeded(new { channel = "demo_inbox" }, []);
+        return new StepResult.Succeeded(new { channel = "demo_inbox" }, [], ctx.Run.IsReplay ? "replay" : "none");
     }
 }
