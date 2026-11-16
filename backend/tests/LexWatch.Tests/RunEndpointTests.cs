@@ -122,4 +122,57 @@ public class RunEndpointTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
         Assert.Equal("NOTHING_TO_RETRY", (await again.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString());
     }
+
+    private async Task<(WorkflowRun Run, GroupReview G)> FailedSeedAsync(ReviewStatus gs, params string[] failedSteps)
+    {
+        var (run, _) = await AiSeed.RunWithEvidenceAsync(pg);
+        var g = await AiSeed.GroupAsync(pg, run.Id, "labor", gs);
+        await using var db = pg.CreateDb();
+        foreach (var name in failedSteps)
+            db.StepRuns.Add(new StepRun { Id = Guid.NewGuid(), RunId = run.Id, GroupReviewId = g.Id, Step = name, Attempt = 3,
+                Status = StepStatus.Failed, NotBefore = DateTimeOffset.UtcNow, ProviderKind = "none" });
+        (await db.WorkflowRuns.SingleAsync(r => r.Id == run.Id)).Status = RunStatus.Completed;
+        await db.SaveChangesAsync();
+        return (run, g);
+    }
+
+    [Fact]
+    public async Task Retry_on_approved_group_only_requeues_notify()
+    {
+        var (run, g) = await FailedSeedAsync(ReviewStatus.Approved, "analyze", "notify");
+        await using var f = Factory();
+        Assert.Equal(HttpStatusCode.OK, (await As(f, "admin").PostAsync($"/api/runs/{run.Id}/retry", null)).StatusCode);
+        await using var db = pg.CreateDb();
+        var fresh = await db.StepRuns.Where(s => s.RunId == run.Id && s.Status == StepStatus.Pending).ToListAsync();
+        Assert.Equal(["notify"], fresh.Select(s => s.Step).ToList());
+        Assert.Equal(ReviewStatus.Approved, (await db.GroupReviews.SingleAsync(x => x.Id == g.Id)).Status);
+    }
+
+    [Theory]
+    [InlineData(ReviewStatus.Rejected, "analyze")]
+    [InlineData(ReviewStatus.Notified, "notify")]
+    [InlineData(ReviewStatus.ClosedIrrelevant, "classify")]
+    [InlineData(ReviewStatus.Approved, "analyze")]
+    public async Task Retry_on_decided_group_is_nothing_to_retry_and_leaves_run_alone(ReviewStatus gs, string step)
+    {
+        var (run, _) = await FailedSeedAsync(gs, step);
+        await using var f = Factory();
+        Assert.Equal(HttpStatusCode.Conflict, (await As(f, "admin").PostAsync($"/api/runs/{run.Id}/retry", null)).StatusCode);
+        await using var db = pg.CreateDb();
+        Assert.Equal(1, await db.StepRuns.CountAsync(s => s.RunId == run.Id));
+        Assert.Equal(RunStatus.Completed, (await db.WorkflowRuns.SingleAsync(r => r.Id == run.Id)).Status);
+    }
+
+    [Fact]
+    public async Task Concurrent_retries_insert_exactly_one_pending_row_per_step()
+    {
+        var (run, _) = await FailedSeedAsync(ReviewStatus.NeedsReview, "analyze");
+        await using var f = Factory();
+        var results = await Task.WhenAll(Enumerable.Range(0, 6).Select(_ =>
+            As(f, "admin").PostAsync($"/api/runs/{run.Id}/retry", null)));
+        Assert.Equal(1, results.Count(r => r.StatusCode == HttpStatusCode.OK));
+        Assert.Equal(5, results.Count(r => r.StatusCode == HttpStatusCode.Conflict));
+        await using var db = pg.CreateDb();
+        Assert.Equal(1, await db.StepRuns.CountAsync(s => s.RunId == run.Id && s.Status == StepStatus.Pending));
+    }
 }

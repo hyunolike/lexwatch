@@ -124,12 +124,18 @@ public static class RunEndpoints
         {
             if (http.Request.Headers["X-Demo-Role"].ToString() != "admin")
                 return Err(403, "FORBIDDEN", "재실행은 관리자만 할 수 있다");
-            var run = await db.WorkflowRuns.SingleOrDefaultAsync(r => r.Id == id, ct);
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            // 실행 행을 잠가 동시 재실행 요청을 직렬화한다. 확인과 삽입이 같은 잠금 안에서 일어난다.
+            var run = (await db.WorkflowRuns.FromSqlInterpolated($"""SELECT * FROM "WorkflowRuns" WHERE "Id" = {id} FOR UPDATE""")
+                .ToListAsync(ct)).SingleOrDefault();
             if (run is null) return Err(404, "NOT_FOUND", "실행을 찾을 수 없다");
             var steps = await db.StepRuns.Where(s => s.RunId == id).ToListAsync(ct);
+            var groups = await db.GroupReviews.Where(g => g.RunId == id).ToDictionaryAsync(g => g.Id, ct);
             // 같은 (단계, 그룹)에 실패가 아닌 행이 이미 있으면 한 번 재큐된 것이므로 다시 넣지 않는다.
+            // 이미 결정된 그룹은 결정 기록을 바꾸지 않도록 승인된 그룹의 notify만 허용한다.
             var failed = steps.Where(s => s.Status == StepStatus.Failed
-                && !steps.Any(o => o.Status != StepStatus.Failed && o.Step == s.Step && o.GroupReviewId == s.GroupReviewId))
+                && !steps.Any(o => o.Status != StepStatus.Failed && o.Step == s.Step && o.GroupReviewId == s.GroupReviewId)
+                && Retryable(s, groups))
                 .GroupBy(s => (s.Step, s.GroupReviewId)).Select(g => g.First()).ToList();
             if (failed.Count == 0) return Err(409, "NOTHING_TO_RETRY", "다시 실행할 실패 단계가 없다");
 
@@ -141,18 +147,26 @@ public static class RunEndpoints
                     Id = Guid.NewGuid(), RunId = id, GroupReviewId = s.GroupReviewId, Step = s.Step, Attempt = 0,
                     Status = StepStatus.Pending, NotBefore = now, InputJson = s.InputJson, ProviderKind = "none",
                 });
-                if (s.GroupReviewId is { } gid)
-                {
-                    var g = await db.GroupReviews.SingleOrDefaultAsync(x => x.Id == gid, ct);
-                    if (g is not null && g.Status is not (ReviewStatus.Approved or ReviewStatus.Rejected or ReviewStatus.Notified))
-                        g.Status = ReviewStatus.Analyzing;
-                }
+                if (s.GroupReviewId is { } gid && groups[gid].Status is not ReviewStatus.Approved)
+                    groups[gid].Status = ReviewStatus.Analyzing;
             }
             run.Status = RunStatus.Running;
             run.FinishedAt = null;
             await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
             return Results.Ok(new { id, requeued = failed.Select(s => s.Step).ToList() });
         });
+    }
+
+    private static bool Retryable(StepRun s, Dictionary<Guid, GroupReview> groups)
+    {
+        if (s.GroupReviewId is not { } gid || !groups.TryGetValue(gid, out var g)) return true;
+        return g.Status switch
+        {
+            ReviewStatus.Approved => s.Step == "notify",
+            ReviewStatus.Rejected or ReviewStatus.Notified or ReviewStatus.ClosedIrrelevant => false,
+            _ => true,
+        };
     }
 
     private static DateTimeOffset DraftTime(List<StepRun> steps, Guid groupId, DateTimeOffset fallback)
