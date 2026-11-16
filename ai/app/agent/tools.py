@@ -39,18 +39,23 @@ TOOL_NAMES = {t["function"]["name"] for t in TOOL_SCHEMAS}
 
 
 class Tools:
-    def __init__(self, api: LawApi, retriever: RetrieverProvider, group_code: str, interest_text: str):
-        self.api, self.retriever = api, retriever
+    def __init__(self, api: LawApi, retriever: RetrieverProvider, group_code: str, interest_text: str, mst: str | None = None, law_id: str = ""):
+        self.api, self.retriever, self.mst, self.law_id = api, retriever, mst, law_id
         self.group_code, self.interest_text = group_code, interest_text
 
+    def _mst_for(self, law_id: str) -> str | None:
+        return self.mst if self.mst and law_id == self.law_id else None
+
     async def run(self, name: str, args: dict[str, Any]) -> list[Evidence]:
-        """Raises LawApiError / ValueError on failure; the loop turns that into a tool-error result."""
+        """Any exception becomes a tool-error result in the loop."""
+        if not isinstance(args, dict):
+            raise ValueError("도구 인자는 객체여야 합니다")
         if name == "get_article":
             law_id, no = str(args.get("law_id", "")), str(args.get("article_no", "")).strip()
             no = no.replace("제", "").replace("조", "").strip()
             if not law_id or not no:
                 raise ValueError("law_id와 article_no가 필요합니다")
-            arts = await self.api.law_articles(law_id)
+            arts = await self.api.law_articles(law_id, self._mst_for(law_id))
             if no not in arts:
                 raise LawApiError(f"조문 {no} 없음")
             a = arts[no]
@@ -59,7 +64,7 @@ class Tools:
             law_id = str(args.get("law_id", ""))
             if not law_id:
                 raise ValueError("law_id가 필요합니다")
-            pairs = await self.api.old_new(law_id)
+            pairs = await self.api.old_new(law_id, self._mst_for(law_id))
             return [
                 Evidence(
                     id=f"oldnew:{law_id}:{k}",

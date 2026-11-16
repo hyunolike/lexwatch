@@ -1,5 +1,6 @@
+import asyncio
 import json
-import time
+import logging
 from pathlib import Path
 
 import httpx
@@ -14,7 +15,7 @@ from app.providers.llm.base import LLMError, LLMProvider, LLMResponse, RateLimit
 from app.schemas import Evidence, MemoSentence, ProviderInfo
 
 FIX = Path(__file__).resolve().parents[2] / "fixtures" / "lawapi"
-LAW = {"law_id": "001872", "name": "근로기준법", "promulgation_date": "2026-11-04", "summary": "개정"}
+LAW = {"law_id": "001872", "name": "근로기준법", "promulgation_date": "2026-11-04", "summary": "개정", "mst": "100001"}
 
 
 def law_api(error_for: set[str] | None = None) -> LawApi:
@@ -24,9 +25,12 @@ def law_api(error_for: set[str] | None = None) -> LawApi:
         if error_for and target in error_for:
             return httpx.Response(200, json=json.loads((FIX / "error_body.json").read_text()))
         if target == "law":
-            return httpx.Response(200, text=(FIX / f"law_{p['ID']}.json").read_text())
+            law = p.get("ID") or {"100001": "001872"}[p["MST"]]
+            return httpx.Response(200, text=(FIX / f"law_{law}.json").read_text())
         if target == "oldAndNew":
-            return httpx.Response(200, text=(FIX / f"oldnew_{p['ID']}.json").read_text())
+            if "MST" not in p:  # real API requires MST here
+                return httpx.Response(200, json=json.loads((FIX / "error_body.json").read_text()))
+            return httpx.Response(200, text=(FIX / "oldnew_001872.json").read_text())
         if target == "prec":
             return httpx.Response(200, json={"PrecSearch": {"prec": [
                 {"판례일련번호": "7", "사건명": "근로시간 사건", "법원명": "대법원", "선고일자": "20240101", "사건번호": "2023다1"},
@@ -195,3 +199,99 @@ async def test_keyless_without_evidence(monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "mock")
     r = await analyze(req())
     assert r.status == "insufficient_evidence" and r.memo == []
+
+
+async def test_compare_old_new_uses_mst_and_id_only_is_rejected():
+    api = law_api()
+    from app.lawapi import LawApiError
+    with pytest.raises(LawApiError):
+        await api.old_new("001872")  # ID-only: stub returns the error body
+    assert set(await api.old_new("001872", "100001")) == {"50", "56"}
+
+
+async def test_old_new_via_agent_succeeds_with_mst_in_request():
+    llm = Scripted(tc("compare_old_new", law_id="001872"), final(["oldnew:001872:50"]))
+    r = await analyze(req(), llm)
+    assert r.tool_calls[0].evidence_ids == ["oldnew:001872:50", "oldnew:001872:56"]
+
+
+async def test_agent_falls_back_to_id_without_mst():
+    request = AnalyzeRequest(run_id="r", group_code="g", interest_text="x", law={**LAW, "mst": None}, evidence=[])
+    llm = Scripted(tc("compare_old_new", law_id="001872"), tc("get_article", law_id="001872", article_no="50"),
+                   final(["law:001872:50"]))
+    r = await analyze(request, llm)
+    assert r.tool_calls[0].result_summary.startswith("오류:")
+    assert r.tool_calls[1].evidence_ids == ["law:001872:50"]
+
+
+async def test_slow_tool_hits_deadline(monkeypatch):
+    now = [0.0]
+    monkeypatch.setattr(loop, "_now", lambda: now[0])
+    monkeypatch.setattr(loop, "DEADLINE_S", 0.05)
+
+    async def slow(self, name, args):
+        await asyncio.sleep(5)
+        return []
+
+    monkeypatch.setattr(loop.Tools, "run", slow)
+    t0 = asyncio.get_event_loop().time()
+    r = await analyze(req(), Scripted(tc("get_article", law_id="001872", article_no="50")))
+    assert r.status == "insufficient_evidence"
+    assert asyncio.get_event_loop().time() - t0 < 2
+
+
+async def test_deadline_checked_between_tool_calls(monkeypatch):
+    now = [0.0]
+    monkeypatch.setattr(loop, "_now", lambda: now[0])
+    ran = []
+
+    async def tick(self, name, args):
+        ran.append(name)
+        now[0] += 200  # clock jumps past the 120s deadline
+        return []
+
+    monkeypatch.setattr(loop.Tools, "run", tick)
+
+    class Two(Scripted):
+        async def chat(self, *a, **k):
+            return LLMResponse(content=None, provider=self.info, tool_calls=[
+                ToolCall(id="a", name="get_group_interest", arguments={}),
+                ToolCall(id="b", name="get_group_interest", arguments={})])
+
+    r = await analyze(req(), Two())
+    assert r.status == "insufficient_evidence" and ran == ["get_group_interest"]
+
+
+async def test_unexpected_tool_exception_is_fed_back(monkeypatch):
+    async def boom(self, name, args):
+        raise RuntimeError("https://x/?OC=secret")
+
+    monkeypatch.setattr(loop.Tools, "run", boom)
+    llm = Scripted(tc("get_article", law_id="1", article_no="1"), final(["x"]))
+    r = await analyze(req([Evidence(id="x", kind="k", title="t", body="b")]), llm)
+    assert r.tool_calls[0].result_summary == "오류: RuntimeError"
+    assert "secret" not in json.dumps(llm.last_messages)
+
+
+async def test_non_dict_arguments_do_not_crash():
+    bad = ToolCall(id="z", name="get_article", arguments=["oops"])  # type: ignore[arg-type]
+    r = await analyze(req([Evidence(id="x", kind="k", title="t", body="b")]), Scripted(bad, final(["x"])))
+    assert r.tool_calls[0].result_summary.startswith("오류:")
+
+
+async def test_clause_and_item_text_is_flattened(monkeypatch):
+    unit = {"조문번호": "50", "조문여부": "조문", "조문제목": "근로시간", "조문내용": "제50조(근로시간)",
+            "항": [{"항내용": "① 첫째 항", "호": [{"호내용": "1. 첫 호", "목": [{"목내용": "가. 첫 목"}]}, {"호내용": "2. 둘째 호"}]},
+                   {"항내용": "② 둘째 항"}]}
+    body = {"법령": {"조문": {"조문단위": [unit]}}}
+    api = LawApi(client=httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=body))), oc="k")
+    got = (await api.law_articles("1"))["50"]["body"]
+    assert got.splitlines() == ["제50조(근로시간)", "① 첫째 항", "1. 첫 호", "가. 첫 목", "2. 둘째 호", "② 둘째 항"]
+
+
+async def test_oc_never_logged(caplog):
+    import app.main  # noqa: F401  (sets httpx/httpcore log levels at startup)
+    caplog.set_level(logging.DEBUG)
+    api = law_api()
+    await api.law_articles("001872", "100001")
+    assert "test-oc" not in caplog.text

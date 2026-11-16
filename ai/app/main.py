@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import FastAPI
 
 from app.agent.loop import AnalyzeRequest, AnalyzeResponse, analyze
@@ -7,6 +9,10 @@ from app.classify import ClassifyRequest, ClassifyResponse, classify
 from app.errors import register_handlers
 from app.rag.factory import get_retriever
 from app.schemas import EmbedRequest, EmbedResponse
+
+# httpx logs full request URLs (incl. the law API OC) at INFO/DEBUG
+for _name in ("httpx", "httpcore"):
+    logging.getLogger(_name).setLevel(logging.WARNING)
 
 app = FastAPI(title="LexWatch AI")
 register_handlers(app)

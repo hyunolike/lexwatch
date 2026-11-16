@@ -34,6 +34,36 @@ def _as_list(v: Any) -> list[Any]:
     return v if isinstance(v, list) else [v]
 
 
+def _text(v: Any) -> str:
+    if isinstance(v, list):
+        return " ".join(_text(x) for x in v if x)
+    return str(v).strip() if v else ""
+
+
+def _flatten(unit: dict[str, Any]) -> str:
+    """조문내용 followed by 항 -> 호 -> 목 text, in order."""
+    lines: list[str] = []
+
+    def walk(node: dict[str, Any], content_key: str, child: tuple[str, str] | None) -> None:
+        t = _text(node.get(content_key))
+        if t:
+            lines.append(t)
+        if child:
+            sub_key, sub_content = child
+            nxt = {"항": ("호", "호내용"), "호": ("목", "목내용"), "목": None}[sub_key]
+            for c in _as_list(node.get(sub_key)):
+                if isinstance(c, dict):
+                    walk(c, sub_content, nxt)
+
+    t = _text(unit.get("조문내용"))
+    if t:
+        lines.append(t)
+    for h in _as_list(unit.get("항")):
+        if isinstance(h, dict):
+            walk(h, "항내용", ("호", "호내용"))
+    return "\n".join(lines)
+
+
 def _check(data: Any) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise LawApiError("법령 API 응답 형식 오류")
@@ -46,16 +76,16 @@ class LawApi:
     def __init__(self, client: httpx.AsyncClient | None = None, oc: str | None = None, timeout: float = 15.0):
         self._client = client
         self._oc = oc if oc is not None else os.environ.get("LAW_OC", "")
-        self._timeout = timeout
+        self.timeout = timeout  # callers may lower this per call to honour a global deadline
 
     async def _get(self, endpoint: str, params: dict[str, str]) -> dict[str, Any]:
         if not self._oc:
             raise LawApiError("LAW_OC 미설정")
         q = {"OC": self._oc, "type": "JSON", **params}
         own = self._client is None
-        client = self._client or httpx.AsyncClient(timeout=self._timeout)
+        client = self._client or httpx.AsyncClient(timeout=self.timeout)
         try:
-            r = await client.get(BASE + endpoint, params=q)
+            r = await client.get(BASE + endpoint, params=q, timeout=self.timeout)
         except httpx.HTTPError as e:
             raise LawApiError(f"법령 API 호출 실패: {type(e).__name__}") from None  # no URL (contains OC)
         finally:
@@ -68,8 +98,12 @@ class LawApi:
         except ValueError:
             raise LawApiError("법령 API 응답이 JSON이 아님(XML/HTML 오류 가능)") from None
 
-    async def law_articles(self, law_id: str) -> dict[str, dict[str, str]]:
-        data = await self._get("lawService.do", {"target": "law", "ID": law_id})
+    @staticmethod
+    def _key(law_id: str, mst: str | None) -> dict[str, str]:
+        return {"MST": mst} if mst else {"ID": law_id}
+
+    async def law_articles(self, law_id: str, mst: str | None = None) -> dict[str, dict[str, str]]:
+        data = await self._get("lawService.do", {"target": "law", **self._key(law_id, mst)})
         units = _as_list((data.get("법령") or {}).get("조문", {}).get("조문단위"))
         out: dict[str, dict[str, str]] = {}
         for u in units:
@@ -79,13 +113,13 @@ class LawApi:
             if not no:
                 continue
             key = no + (f"의{u['조문가지번호']}" if u.get("조문가지번호") else "")
-            out[key] = {"title": u.get("조문제목", ""), "body": u.get("조문내용", "")}
+            out[key] = {"title": u.get("조문제목", ""), "body": _flatten(u)}
         if not out:
             raise LawApiError("조문을 찾을 수 없음")
         return out
 
-    async def old_new(self, law_id: str) -> dict[str, dict[str, str]]:
-        data = await self._get("lawService.do", {"target": "oldAndNew", "ID": law_id})
+    async def old_new(self, law_id: str, mst: str | None = None) -> dict[str, dict[str, str]]:
+        data = await self._get("lawService.do", {"target": "oldAndNew", **self._key(law_id, mst)})
         svc = data.get("OldAndNewService") or {}
         old = {article_key(s): s for s in _as_list((svc.get("구조문목록") or {}).get("조문")) if article_key(s)}
         new = {article_key(s): s for s in _as_list((svc.get("신조문목록") or {}).get("조문")) if article_key(s)}

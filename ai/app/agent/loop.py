@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import time
@@ -19,6 +20,8 @@ from app.schemas import Evidence, LawSummary, MemoSentence, ProviderInfo
 MAX_TOOL_CALLS = 8
 DEADLINE_S = 120.0
 MAX_NUDGES = 2
+HTTP_TIMEOUT_S = 15.0
+_now = time.monotonic  # patchable clock
 KEYLESS_PROVIDER = ProviderInfo(name="extract-fallback", kind="fallback")
 KEYLESS_PREFIX = "[키 없음 · 원문 발췌] "
 KEYLESS_QUESTION = "키 없음: 모델 분석을 수행하지 않았습니다."
@@ -120,8 +123,9 @@ async def analyze(req: AnalyzeRequest, llm: LLMProvider | None = None) -> Analyz
     llm = llm or get_llm()
     if isinstance(llm, MockLLMProvider):
         return _keyless(req)
-    deadline = time.monotonic() + DEADLINE_S
-    tools = Tools(get_law_api(), get_retriever(), req.group_code, req.interest_text)
+    deadline = _now() + DEADLINE_S
+    tools = Tools(get_law_api(), get_retriever(), req.group_code, req.interest_text, req.law.mst, req.law.law_id)
+    api = tools.api
     known = {e.id for e in req.evidence}
     new: dict[str, Evidence] = {}
     calls: list[ToolCallRecord] = []
@@ -135,7 +139,7 @@ async def analyze(req: AnalyzeRequest, llm: LLMProvider | None = None) -> Analyz
     used = 0
 
     while True:
-        if time.monotonic() >= deadline:
+        if _now() >= deadline:
             return _insufficient(provider, calls, new)
         try:
             resp = await llm.chat(messages, tools=TOOL_SCHEMAS, response_format=_FORMAT, deadline=deadline)
@@ -160,24 +164,31 @@ async def analyze(req: AnalyzeRequest, llm: LLMProvider | None = None) -> Analyz
                 }
             )
             for tc in resp.tool_calls:
-                if used >= MAX_TOOL_CALLS:
+                remaining = deadline - _now()
+                if used >= MAX_TOOL_CALLS or remaining <= 0:
                     return _insufficient(provider, calls, new)
                 used += 1
                 ids: list[str] = []
                 try:
                     if tc.name not in TOOL_NAMES:
                         raise ValueError(f"알 수 없는 도구: {tc.name}")
-                    found = await tools.run(tc.name, tc.arguments)
+                    api.timeout = max(0.001, min(HTTP_TIMEOUT_S, remaining))
+                    found = await asyncio.wait_for(tools.run(tc.name, tc.arguments), timeout=remaining)
                     for e in found:
                         ids.append(e.id)
                         if e.id not in known:
                             new.setdefault(e.id, e)
                     summary = f"{len(found)}건 확보" if found else "결과 없음"
                     result = "\n\n".join(_render(e) for e in found) or "결과 없음"
-                except (LawApiError, ValueError) as e:
+                except TimeoutError:
+                    return _insufficient(provider, calls, new)
+                except (LawApiError, ValueError) as e:  # messages are URL/OC-free by construction
                     summary = f"오류: {e}"
                     result = summary
-                calls.append(ToolCallRecord(seq=used, tool=tc.name, args=tc.arguments, result_summary=summary, evidence_ids=ids))
+                except Exception as e:  # noqa: BLE001 - tool failures never abort the loop
+                    summary = f"오류: {type(e).__name__}"
+                    result = summary
+                calls.append(ToolCallRecord(seq=used, tool=tc.name, args=tc.arguments if isinstance(tc.arguments, dict) else {}, result_summary=summary, evidence_ids=ids))
                 messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
             continue
 

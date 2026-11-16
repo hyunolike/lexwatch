@@ -24,6 +24,7 @@ class LawSummary(BaseModel):
     promulgation_date: date
     effective_date: date | None = None
     summary: str
+    mst: str | None = None  # 법령일련번호; preferred over law_id for lawService calls
 
 
 class MemoSentence(BaseModel):
