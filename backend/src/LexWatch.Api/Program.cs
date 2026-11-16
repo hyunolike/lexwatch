@@ -1,3 +1,4 @@
+using LexWatch.Api.Ai;
 using LexWatch.Api.Data;
 using LexWatch.Api.Jobs;
 using LexWatch.Api.LawApi;
@@ -16,7 +17,11 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHostedService<WorkflowWorker>();
 
 builder.Services.AddLawApi();
+builder.Services.AddAiGateway();
 builder.Services.AddScoped<IStepHandler, FetchArticlesStep>();
+builder.Services.AddScoped<IStepHandler, ClassifyStep>();
+builder.Services.AddScoped<IStepHandler, AnalyzeStep>();
+builder.Services.AddScoped<IStepHandler, CritiqueStep>();
 builder.Services.AddScoped(sp => new CollectService(
     sp.GetRequiredService<LexWatchDb>(), sp.GetRequiredService<LawApiClient>(), sp.GetRequiredService<TimeProvider>()));
 
