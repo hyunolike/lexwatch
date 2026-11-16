@@ -43,6 +43,7 @@ public class WorkflowWorker(IServiceScopeFactory scopes, TimeProvider time, ILog
         if (run.Status == RunStatus.Queued) run.Status = RunStatus.Running;
 
         var handler = scope.ServiceProvider.GetServices<IStepHandler>().FirstOrDefault(h => h.Step == step.Step);
+        var claimedAttempt = step.Attempt;
         var sw = Stopwatch.StartNew();
         StepResult result;
         if (handler is null)
@@ -54,6 +55,8 @@ public class WorkflowWorker(IServiceScopeFactory scopes, TimeProvider time, ILog
             try
             {
                 result = await handler.ExecuteAsync(new StepContext(step, run, db), ct);
+                if (result is StepResult.Succeeded { ProviderKind: var kind } && !ProviderKinds.Contains(kind))
+                    throw new ArgumentException($"알 수 없는 ProviderKind: {kind}");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -66,6 +69,20 @@ public class WorkflowWorker(IServiceScopeFactory scopes, TimeProvider time, ILog
             }
         }
 
+        // 결과 반영은 한 트랜잭션. 행 잠금 + (Running, 집은 시도 번호) 확인으로 소유권을 검증한다.
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var running = nameof(StepStatus.Running);
+        var owned = await db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE "StepRuns" SET "Id" = "Id"
+            WHERE "Id" = {step.Id} AND "Status" = {running} AND "Attempt" = {claimedAttempt}
+            """, ct);
+        if (owned == 0)
+        {
+            log.LogWarning("stale result discarded step={Step} id={Id} attempt={Attempt}", step.Step, step.Id, claimedAttempt);
+            await tx.RollbackAsync(ct);
+            return true;
+        }
+
         var now = time.GetUtcNow();
         await ApplyAsync(db, step, run, result, now, ct);
         step.DurationMs = (int)sw.ElapsedMilliseconds;
@@ -73,8 +90,11 @@ public class WorkflowWorker(IServiceScopeFactory scopes, TimeProvider time, ILog
 
         await UpdateRunStatusAsync(db, run, now, ct);
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         return true;
     }
+
+    private static readonly HashSet<string> ProviderKinds = ["nvidia", "fallback", "replay", "none"];
 
     private async Task ApplyAsync(LexWatchDb db, StepRun step, WorkflowRun run, StepResult result,
         DateTimeOffset now, CancellationToken ct)

@@ -84,7 +84,7 @@ public class WorkflowWorkerTests(PostgresFixture pg) : IAsyncLifetime
         var first = await EnqueueAsync(run, "collect", time);
         var worker = Seed.Worker(pg, time,
             new LambdaHandler("collect", _ => new StepResult.Succeeded(new { n = 2 },
-                [new NextStep("fetch_articles", null, new { a = 1 }), new NextStep("classify", null, null)], "api", "law")),
+                [new NextStep("fetch_articles", null, new { a = 1 }), new NextStep("classify", null, null)], "nvidia", "law")),
             new LambdaHandler("fetch_articles", _ => new StepResult.Succeeded(null, [])),
             new LambdaHandler("classify", _ => new StepResult.Succeeded(null, [])));
 
@@ -94,7 +94,7 @@ public class WorkflowWorkerTests(PostgresFixture pg) : IAsyncLifetime
         {
             var f = await db.StepRuns.SingleAsync(s => s.Id == first.Id);
             Assert.Equal(StepStatus.Succeeded, f.Status);
-            Assert.Equal("api", f.ProviderKind);
+            Assert.Equal("nvidia", f.ProviderKind);
             Assert.Equal("law", f.ProviderName);
             Assert.NotNull(f.DurationMs);
             var next = await db.StepRuns.Where(s => s.Id != first.Id).ToListAsync();
@@ -162,5 +162,49 @@ public class WorkflowWorkerTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Contains(await db2.StepRuns.ToListAsync(), s => s.Status == StepStatus.NeedsReview);
         Assert.NotEqual(RunStatus.Failed, (await db2.WorkflowRuns.SingleAsync()).Status);
         Assert.NotEqual(RunStatus.Completed, (await db2.WorkflowRuns.SingleAsync()).Status);
+    }
+
+    [Fact]
+    public async Task Stale_worker_result_is_discarded_after_reclaim()
+    {
+        var run = await Seed.RunAsync(pg);
+        var time = new FakeTime(T0);
+        var step = await EnqueueAsync(run, "collect", time);
+        var worker = Seed.Worker(pg, time, new LambdaHandler("collect", _ =>
+        {
+            // 리스가 만료되고 다른 작업자(B)가 재선점한다.
+            time.Now = T0.AddMinutes(6);
+            using var dbB = pg.CreateDb();
+            var b = new StepQueue(dbB, time).ClaimNextAsync(TimeSpan.FromMinutes(5)).GetAwaiter().GetResult();
+            Assert.Equal(2, b!.Attempt);
+            return new StepResult.Succeeded(null, [new NextStep("classify", null, null)]);
+        }));
+
+        Assert.True(await worker.RunOnceAsync());
+
+        await using var db = pg.CreateDb();
+        var s = await db.StepRuns.SingleAsync();
+        Assert.Equal(step.Id, s.Id);
+        Assert.Equal(StepStatus.Running, s.Status);
+        Assert.Equal(2, s.Attempt);
+        Assert.Equal(1, await db.StepRuns.CountAsync());
+    }
+
+    [Fact]
+    public async Task Unknown_provider_kind_is_rejected_and_retried()
+    {
+        var run = await Seed.RunAsync(pg);
+        var time = new FakeTime(T0);
+        var step = await EnqueueAsync(run, "collect", time);
+        var worker = Seed.Worker(pg, time,
+            new LambdaHandler("collect", _ => new StepResult.Succeeded(null, [new NextStep("classify", null, null)], "api")));
+
+        await worker.RunOnceAsync();
+
+        var s = await LoadAsync(step.Id);
+        Assert.Equal(StepStatus.RetryScheduled, s.Status);
+        Assert.Equal("HANDLER_EXCEPTION", s.ErrorCode);
+        await using var db = pg.CreateDb();
+        Assert.Equal(1, await db.StepRuns.CountAsync());
     }
 }
