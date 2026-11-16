@@ -21,6 +21,8 @@ builder.Services.AddAiGateway();
 builder.Services.AddScoped<IStepHandler, FetchArticlesStep>();
 builder.Services.AddScoped<IStepHandler, ClassifyStep>();
 builder.Services.AddScoped<IStepHandler, AnalyzeStep>();
+builder.Services.AddScoped<IStepHandler, CriticCitationStep>();
+builder.Services.AddScoped<IStepHandler, CriticSourceStep>();
 builder.Services.AddScoped<IStepHandler, CritiqueStep>();
 builder.Services.AddScoped(sp => new CollectService(
     sp.GetRequiredService<LexWatchDb>(), sp.GetRequiredService<LawApiClient>(), sp.GetRequiredService<TimeProvider>()));
