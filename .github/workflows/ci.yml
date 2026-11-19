@@ -80,6 +80,57 @@ jobs:
       - run: docker build -f ai/Dockerfile -t lexwatch-ai:ci .
       - run: docker build -f web/Dockerfile -t lexwatch-web:ci .
 
+  deploy-vercel:
+    # main에 push되고 다섯 검사가 모두 통과했을 때만 Vercel(web, ai) 프로덕션을 배포한다.
+    # vercel.json의 git.deploymentEnabled.main=false로 Git 연동의 프로덕션 자동 배포는 꺼져 있다. PR 미리보기는 그대로.
+    needs: [backend, ai, openapi-drift, web, docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: web
+            project_id: prj_v2DhruJFOamdPmxiQZWSvJA8yTo5
+            check_url: https://lexwatch-web.vercel.app/
+          - name: ai
+            project_id: prj_ZhL9slWEJ7pobFh283gtAJGJGC2F
+            check_url: https://lexwatch-ai.vercel.app/health
+    concurrency:
+      group: deploy-vercel-${{ matrix.name }}
+      cancel-in-progress: false
+    env:
+      VERCEL_ORG_ID: team_JLPkhn7nreUDgCKarZrAD9ZP
+      VERCEL_PROJECT_ID: ${{ matrix.project_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Vercel 프로덕션 배포 (${{ matrix.name }})
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::VERCEL_TOKEN 시크릿이 없다. docs/deploy.md '자동 배포' 절을 보고 넣는다."
+            exit 1
+          fi
+          npm install --global --no-fund --no-audit vercel@59.11.2
+          # 저장소 루트에서 배포하면 프로젝트의 Root Directory(web, ai) 설정을 따른다.
+          vercel deploy --prod --yes --token "$VERCEL_TOKEN" > deploy-url.txt
+          echo "배포: $(cat deploy-url.txt)"
+      - name: 공개 주소 확인 (${{ matrix.name }})
+        run: |
+          for i in $(seq 1 10); do
+            code=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 30 "${{ matrix.check_url }}" || true)
+            if [ "$code" = "200" ]; then echo "ok: ${{ matrix.check_url }}"; exit 0; fi
+            echo "대기 ${i}/10 (HTTP ${code})"
+            sleep 10
+          done
+          echo "::error::${{ matrix.check_url }}가 200을 돌려주지 않는다."
+          exit 1
+
   deploy-api:
     # main에 push되고 위 다섯 잡이 모두 통과했을 때만 Render API를 배포한다.
     # Vercel(web, ai)은 Git 연동으로 따로 배포된다. 절차와 시크릿: docs/deploy.md "자동 배포"

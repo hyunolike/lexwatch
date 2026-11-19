@@ -9,5 +9,10 @@
       "maxDuration": 150,
       "excludeFiles": "{tests/**,.venv/**,**/__pycache__/**,openapi.json,uv.lock,README.md}"
     }
+  },
+  "git": {
+    "deploymentEnabled": {
+      "main": false
+    }
   }
 }
