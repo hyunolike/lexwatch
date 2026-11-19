@@ -99,15 +99,15 @@ export function CountBadge({ count, label, tone = "neutral" }: { count: number; 
   );
 }
 
-/** 신뢰도: 숫자 + 5칸 막대. 0~1 밖은 잘라 낸다. 값이 없으면 "—". */
+/** 실무그룹 관련성. 초안 정확도와 구분하며 0~1 밖은 잘라 낸다. */
 export function ConfidenceMeter({ value }: { value: number | null }) {
-  if (value == null) return <span className="text-caption text-ink-subtle">신뢰도 —</span>;
+  if (value == null) return <span className="text-caption text-ink-subtle">그룹 관련성 —</span>;
   const v = Math.min(1, Math.max(0, value));
   const pct = Math.round(v * 100);
   const filled = Math.round(v * 5);
   return (
-    <Meter.Root value={pct} aria-label="신뢰도" className="inline-flex items-center gap-2">
-      <Meter.Label className="text-caption text-ink-subtle">신뢰도</Meter.Label>
+    <Meter.Root value={pct} aria-label="그룹 관련성" className="inline-flex items-center gap-2">
+      <Meter.Label className="text-caption text-ink-subtle">그룹 관련성</Meter.Label>
       <span aria-hidden className="flex gap-0.5">
         {Array.from({ length: 5 }, (_, i) => (
           <span key={i} className={cx("h-2.5 w-1.5 rounded-[1px]", i < filled ? "bg-brand" : "bg-line")} />

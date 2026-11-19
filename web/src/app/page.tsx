@@ -18,21 +18,21 @@ function Row({ r }: { r: ReviewSummary }) {
     <li>
       <Link
         href={`/reviews/${r.id}`}
-        className="group flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 transition-colors duration-[120ms] hover:bg-surface-sunken"
+        className="group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 px-4 py-4 transition-colors duration-[120ms] hover:bg-surface-sunken md:grid-cols-[minmax(0,1fr)_6rem_11rem_4rem_7rem_1rem]"
       >
-        <span className="min-w-0 flex-1 basis-64">
-          <span className="block truncate text-ui font-semibold text-ink">{r.lawName}</span>
+        <span className="col-span-2 min-w-0 md:col-span-1">
+          <span className="block text-ui font-semibold break-words text-ink">{r.lawName}</span>
           <span className="block text-caption text-ink-subtle">{r.isReplay ? REPLAY_NOTE : `${r.promulgationDate} 공포`}</span>
         </span>
-        {r.findingCount > 0 && <CountBadge count={r.findingCount} label="크리틱 적발" tone="danger" />}
-        <ConfidenceMeter value={r.confidence} />
+        <span className="w-fit"><CountBadge count={r.findingCount} label="확인 필요" tone="danger" /></span>
+        <span className="justify-self-end md:justify-self-start"><ConfidenceMeter value={r.confidence} /></span>
         <span className="text-caption text-ink-muted tabular-nums">근거 {r.evidenceCount}건</span>
-        <span className="flex gap-1">
+        <span className="flex flex-wrap justify-end gap-1 md:justify-start">
           {kindsOf(r).map((k) => (
             <SourceLabel key={k} kind={k} tooltip={false} />
           ))}
         </span>
-        <ChevronRight aria-hidden className="size-4 text-ink-subtle transition-transform duration-[120ms] group-hover:translate-x-0.5" />
+        <ChevronRight aria-hidden className="hidden size-4 text-ink-subtle transition-transform duration-[120ms] group-hover:translate-x-0.5 md:block" />
       </Link>
     </li>
   );
@@ -74,7 +74,11 @@ export default function Home() {
   const role = useRole();
   return (
     <div className="space-y-5">
-      <PageHeader title="승인 대기함" />
+      <div className="space-y-2">
+        <PageHeader title="승인 대기함" />
+        <p className="max-w-reading text-ui text-ink-muted">확인이 필요한 초안을 먼저 살펴보고, 근거를 대조한 뒤 승인해 주세요.</p>
+        <p className="max-w-reading text-caption text-ink-subtle">그룹 관련성은 법령과 실무그룹의 관련 정도예요. 초안의 정확도를 뜻하지 않아요.</p>
+      </div>
       <WakeGate<ReviewSummary[]> key={role} load={() => apiFetch<ReviewSummary[]>("/api/reviews")}>
         {(res) =>
           Array.isArray(res.data) ? (

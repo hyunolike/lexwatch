@@ -130,6 +130,16 @@ export default function DesignSystemPage() {
 
       <Showcase />
 
+      <section aria-labelledby="patterns" className="space-y-3">
+        <h2 id="patterns" className="text-title-md text-ink">화면 구성 규칙</h2>
+        <dl className={`${CARD} space-y-5 p-5 text-ui`}>
+          <div><dt className="font-semibold">확인할 문제 → 근거 대조 → 결정</dt><dd className="mt-1 text-ink-muted">상세 상단에서 확인할 문장 수와 첫 문장 이동을 제공해요. 검사 메시지를 먼저 쓰고 단계와 규칙 코드는 접힌 검사 정보에 둬요. 지적이 없다는 사실을 정확도 보장으로 표현하지 않아요.</dd></div>
+          <div><dt className="font-semibold">작업 폭과 읽기 폭</dt><dd className="mt-1 text-ink-muted">작업 영역은 최대 70rem, 초안은 최대 48rem이에요. 초안 아래에서 신구조문을 작업 영역 전체 폭으로 비교해요. 768px 미만에서는 조문을 탭으로 바꿔요. 간격은 4px 단위로, 같은 문장 안 8~12px, 카드 안 16~24px, 구역 사이 32px를 사용해요.</dd></div>
+          <div><dt className="font-semibold">목록의 정보 순서</dt><dd className="mt-1 text-ink-muted">법령명, 확인 필요 수, 그룹 관련성, 근거 수, 출처 순서예요. 데스크톱에서는 행마다 같은 열에 정렬해요. 그룹 관련성은 초안 정확도가 아니에요. 재현 데이터라는 설명을 숨기지 않아요.</dd></div>
+          <div><dt className="font-semibold">겹치는 화면의 순서</dt><dd className="mt-1 text-ink-muted">결정 영역 20, 헤더 30, 팝오버 40, 확인창과 뒤 배경 60, 툴팁 70 순서예요. 확인창은 불투명한 표면과 뒤 배경 가림을 함께 사용해요.</dd></div>
+        </dl>
+      </section>
+
       <section aria-labelledby="mascot" className="space-y-3">
         <h2 id="mascot" className="text-title-md text-ink">마스코트 렉스</h2>
         <p className="max-w-[40em] text-ui text-ink-muted">

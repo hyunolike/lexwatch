@@ -45,3 +45,17 @@
 ## 다음 시작점
 
 PR 리뷰. 배포 시 Render는 수동 배포가 필요하고 마이그레이션 `EvidenceChangeMarks`가 기동 때 적용된다.
+
+## 화면 진단 후 개선 계획 (2026-11-19)
+
+기준: `056cf11`, 작업 전 변경 없음. 공용 worktree에서 동시 문서 작업이 브랜치를 변경해 `/private/tmp/lexwatch-design-system-repair`의 `fix/design-system-repair`로 수정본을 옮겼다. 원래 작업공간에는 해당 수정만 되돌려 문서 작업을 보존했다.
+사용자가 진단 결과에 대해 ‘진행해줘’로 복구와 개선을 승인했다. 구현은 현재 세션에서 진행한다.
+
+1. [ ] DS-16: 배포 로그/소스/최종 CSS 비교. `web/scripts/verify-design-css.mjs`와 `.test.mjs`를 추가한다. 현 배포 CSS 누락을 재현하고, 정상 CSS/분할 CSS/누락/HTTP 실패 검사를 검증한다. `web/package.json`의 build 뒤 검사 연결. 캐시 없는 Vercel 빌드와 공개 CSS로 복구 확인.
+2. [ ] DS-17~20: `web/src/lib/reviewPresentation.ts`와 테스트. 초안 null/0건/한 문장 여러 지적/여러 문장 지적을 검사하고 `flaggedSentences`, `firstFlaggedIndex`를 반환한다. `badges.tsx`의 그룹 관련성 표기, `page.tsx`의 목록 정렬, `DraftEditor.tsx`의 번호/앵커/접힌 검사 상세, `reviews/[id]/ReviewClient.tsx`의 읽기 순서와 문제 요약을 적용한다.
+3. [ ] DS-19와 대화상자: `tokens.css`, `layout.tsx`, `ui/ConfirmDialog.tsx`, `globals.css`에 작업/읽기 폭, 레이어, 앵커 스크롤 여유를 정한다. `ds/AppHeader.tsx`와 `RoleSwitch.tsx`에서 모바일 헤더를 두 줄로 줄여 앵커가 가려지지 않게 한다. `design-system/{page.tsx,Showcase.tsx}`에 사용 규칙과 표기를 반영한다. 카드/버튼/색은 기존 부품을 사용한다.
+4. [ ] 검증: `pnpm test`, `node --test scripts/verify-design-css.test.mjs`, `pnpm exec tsc --noEmit`, `pnpm lint`, `pnpm build`. 배포 CSS 검사. 브라우저에서 목록→상세→확인 필요 이동→인용 팝오버→승인 확인 후 취소. 모바일 375px과 키보드 포커스 확인. 독립 검토 결과는 reviews에 보관한다.
+
+검토 초점: 초안 없는 검토의 승인 차단 유지, 관리자 읽기 전용 유지, 편집 시 미검증 지적을 해결됐다고 표시하지 않기, 지적 0건을 품질 보장으로 표현하지 않기, 모달이 sticky 헤더 아래로 가지 않기.
+
+배포 및 검증 기록은 이 절에 이어 쓴다. Render/API와 데이터는 이번 변경 대상이 아니다.

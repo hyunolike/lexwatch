@@ -10,6 +10,11 @@
     @apply bg-canvas font-sans text-ui text-ink antialiased;
   }
 
+  /* 요약에서 이동한 문장이 sticky 헤더에 가려지지 않도록 한다. */
+  [id^="draft-sentence-"] {
+    scroll-margin-top: 8rem;
+  }
+
   /* 모든 대화형 요소에 같은 포커스 링: 불투명 2px, 2px 띄움 */
   :where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
     @apply outline-2 outline-offset-2 outline-focus;

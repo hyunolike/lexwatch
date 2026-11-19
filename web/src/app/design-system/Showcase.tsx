@@ -113,13 +113,15 @@ export function Showcase() {
           </div>
         </Block>
 
-        <Block title="CountBadge와 ConfidenceMeter" note="크리틱 적발 수만 danger. 신뢰도는 숫자와 5칸 막대.">
+        <Block title="CountBadge와 ConfidenceMeter" note="확인 필요 수만 danger. 그룹 관련성은 숫자와 5칸 막대이며 초안 정확도가 아니다.">
           <div className="flex flex-wrap items-center gap-3">
-            <CountBadge count={2} label="크리틱 적발" tone="danger" />
-            <CountBadge count={0} label="크리틱 적발" tone="danger" />
+            <CountBadge count={2} label="확인 필요" tone="danger" />
+            <CountBadge count={0} label="확인 필요" tone="danger" />
             <ConfidenceMeter value={0.92} />
             <ConfidenceMeter value={0.41} />
             <ConfidenceMeter value={null} />
+            <ConfidenceMeter value={0} />
+            <ConfidenceMeter value={1} />
           </div>
         </Block>
 
@@ -135,7 +137,11 @@ export function Showcase() {
             <Callout tone="info">재현 예시예요. 실제 공포 법령이 아니에요.</Callout>
             <Callout tone="warning" title="열린 질문">시행일 이전 계약에 적용되는지 확인이 필요해요.</Callout>
             <Callout tone="danger">
-              <span className="font-semibold">크리틱 3단 · OC-01</span> 경과규정 없이 시행일 이전 계약에 적용된다고 단정했어요.
+              <p>경과규정 없이 시행일 이전 계약에 적용된다고 단정했어요.</p>
+              <details className="mt-2 text-caption text-ink-muted">
+                <summary className="w-fit cursor-pointer rounded-sm">검사 정보</summary>
+                <p className="mt-1">크리틱 3단 · OC-01</p>
+              </details>
             </Callout>
           </div>
         </Block>

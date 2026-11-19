@@ -30,7 +30,11 @@ export function DraftEditor({
       {draft.sentences.map((s, i) => {
         const citations = editing ? (edited[i]?.citations ?? s.citations) : s.citations;
         return (
-          <div key={i} className={`${CARD} p-4`}>
+          <article key={i} id={`draft-sentence-${i + 1}`} tabIndex={-1} aria-label={`${i + 1}번째 문장`} className={`${CARD} p-4 sm:p-6`}>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="text-caption text-ink-subtle">문장 {i + 1}</span>
+              {s.findings.length > 0 && <span className="text-caption font-semibold text-danger">확인 필요</span>}
+            </div>
             {editing ? (
               <textarea
                 value={edited[i]?.sentence ?? s.sentence}
@@ -86,15 +90,16 @@ export function DraftEditor({
               <div className="mt-3 space-y-1.5">
                 {s.findings.map((f, k) => (
                   <Callout key={k} tone="danger" className="py-2">
-                    <span className="font-semibold">
-                      크리틱 {f.tier}단 · <span className="font-mono">{f.ruleId}</span>
-                    </span>{" "}
-                    {f.message}
+                    <p>{f.message}</p>
+                    <details className="mt-2 text-caption text-ink-muted">
+                      <summary className="w-fit cursor-pointer rounded-sm">검사 정보</summary>
+                      <p className="mt-1">크리틱 {f.tier}단 · <span className="font-mono">{f.ruleId}</span></p>
+                    </details>
                   </Callout>
                 ))}
               </div>
             )}
-          </div>
+          </article>
         );
       })}
       {draft.openQuestions.length > 0 && (

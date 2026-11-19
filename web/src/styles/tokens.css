@@ -91,6 +91,12 @@
   --shadow-pop: 0 8px 24px rgb(26 34 51 / 0.14);
   --shadow-dialog: 0 24px 48px rgb(26 34 51 / 0.24);
 
+  /* 화면 구성: 조문 비교는 작업 폭, 초안은 읽기 폭. 레이어는 모달이 가장 앞. */
+  --container-workspace: 70rem;
+  --container-reading: 48rem;
+  --layer-modal: 60;
+  --layer-tooltip: 70;
+
   /* 움직임 */
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
 }
