@@ -1,0 +1,304 @@
+{
+  "mode": "norules",
+  "provider": "cloudflare-workers-ai",
+  "source": [
+    "lawapi-recorded-2026-11-19"
+  ],
+  "detected": 11,
+  "overclaims": 13,
+  "rule_id_correct": null,
+  "false_positive_findings": 3,
+  "clean_cases_flagged": 2,
+  "clean": 7,
+  "rows": [
+    {
+      "id": "oc01-a",
+      "expected": [
+        "OC-01"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "The statement asserts that the safety‑measure obligation under Article 29 applies to contracts concluded before the amendment, but the cited provision only defines the duty itself and does not address its temporal or contractual scope. This exceeds the support provided by the evidence."
+        }
+      ]
+    },
+    {
+      "id": "oc01-b",
+      "expected": [
+        "OC-01"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "The memo asserts that the 8‑hour daily limit applies to employment contracts concluded before the law’s effective date, but the cited provision only states the limit without addressing retroactive applicability. This extends beyond the scope of the evidence."
+        }
+      ]
+    },
+    {
+      "id": "oc02-a",
+      "expected": [
+        "OC-02"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "The memo asserts a specific retention period of at least one year for access logs, which is not stipulated in the cited provision; the law only requires retention as prescribed by a Presidential decree without specifying duration."
+        }
+      ]
+    },
+    {
+      "id": "oc02-b",
+      "expected": [
+        "OC-02"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "The memo adds a specific deadline ('매년 3월 말까지') that is not stated in the cited law article, which only requires annual submission without specifying a date."
+        }
+      ]
+    },
+    {
+      "id": "oc03-a",
+      "expected": [
+        "OC-03"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "The statement overgeneralizes the Supreme Court ruling; the precedent discusses the definition of a business with 5 or more workers and specific counting methods, not a blanket principle that overtime premium rules always apply to workplaces temporarily below five workers."
+        }
+      ]
+    },
+    {
+      "id": "oc03-b",
+      "expected": [
+        "OC-03"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "The sentence asserts that the Supreme Court ruling establishes a general liability for damages to data subjects when personal information is leaked. The cited precedent concerns administrative fines for privacy violations, not civil damages, and the law article merely lists informational obligations and rights without creating a general liability rule. Therefore, the claim extends beyond the supporting evidence."
+        }
+      ]
+    },
+    {
+      "id": "oc04-a",
+      "expected": [
+        "OC-04"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "The memo states that \"모든 기업\" must retain access logs, but the law obligates only 개인정보처리자 (personal information processors) to keep such logs as prescribed by presidential decree, not every company."
+        }
+      ]
+    },
+    {
+      "id": "oc04-b",
+      "expected": [
+        "OC-04"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "The memo states that all workers receive a 100% premium for holiday work regardless of hours, but the law provides a 50% premium for holiday work up to 8 hours and a 100% premium only for holiday work exceeding 8 hours. This overstates the statutory provision."
+        }
+      ]
+    },
+    {
+      "id": "oc05-a",
+      "expected": [
+        "OC-05"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "oc05-b",
+      "expected": [
+        "OC-05"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "multi-1",
+      "expected": [
+        "OC-04"
+      ],
+      "overclaim_sentence_index": 2,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 2,
+          "rule_id": "GENERAL",
+          "message": "The statement '모든 사업자는 반드시 하루 8시간을 넘겨 근로시키면 안 된다' overstates the law; while the article sets a general 8‑hour limit, the Labor Standards Act permits overtime work under specific conditions (e.g., with employee consent and appropriate compensation)."
+        }
+      ]
+    },
+    {
+      "id": "multi-2",
+      "expected": [
+        "OC-01"
+      ],
+      "overclaim_sentence_index": 1,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 1,
+          "rule_id": "GENERAL",
+          "message": "법령 텍스트에 개정 조항이 시행일 이전에 발생한 개인정보 유출에도 적용된다는 근거가 없으며, 해당 내용은 과도하게 확장된 해석이다."
+        }
+      ]
+    },
+    {
+      "id": "multi-3",
+      "expected": [
+        "OC-02"
+      ],
+      "overclaim_sentence_index": 1,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 1,
+      "findings": [
+        {
+          "sentence_index": 1,
+          "rule_id": "GENERAL",
+          "message": "The memo states that companies must report the plan results quarterly, but the cited law only requires an annual plan submission to the Financial Services Commission, not quarterly reporting."
+        },
+        {
+          "sentence_index": 2,
+          "rule_id": "GENERAL",
+          "message": "The memo asserts that the detailed scope of applicable financial companies must be verified by consulting subordinate regulations, which is not expressed in the cited article."
+        }
+      ]
+    },
+    {
+      "id": "clean-1",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-2",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-3",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 1,
+      "findings": [
+        {
+          "sentence_index": 1,
+          "rule_id": "GENERAL",
+          "message": "The claim that the amendment's impact on specific workplaces requires further verification is not supported by the cited provision of the Labor Standards Act, which only sets the overtime pay rate."
+        }
+      ]
+    },
+    {
+      "id": "clean-4",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-5",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-6",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-7",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 1,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "The memo incorrectly states that the 500만원 fine is set in Article 101, paragraph 2. According to both the old and new texts, the 500만원 fine is specified in paragraph 1, not paragraph 2."
+        }
+      ]
+    }
+  ]
+}

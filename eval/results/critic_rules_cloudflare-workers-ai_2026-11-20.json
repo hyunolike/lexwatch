@@ -1,0 +1,299 @@
+{
+  "mode": "rules",
+  "provider": "cloudflare-workers-ai",
+  "source": [
+    "lawapi-recorded-2026-11-19"
+  ],
+  "detected": 13,
+  "overclaims": 13,
+  "rule_id_correct": 13,
+  "false_positive_findings": 0,
+  "clean_cases_flagged": 0,
+  "clean": 7,
+  "rows": [
+    {
+      "id": "oc01-a",
+      "expected": [
+        "OC-01"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-01",
+          "message": "The sentence asserts that the safety‑measure obligation of Article 29 applies to contracts concluded before the amendment’s effective date, but no transitional provision or other basis is cited; it improperly assumes retroactive application of the new rule."
+        }
+      ]
+    },
+    {
+      "id": "oc01-b",
+      "expected": [
+        "OC-01"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-01",
+          "message": "The memo asserts that the 8‑hour daily limit applies to employment contracts concluded before the provision’s effective date, but the cited article provides no transitional (부칙) provision supporting retroactive application."
+        }
+      ]
+    },
+    {
+      "id": "oc02-a",
+      "expected": [
+        "OC-02"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-02",
+          "message": "법령은 대통령령으로 정하는 바에 따라 접속기록 보관 등을 요구하고 있으나, 구체적인 보관 기간(1년 이상)을 명시하고 있지 않다. 하위법령(시행령·고시 등)이 확인되지 않은 위임 조항을 구체적 의무처럼 기술하고 있다."
+        }
+      ]
+    },
+    {
+      "id": "oc02-b",
+      "expected": [
+        "OC-02"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-02",
+          "message": "법령 제21조 제4항은 ‘매년’ 계획을 제출하도록 위임하고 있으나 구체적인 제출 기한(예: 3월 말)은 대통령령에 따르는 것으로, 해당 대통령령이 확인되지 않은 상태에서 메모는 ‘매년 3월 말까지’라는 구체적 의무를 기술하고 있어 하위법령이 확인되지 않은 위임 조항을 구체적 의무처럼 서술한 점이 과잉해석에 해당합니다."
+        }
+      ]
+    },
+    {
+      "id": "oc03-a",
+      "expected": [
+        "OC-03"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-03",
+          "message": "The memo presents the single Supreme Court decision as establishing a general principle that overtime premium rules always apply to workplaces with temporarily fewer than five workers. The precedent only interprets the definition of \"상시 5명 이상\" and does not create a blanket rule of universal applicability."
+        }
+      ]
+    },
+    {
+      "id": "oc03-b",
+      "expected": [
+        "OC-03"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-03",
+          "message": "The memo treats a single Supreme Court decision concerning the imposition of a fine as a general principle that “generally, liability for damages to data subjects is recognized” without sufficient authority; this overgeneralizes the precedent."
+        }
+      ]
+    },
+    {
+      "id": "oc04-a",
+      "expected": [
+        "OC-04"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-04",
+          "message": "법령은 개인정보처리자에게 대통령령이 정하는 범위 내에서 안전조치를 하도록 규정하고 있으며, '접속기록 보관'은 대통령령에 따라 정해지는 사항이다. 따라서 '모든 기업은 반드시 접속기록을 보관해야 한다'는 표현은 '모든 기업'과 '반드시'라는 절대적 표현으로 근거 조문보다 적용 범위를 넓히고 있다."
+        }
+      ]
+    },
+    {
+      "id": "oc04-b",
+      "expected": [
+        "OC-04"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-04",
+          "message": "법령은 휴일근로 8시간 이내는 통상임금의 50% 가산, 8시간 초과는 100% 가산이라고 규정하고 있으나, 메모는 '모든 근로자는 휴일근로 시간과 관계없이 통상임금의 100분의 100을 가산받는다'고 하여 '모든'·'관계없이'라는 표현으로 적용 범위를 넓히고 있다."
+        }
+      ]
+    },
+    {
+      "id": "oc05-a",
+      "expected": [
+        "OC-05"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-05",
+          "message": "The memo states that a violation of Animal Protection Act Article 101 paragraph 2 incurs a fine of up to 3 million won, citing the old provision. However, the revised provision raises the fine for paragraph 2 to up to 5 million won. Citing the pre‑amendment amount for the current penalty constitutes OC‑05."
+        }
+      ]
+    },
+    {
+      "id": "oc05-b",
+      "expected": [
+        "OC-05"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "OC-05",
+          "message": "The memo states that a violation of Article 101, Paragraph 4 of the Animal Protection Act carries a fine of up to 500,000 won, citing the old‑new source. However, the 500,000‑won fine pertains to the old version of Paragraph 4; in the revised (new) law, Paragraph 4 imposes a fine of up to 1,000,000 won, and the 500,000‑won limit is now in Paragraph 5. Thus the memo incorrectly uses the penalty amount from the pre‑amendment provision for the current provision."
+        }
+      ]
+    },
+    {
+      "id": "multi-1",
+      "expected": [
+        "OC-04"
+      ],
+      "overclaim_sentence_index": 2,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 2,
+          "rule_id": "OC-04",
+          "message": "The statement uses '반드시' and '모든 사업자는' to assert that no employer may ever have employees work more than 8 hours a day, which overstates the statutory limit that merely prohibits exceeding 8 hours without accounting for permissible overtime or exceptions."
+        }
+      ]
+    },
+    {
+      "id": "multi-2",
+      "expected": [
+        "OC-01"
+      ],
+      "overclaim_sentence_index": 1,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 1,
+          "rule_id": "OC-01",
+          "message": "법령 개정 조문에 시행일 이전에 발생한 유출에 대한 적용을 명시하고 있지 않음에도 불구하고, 개정이 사후 발생한 사건에도 적용된다고 단정하고 있다."
+        }
+      ]
+    },
+    {
+      "id": "multi-3",
+      "expected": [
+        "OC-02"
+      ],
+      "overclaim_sentence_index": 1,
+      "hit": true,
+      "rule_correct": true,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 1,
+          "rule_id": "OC-02",
+          "message": "The memo specifies a quarterly reporting requirement for financial companies based on the delegation in paragraph 4, without confirming the content of the implementing presidential decree, thereby treating the delegated provision as a concrete obligation."
+        }
+      ]
+    },
+    {
+      "id": "clean-1",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-2",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-3",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-4",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-5",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-6",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-7",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    }
+  ]
+}
