@@ -73,12 +73,8 @@
 시크릿이 없으면 `deploy-api`가 실패하고 그 사실을 로그에 남긴다. 수동 배포는 `render deploys create srv-dbt9gtgae00c73a31iag --commit <전체 SHA> --wait` 또는 대시보드의 Manual Deploy.
 
 Vercel 준비(한 번):
-1. 프로젝트 하나로 범위를 제한한 토큰을 web과 ai에 하나씩 만들어 바로 GitHub 시크릿에 넣는다. 값은 화면에 나오지 않는다.
-   ```bash
-   vercel tokens add lexwatch-ci-web --scope hyunho-jangs-projects --project lexwatch-web --json | jq -r .bearerToken | gh secret set VERCEL_TOKEN_WEB
-   vercel tokens add lexwatch-ci-ai --scope hyunho-jangs-projects --project lexwatch-ai --json | jq -r .bearerToken | gh secret set VERCEL_TOKEN_AI
-   ```
-2. 토큰 목록은 `vercel tokens list`, 지울 때는 `vercel tokens remove <id>`.
+1. Vercel 대시보드 → Account Settings → **Tokens**에서 토큰을 만든다. 범위는 `hyunho-jangs-projects` 팀으로 제한한다. CLI 로그인 세션으로는 `vercel tokens add`가 403(Cannot create tokens for this app)이라 대시보드에서 만든다.
+2. `gh secret set VERCEL_TOKEN`을 실행하고 토큰을 붙여 넣는다(명령줄 인자로 넘기지 않는다).
 3. 팀 ID(`team_JLPkhn7nreUDgCKarZrAD9ZP`)와 프로젝트 ID(web `prj_v2DhruJFOamdPmxiQZWSvJA8yTo5`, ai `prj_ZhL9slWEJ7pobFh283gtAJGJGC2F`)는 비밀이 아니라 `ci.yml`에 적어 두었다.
 
 저장소 루트에서 `vercel deploy`를 실행해도 프로젝트의 Root Directory 설정(`web`, `ai`)을 따른다. 2026-11-19에 두 프로젝트 모두 미리보기 배포로 확인했다.
