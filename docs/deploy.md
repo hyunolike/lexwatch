@@ -50,9 +50,29 @@
 - 예약 워크플로(`collect`, `reset-demo`)는 저장소의 **기본 브랜치**에서만 돈다. 처음 push한 `feat/mvp`가 기본 브랜치로 잡혀 있었고, `main`에 합친 뒤 기본 브랜치를 `main`으로 바꿨다. `reset-demo` 수동 실행으로 확인했다.
 - CLI로 만든 Vercel 프로젝트는 Root Directory가 비어 있어서, 저장소 루트에서 빌드하는 Git 연동 배포가 실패했다(web: `NEXT_NO_VERSION`, ai: `FASTAPI_ENTRYPOINT_NOT_FOUND`). 두 프로젝트에 `web`, `ai`를 넣은 뒤 Git 연동 배포가 성공한다. 이제 `main`에 push하면 Vercel 두 곳은 자동으로 배포된다.
 - Render 배포 브랜치는 `main`이다.
-- Render 자동 배포가 push에 반응하지 않는다(저장소를 URL로 연결해 GitHub 앱 웹훅이 없다). 새 커밋은 `POST /v1/services/<id>/deploys`에 `commitId`(전체 SHA)를 넣거나 대시보드에서 배포한다.
+- Render 자동 배포가 push에 반응하지 않는다(저장소를 URL로 연결해 GitHub 앱 웹훅이 없다). 새 커밋은 `POST /v1/services/<id>/deploys`에 `commitId`(전체 SHA)를 넣거나 대시보드에서 배포한다. (2026-11-19부터 CI가 배포한다. 위 "자동 배포" 절)
 - AI 토큰: 백엔드를 먼저 새 코드로 올리고(이전 ai는 헤더를 무시한다) 그다음 Vercel ai에 `AI_TOKEN`, `AI_REQUIRE_TOKEN=true`를 넣고 재배포했다. 토큰 없는 호출 401, `/docs`·`/openapi.json` 404, 백엔드 경유 채팅 200을 확인했다.
 - 아직 확인하지 않은 것: 실제 `/analyze` 한 건의 응답 시간(키 필요), Render 메모리 추이, `CLIENT_IP_HEADER` 값(키가 없으면 채팅이 할당량을 쓰지 않아 실험할 수 없다), UptimeRobot.
+
+## 자동 배포
+
+`main`에 push(머지)하면 아래 순서로 배포된다.
+
+| 대상 | 방식 | 테스트 통과를 기다리는가 |
+|---|---|---|
+| Vercel web, ai | Vercel Git 연동(Root Directory `web`, `ai`) | 아니요. push 즉시 빌드 |
+| Render API | `ci.yml`의 `deploy-api` 잡이 Render CLI로 배포한다 | 예. `backend`, `ai`, `openapi-drift`, `web`, `docker` 다섯 잡이 모두 통과해야 실행 |
+
+`deploy-api`는 Render CLI(버전 2.36.0, 체크섬 고정)를 받아 `render deploys create <서비스 ID> --commit <커밋> --wait`로 그 커밋을 배포하고 끝날 때까지 기다린다. 배포가 실패하면 잡도 실패한다. 이어서 공개 주소의 `/health` 응답 `commit`(Render가 넣는 `RENDER_GIT_COMMIT`)이 그 커밋인지 확인한다. 동시에 두 배포가 돌지 않도록 `concurrency: deploy-api`로 줄을 세운다. Render의 자체 자동 배포(`autoDeploy`)는 꺼서 이중 배포를 막는다(`render.yaml`, 서비스 설정 둘 다. 서비스 설정은 2026-11-19에 끔).
+
+준비(한 번):
+1. Render 대시보드 → Account Settings → **API Keys**에서 키를 만든다. 이 키는 워크스페이스 전체 권한(다른 서비스, 환경변수의 DB 비밀번호 읽기)을 가지므로 비밀로 다루고, 유출이 의심되면 바로 지우고 새로 만든다.
+2. 터미널에서 `gh secret set RENDER_API_KEY`를 실행하고 키를 붙여 넣는다(명령줄 인자로 넘기지 않는다).
+3. `API_BASE_URL` 시크릿은 예약 작업용으로 이미 있다.
+
+시크릿이 없으면 `deploy-api`가 실패하고 그 사실을 로그에 남긴다. 수동 배포는 `render deploys create srv-dbt9gtgae00c73a31iag --commit <전체 SHA> --wait` 또는 대시보드의 Manual Deploy.
+
+남은 빈틈: Vercel은 테스트 결과를 기다리지 않는다. 테스트가 실패한 커밋도 웹과 ai에는 배포될 수 있다.
 
 ## 구성과 순서
 

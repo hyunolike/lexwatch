@@ -61,7 +61,9 @@ if (app.Configuration.GetValue<bool>("DEMO_SEED_ON_STARTUP"))
     }
 }
 app.UseCors();
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+// commit: Render가 넣어 주는 RENDER_GIT_COMMIT. 배포 워크플로가 새 코드가 떴는지 이 값으로 확인한다.
+var deployedCommit = app.Configuration["RENDER_GIT_COMMIT"] is { Length: > 0 } c ? c : null;
+app.MapGet("/health", () => Results.Ok(new { status = "ok", commit = deployedCommit }));
 app.MapJobEndpoints();
 app.MapReviewEndpoints();
 app.MapRunEndpoints();

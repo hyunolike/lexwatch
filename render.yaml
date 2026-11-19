@@ -9,7 +9,7 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     healthCheckPath: /health
-    autoDeploy: true
+    autoDeploy: false      # 배포는 CI(ci.yml deploy-api)가 테스트 통과 뒤에 한다
     envVars:
       - key: DATABASE_URL        # Supabase 세션 풀러 URI (docs/deploy.md 참고)
         sync: false
