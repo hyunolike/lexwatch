@@ -16,7 +16,7 @@
 | DR-01 | 평가 케이스의 근거를 실제 법령 녹화본으로 | 모든 근거 본문을 운영 파서로 녹화본에서 뽑는다. 판례는 대법원 실판례 | 완료 |
 | DR-02 | 평가가 여러 문장 초안을 다룬다 | 과잉해석이 둘째 이후 문장에 있는 케이스 3건 이상 | 완료 |
 | DR-03 | 패턴 규칙의 한계를 숨기지 않는다 | 실제 데이터에서 놓치는 케이스를 테스트에 알려진 누락으로 명시하고 README에 적는다 | 완료 |
-| DR-04 | Vercel도 테스트 통과 뒤에만 프로덕션 배포 | `deploy-vercel` 잡, Git 연동의 `main` 프로덕션 배포 끔. PR 미리보기는 유지 | 구현 완료, `VERCEL_TOKEN` 필요 |
+| DR-04 | Vercel도 테스트 통과 뒤에만 프로덕션 배포 | `deploy-vercel` 잡, Git 연동의 `main` 프로덕션 배포 끔. PR 미리보기는 유지 | 구현 완료, 프로젝트별 토큰 두 개 필요 |
 | DR-05 | 공개 데모가 NVIDIA 모델로 동작 | Vercel ai `NVIDIA_API_KEY` 설정 뒤 재배포, 새 수집에서 출처 라벨이 NVIDIA | 키 필요 |
 | DR-06 | 같은 케이스로 NVIDIA 실호출 평가 | 규칙 있음, 없음 두 모드 결과를 `eval/results/`에 저장하고 README 표 갱신 | 키 필요 |
 
@@ -35,4 +35,4 @@
 
 ## 다음 시작점
 
-`VERCEL_TOKEN` 시크릿과 Vercel ai `NVIDIA_API_KEY`를 넣은 뒤 머지한다. 이어서 로컬 `.env`에 `NVIDIA_API_KEY`를 넣고 `make eval-critic`으로 DR-06을 마친다.
+`VERCEL_TOKEN_WEB`, `VERCEL_TOKEN_AI` 시크릿과 Vercel ai `NVIDIA_API_KEY`를 넣은 뒤 머지한다. 이어서 로컬 `.env`에 `NVIDIA_API_KEY`를 넣고 `make eval-critic`으로 DR-06을 마친다.
