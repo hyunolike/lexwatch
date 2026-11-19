@@ -47,12 +47,13 @@ public class FetchArticlesStep(LawApiClient api, TimeProvider time) : IStepHandl
         var now = time.GetUtcNow();
         var existing = (await db.Evidence.Where(x => x.RunId == ctx.Run.Id).Select(x => x.EvidenceId).ToListAsync(ct)).ToHashSet();
         var added = 0;
-        void Add(string id, string kind, string title, string body)
+        void Add(string id, string kind, string title, string body, string? changeMarksJson = null)
         {
             if (!existing.Add(id)) return;
             db.Evidence.Add(new Evidence
             {
                 RunId = ctx.Run.Id, EvidenceId = id, Kind = kind, Title = title, Body = body, FetchedAt = now,
+                ChangeMarksJson = changeMarksJson,
             });
             added++;
         }
@@ -65,12 +66,20 @@ public class FetchArticlesStep(LawApiClient api, TimeProvider time) : IStepHandl
             foreach (var a in oldNew.Articles)
                 Add($"oldnew:{change.LawId}:{a.Number}", "oldnew",
                     Title(name, a.Number, titles.GetValueOrDefault(a.Number, "")) + " 신구조문 대비",
-                    $"[구조문]\n{a.OldText ?? "(없음)"}\n\n[신조문]\n{a.NewText ?? "(없음)"}");
+                    $"[구조문]\n{a.OldText ?? "(없음)"}\n\n[신조문]\n{a.NewText ?? "(없음)"}",
+                    MarksJson(a));
 
         return new StepResult.Succeeded(
             new { evidence = added, oldnewStatus = oldNewStatus },
             [new NextStep("classify", null, null)]);
     }
+
+    /// <summary>근거 본문(Body)은 크리틱 2단이 읽으므로 표시를 섞지 않고 구간을 따로 둔다.</summary>
+    private static string MarksJson(OldNewArticle a) => System.Text.Json.JsonSerializer.Serialize(new
+    {
+        old = a.OldMarks.Select(r => new[] { r.Start, r.End }),
+        @new = a.NewMarks.Select(r => new[] { r.Start, r.End }),
+    });
 
     private static string Title(string law, string number, string title) =>
         title == "" ? $"{law} {number}" : $"{law} {number}({title})";

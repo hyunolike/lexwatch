@@ -21,7 +21,10 @@ public record LawArticle(string Number, string Title, string Text);
 
 public record LawBody(string LawId, string LawName, IReadOnlyList<LawArticle> Articles);
 
-public record OldNewArticle(string Number, string? OldText, string? NewText);
+/// <summary>OldMarks, NewMarks: 법제처가 &lt;P&gt;…&lt;/P&gt;로 표시한 변경 구간. 표시를 지운 글 기준 [Start, End).</summary>
+public record OldNewArticle(
+    string Number, string? OldText, string? NewText,
+    IReadOnlyList<(int Start, int End)> OldMarks, IReadOnlyList<(int Start, int End)> NewMarks);
 
 public record OldNewBody(bool Exists, IReadOnlyList<OldNewArticle> Articles);
 
@@ -34,7 +37,6 @@ public class LawApiClient
     private const int PageSize = 100;
     private const int MaxPages = 20;
     private static readonly Regex ArticleNo = new(@"^\s*(제\d+조(?:의\d+)?)", RegexOptions.Compiled);
-    private static readonly Regex ChangeMark = new(@"</?P>", RegexOptions.Compiled);
 
     private readonly HttpClient _http;
     private readonly LawApiOptions _opt;
@@ -113,7 +115,9 @@ public class LawApiClient
         var news = ArticleTexts(root, "신조문목록");
         var numbers = olds.Keys.Concat(news.Keys).Distinct().ToList();
         var list = numbers
-            .Select(n => new OldNewArticle(n, olds.GetValueOrDefault(n), news.GetValueOrDefault(n)))
+            .Select(n => new OldNewArticle(
+                n, olds.GetValueOrDefault(n)?.Text, news.GetValueOrDefault(n)?.Text,
+                olds.GetValueOrDefault(n)?.Marks ?? [], news.GetValueOrDefault(n)?.Marks ?? []))
             .ToList();
         return new LawApiResult<OldNewBody>.Ok(new OldNewBody(true, list), r.Body!);
     }
@@ -122,31 +126,73 @@ public class LawApiClient
     private static string Key(string lawId, string mst) =>
         mst != "" ? $"MST={Uri.EscapeDataString(mst)}" : $"ID={Uri.EscapeDataString(lawId)}";
 
+    private sealed record MarkedText(string Text, IReadOnlyList<(int Start, int End)> Marks);
+
     /// <summary>
-    /// 신구조문 목록 → {조문번호: 본문}. 실응답은 항목이 {"content","no"} 객체이고 한 조문이 항마다 여러 항목으로 온다.
-    /// "제N조"로 시작하는 항목이 새 조문을 열고 나머지는 앞 조문에 붙는다. 변경 표시 &lt;P&gt;…&lt;/P&gt;는 걷어낸다.
-    /// 문자열 항목(합성 fixture)도 받는다.
+    /// 신구조문 목록 → {조문번호: 본문과 변경 구간}. 실응답은 항목이 {"content","no"} 객체이고 한 조문이 항마다 여러 항목으로 온다.
+    /// "제N조"로 시작하는 항목이 새 조문을 열고 나머지는 앞 조문에 줄바꿈으로 붙는다. 변경 표시 &lt;P&gt;…&lt;/P&gt;는
+    /// 글에서 지우고 지운 뒤 위치 기준 구간으로 남긴다. 문자열 항목(합성 fixture)도 받는다.
     /// </summary>
-    private static Dictionary<string, string> ArticleTexts(JsonElement root, string listKey)
+    private static Dictionary<string, MarkedText> ArticleTexts(JsonElement root, string listKey)
     {
-        var parts = new Dictionary<string, List<string>>();
+        var texts = new Dictionary<string, System.Text.StringBuilder>();
+        var marks = new Dictionary<string, List<(int, int)>>();
         if (!TryProp(root, listKey, out var list)) return [];
         string? current = null;
         foreach (var e in Elements(list, "조문"))
         {
             var raw = e.ValueKind == JsonValueKind.String ? e.GetString() ?? ""
                 : Str(e, "content") is { Length: > 0 } c ? c : Str(e, "조문내용");
-            var text = ChangeMark.Replace(raw, "").Trim();
+            var (text, ranges) = StripChangeMarks(raw.Trim());
             if (text == "") continue;
             var m = ArticleNo.Match(text);
             if (m.Success)
             {
                 current = m.Groups[1].Value;
-                if (!parts.ContainsKey(current)) parts[current] = [];
+                if (!texts.ContainsKey(current)) { texts[current] = new(); marks[current] = []; }
             }
-            if (current is not null) parts[current].Add(text);
+            if (current is null) continue;
+            var sb = texts[current];
+            if (sb.Length > 0) sb.Append('\n');
+            var offset = sb.Length;
+            sb.Append(text);
+            marks[current].AddRange(ranges.Select(r => (r.Start + offset, r.End + offset)));
         }
-        return parts.ToDictionary(p => p.Key, p => string.Join("\n", p.Value));
+        return texts.ToDictionary(p => p.Key, p => new MarkedText(p.Value.ToString(), marks[p.Key]));
+    }
+
+    /// <summary>
+    /// &lt;P&gt;, &lt;/P&gt;를 지우고 감싼 구간을 돌려준다. 여는 표시만 있으면 글 끝에서 닫고, 길이 0인 구간은 버린다.
+    /// 앞뒤 공백을 잘라 낸 글 기준이다.
+    /// </summary>
+    internal static (string Text, List<(int Start, int End)> Marks) StripChangeMarks(string raw)
+    {
+        var sb = new System.Text.StringBuilder(raw.Length);
+        var ranges = new List<(int Start, int End)>();
+        int? open = null;
+        var i = 0;
+        while (i < raw.Length)
+        {
+            if (string.CompareOrdinal(raw, i, "<P>", 0, 3) == 0) { open ??= sb.Length; i += 3; continue; }
+            if (string.CompareOrdinal(raw, i, "</P>", 0, 4) == 0)
+            {
+                if (open is { } st && sb.Length > st) ranges.Add((st, sb.Length));
+                open = null;
+                i += 4;
+                continue;
+            }
+            sb.Append(raw[i++]);
+        }
+        if (open is { } s0 && sb.Length > s0) ranges.Add((s0, sb.Length));
+        // 앞뒤 공백을 잘라 내고 구간을 맞춘다.
+        var text = sb.ToString();
+        var lead = text.Length - text.TrimStart().Length;
+        var trimmed = text.Trim();
+        var adjusted = ranges
+            .Select(r => (Start: Math.Clamp(r.Start - lead, 0, trimmed.Length), End: Math.Clamp(r.End - lead, 0, trimmed.Length)))
+            .Where(r => r.End > r.Start)
+            .ToList();
+        return (trimmed, adjusted);
     }
 
     /// <summary>조문내용 뒤에 항 → 호 → 목 본문을 순서대로 붙인다. 실응답의 조문내용은 제목 줄뿐인 경우가 많다.</summary>

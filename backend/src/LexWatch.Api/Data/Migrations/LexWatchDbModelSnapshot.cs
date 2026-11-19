@@ -167,6 +167,9 @@ namespace LexWatch.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ChangeMarksJson")
+                        .HasColumnType("text");
+
                     b.Property<DateTimeOffset>("FetchedAt")
                         .HasColumnType("timestamp with time zone");
 

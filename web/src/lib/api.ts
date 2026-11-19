@@ -35,10 +35,19 @@ export interface Draft {
   openQuestions: string[];
 }
 
+/** 변경 구간 [시작, 끝). 법제처 공식 표시를 지운 글 기준. */
+export type MarkRange = [number, number];
+
 export interface OldNew {
   articleNo: string;
   before: string;
   after: string;
+  /** 해당 칸이 "(없음)"이었는지(신설, 삭제 조문) */
+  beforeMissing: boolean;
+  afterMissing: boolean;
+  /** 법제처 공식 변경 구간. 배포 전 수집분과 재현 데이터는 null */
+  oldMarks: MarkRange[] | null;
+  newMarks: MarkRange[] | null;
 }
 
 export interface EvidenceItem {
@@ -46,6 +55,8 @@ export interface EvidenceItem {
   kind: string;
   title: string;
   sourceUrl: string | null;
+  /** 근거 본문 앞부분(최대 240자) */
+  excerpt?: string;
 }
 
 export interface ReviewDetail extends ReviewSummary {
@@ -229,18 +240,7 @@ export function formatDuration(ms: number | null | undefined): string {
   return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}초`;
 }
 
-const STEP_LABELS: Record<string, string> = {
-  fetch_articles: "조문 수집",
-  classify: "분류",
-  analyze: "분석",
-  critic_citation: "인용 검증",
-  critic_source: "출처 검증",
-  critic_judge: "크리틱 판정",
-  notify: "알림",
-};
-
-/** 백엔드가 내는 단계 이름을 한국어로. 모르면 원래 이름. */
-export const stepLabel = (s: string) => STEP_LABELS[s] ?? s;
+export { stepLabel } from "./labels";
 
 /**
  * 백엔드 RunEndpoints.Retryable과 같은 규칙으로 다시 실행할 수 있는 실패 단계가 있는지 본다.

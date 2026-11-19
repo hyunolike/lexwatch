@@ -1,8 +1,9 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
+import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./globals.css";
-import { DemoBanner } from "@/components/DemoBanner";
-import { Nav } from "@/components/Nav";
+import { AppHeader } from "@/components/ds/AppHeader";
 
 export const metadata: Metadata = {
   title: "LexWatch",
@@ -11,13 +12,19 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className="h-full antialiased">
-      <body className="min-h-full bg-slate-50 text-slate-900">
-        <DemoBanner />
-        <Suspense fallback={null}>
-          <Nav />
+    <html lang="ko" className="h-full">
+      <body className="min-h-full">
+        <Suspense fallback={<div className="h-[77px]" />}>
+          <AppHeader />
         </Suspense>
-        <main className="mx-auto max-w-6xl p-4">{children}</main>
+        <main id="main" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-6 outline-none">
+          {children}
+        </main>
+        <footer className="mx-auto max-w-6xl px-4 pb-8 text-caption text-ink-subtle">
+          <Link href="/design-system" className="rounded-sm underline underline-offset-2 hover:text-ink">
+            디자인 시스템
+          </Link>
+        </footer>
       </body>
     </html>
   );

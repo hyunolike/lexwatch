@@ -141,6 +141,9 @@ public class CollectStepTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Contains("구조문 예시", oldnew.Body);
         Assert.Contains("40시간", oldnew.Body);
         Assert.Null(oldnew.SourceUrl);
+        // 합성 fixture에는 <P> 표시가 없어 빈 구간 목록이 저장된다. 법 본문 근거에는 저장하지 않는다.
+        Assert.Equal("""{"old":[],"new":[]}""", oldnew.ChangeMarksJson);
+        Assert.Null((await v.Evidence.SingleAsync(e => e.RunId == run.Id && e.EvidenceId == "law:001872:제50조")).ChangeMarksJson);
     }
 
     [Fact]

@@ -104,7 +104,7 @@ Render는 배포 중 헬스체크가 통과할 때까지 이전 인스턴스와 
 4. 예: `postgresql://postgres.<ref>:<비밀번호>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require` — 이 값이 Render의 `DATABASE_URL`이다. 비밀번호에 특수문자가 있으면 URL 인코딩한다.
 5. 마이그레이션은 Render 첫 기동 때 적용된다(3단계). 별도 수동 작업은 없다.
 
-확인: 3단계 뒤 Table Editor에 `LawChanges`, `WorkflowRuns`, `StepRuns` 등이 보이고 `__EFMigrationsHistory`에 3개 행(`Initial`, `CollectLog`, `LawChangeMstNotificationCascade`)이 있다.
+확인: 3단계 뒤 Table Editor에 `LawChanges`, `WorkflowRuns`, `StepRuns` 등이 보이고 `__EFMigrationsHistory`에 4개 행(`Initial`, `CollectLog`, `LawChangeMstNotificationCascade`, `EvidenceChangeMarks`)이 있다.
 주의: `sslmode=require`는 Npgsql 10에서 암호화만 요구하고 인증서는 검증하지 않는다.
 
 ## 2. Vercel — `ai` `[미검증]`

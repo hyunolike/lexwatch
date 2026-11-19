@@ -1,24 +1,12 @@
 "use client";
 import { useState } from "react";
-import { safeHttpUrl, type Draft, type EditedSentence, type EvidenceItem } from "@/lib/api";
+import { Plus } from "lucide-react";
+import type { Draft, EditedSentence, EvidenceItem } from "@/lib/api";
+import { Callout } from "@/components/ds/Callout";
+import { CitationChip } from "@/components/ds/CitationChip";
+import { CARD } from "@/components/ds/layout";
 
-function Chip({ ev, id, onRemove }: { ev?: EvidenceItem; id: string; onRemove?: () => void }) {
-  const label = ev?.title ?? id;
-  const href = safeHttpUrl(ev?.sourceUrl);
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-800">
-      {href ? (
-        <a href={href} target="_blank" rel="noreferrer" className="underline">{label}</a>
-      ) : (
-        <span>{label}</span>
-      )}
-      {onRemove && (
-        <button onClick={onRemove} aria-label="인용 제거" className="font-bold">×</button>
-      )}
-    </span>
-  );
-}
-
+/** 영향 검토 초안. 문장마다 인용 칩과 크리틱 적발(정적 안내)을 붙인다. 편집 중에는 문장과 인용을 고친다. */
 export function DraftEditor({
   draft,
   evidence,
@@ -38,75 +26,85 @@ export function DraftEditor({
     onChange(edited.map((s, j) => (j === i ? { ...s, ...patch } : s)));
 
   return (
-    <div className="space-y-4">
-      {draft.sentences.map((s, i) => (
-        <div key={i} className="rounded border bg-white p-3">
-          {editing ? (
-            <textarea
-              value={edited[i]?.sentence ?? s.sentence}
-              onChange={(e) => update(i, { sentence: e.target.value })}
-              rows={3}
-              className="w-full rounded border p-2 text-sm"
-            />
-          ) : (
-            <p className="text-sm">{s.sentence}</p>
-          )}
-          <div className="mt-2 flex flex-wrap items-center gap-1">
-            {(editing ? (edited[i]?.citations ?? s.citations) : s.citations).map((c) => (
-              <Chip
-                key={c}
-                id={c}
-                ev={byId.get(c)}
-                onRemove={
-                  editing
-                    ? () => update(i, { citations: (edited[i]?.citations ?? s.citations).filter((x) => x !== c) })
-                    : undefined
-                }
+    <div className="space-y-3">
+      {draft.sentences.map((s, i) => {
+        const citations = editing ? (edited[i]?.citations ?? s.citations) : s.citations;
+        return (
+          <div key={i} className={`${CARD} p-4`}>
+            {editing ? (
+              <textarea
+                value={edited[i]?.sentence ?? s.sentence}
+                onChange={(e) => update(i, { sentence: e.target.value })}
+                rows={3}
+                aria-label={`${i + 1}번째 문장`}
+                className="text-reading w-full rounded-md border border-line-strong bg-surface p-2 text-ink"
               />
-            ))}
-            {editing && (
-              adding === i ? (
-                <select
-                  autoFocus
-                  className="rounded border text-xs"
-                  defaultValue=""
-                  onChange={(e) => {
-                    const cur = edited[i]?.citations ?? s.citations;
-                    if (e.target.value && !cur.includes(e.target.value))
-                      update(i, { citations: [...cur, e.target.value] });
-                    setAdding(null);
-                  }}
-                >
-                  <option value="">근거 선택</option>
-                  {evidence.map((ev) => (
-                    <option key={ev.id} value={ev.id}>{ev.title}</option>
-                  ))}
-                </select>
-              ) : (
-                <button onClick={() => setAdding(i)} className="rounded border px-2 text-xs">+ 인용</button>
-              )
+            ) : (
+              <p className="text-reading text-ink">{s.sentence}</p>
+            )}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {citations.map((c) => (
+                <CitationChip
+                  key={c}
+                  id={c}
+                  evidence={byId.get(c)}
+                  onRemove={editing ? () => update(i, { citations: citations.filter((x) => x !== c) }) : undefined}
+                />
+              ))}
+              {editing &&
+                (adding === i ? (
+                  <select
+                    autoFocus
+                    aria-label="추가할 근거"
+                    className="h-7 rounded-md border border-line-strong bg-surface px-2 text-caption text-ink"
+                    defaultValue=""
+                    onBlur={() => setAdding(null)}
+                    onChange={(e) => {
+                      if (e.target.value && !citations.includes(e.target.value))
+                        update(i, { citations: [...citations, e.target.value] });
+                      setAdding(null);
+                    }}
+                  >
+                    <option value="">근거 선택</option>
+                    {evidence.map((ev) => (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.title}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAdding(i)}
+                    className="inline-flex h-[22px] items-center gap-0.5 rounded-sm border border-dashed border-line-strong px-2 text-micro text-ink-muted hover:text-ink"
+                  >
+                    <Plus aria-hidden className="size-3" /> 인용
+                  </button>
+                ))}
+            </div>
+            {s.findings.length > 0 && (
+              <div className="mt-3 space-y-1.5">
+                {s.findings.map((f, k) => (
+                  <Callout key={k} tone="danger" className="py-2">
+                    <span className="font-semibold">
+                      크리틱 {f.tier}단 · <span className="font-mono">{f.ruleId}</span>
+                    </span>{" "}
+                    {f.message}
+                  </Callout>
+                ))}
+              </div>
             )}
           </div>
-          {s.findings.length > 0 && (
-            <ul className="mt-2 space-y-1">
-              {s.findings.map((f, k) => (
-                <li key={k} className="rounded bg-red-50 px-2 py-1 text-xs text-red-800">
-                  {f.tier}단 · {f.ruleId} — {f.message}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ))}
+        );
+      })}
       {draft.openQuestions.length > 0 && (
-        <div className="rounded border bg-yellow-50 p-3 text-sm">
-          <div className="mb-1 font-semibold">열린 질문</div>
-          <ul className="list-disc pl-5">
+        <Callout tone="warning" title="열린 질문">
+          <ul className="mt-1 list-disc pl-5">
             {draft.openQuestions.map((q, i) => (
               <li key={i}>{q}</li>
             ))}
           </ul>
-        </div>
+        </Callout>
       )}
     </div>
   );

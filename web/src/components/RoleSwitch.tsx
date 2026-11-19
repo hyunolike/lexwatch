@@ -1,6 +1,7 @@
 "use client";
 import { useSyncExternalStore } from "react";
 import { getRole, setRole, type Role } from "@/lib/api";
+import { cx } from "@/lib/cx";
 
 const listeners = new Set<() => void>();
 const subscribe = (cb: () => void) => {
@@ -12,24 +13,34 @@ export function useRole(): Role {
   return useSyncExternalStore(subscribe, getRole, () => "lawyer" as Role);
 }
 
+const ROLES: [Role, string][] = [
+  ["lawyer", "변호사로 보기"],
+  ["admin", "관리자로 보기"],
+];
+
+/** 역할 전환(로그인 없음). 두 칸짜리 선택 버튼. */
 export function RoleSwitch() {
   const role = useRole();
   const pick = (r: Role) => {
     setRole(r);
     listeners.forEach((l) => l());
   };
-  const btn = (r: Role, label: string) => (
-    <button
-      onClick={() => pick(r)}
-      className={`rounded border px-3 py-1 text-sm ${role === r ? "bg-slate-800 text-white" : "bg-white text-slate-700"}`}
-    >
-      {label}
-    </button>
-  );
   return (
-    <div className="flex gap-2">
-      {btn("lawyer", "변호사로 보기")}
-      {btn("admin", "관리자로 보기")}
+    <div role="group" aria-label="보기 역할" className="inline-flex rounded-md border border-line bg-surface-sunken p-0.5">
+      {ROLES.map(([r, label]) => (
+        <button
+          key={r}
+          type="button"
+          aria-pressed={role === r}
+          onClick={() => pick(r)}
+          className={cx(
+            "h-7 rounded-[6px] px-3 text-label transition-colors duration-[120ms]",
+            role === r ? "bg-surface text-ink shadow-card" : "text-ink-muted hover:text-ink",
+          )}
+        >
+          {label}
+        </button>
+      ))}
     </div>
   );
 }

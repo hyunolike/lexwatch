@@ -49,6 +49,18 @@ public class LawApiRecordedTests
     }
 
     [Fact]
+    public async Task Real_old_new_keeps_official_change_marks_as_ranges()
+    {
+        var on = Assert.IsType<LawApiResult<OldNewBody>.Ok>(await Client().GetOldNewAsync("005698", "291575")).Value;
+        var a7 = on.Articles[0];
+        string Cut(string text, (int Start, int End) r) => text[r.Start..r.End];
+        Assert.Equal(
+            ["공소청(광역공소청, 지방공소청 및 지방공소청 지청을 포함한다. 이하 같다)", "공소청"],
+            a7.NewMarks.Select(r => Cut(a7.NewText!, r)));
+        Assert.Equal(["검찰청", "검찰청"], a7.OldMarks.Select(r => Cut(a7.OldText!, r)));
+    }
+
+    [Fact]
     public async Task Real_old_new_absent_is_not_exists()
     {
         var on = Assert.IsType<LawApiResult<OldNewBody>.Ok>(await Client().GetOldNewAsync("002065", "291383")).Value;
