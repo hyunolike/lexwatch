@@ -1,8 +1,35 @@
 # 배포 런북 (Supabase + Render + Vercel + GitHub Actions)
 
 저장소에서 준비된 것: `backend/Dockerfile`, `ai/Dockerfile`, `web/Dockerfile`, `docker-compose.yml`, `render.yaml`, `ai/vercel.json`, `.github/workflows/{ci,collect,reset-demo}.yml`.
-아래 1~5단계는 **계정이 필요한 작업이고 아직 하나도 실행하지 않았다.** 각 단계의 "확인" 항목이 통과해야 다음으로 넘어간다.
-**검증 표기**: `[검증됨]`은 로컬에서 실제로 돌려 본 것, `[미검증]`은 외부 서비스에서만 확인할 수 있는 것이다.
+아래 1~5단계는 계정이 필요한 작업이다. 2026-11-16에 한 번 실행했고 결과는 아래 배포 기록에 있다. 각 단계의 "확인" 항목이 통과해야 다음으로 넘어간다.
+**검증 표기**: `[검증됨]`은 로컬에서 실제로 돌려 본 것, `[미검증]`은 외부 서비스에서만 확인할 수 있는 것이다. 단계 제목의 `[미검증]`은 작성 당시 표기이고, 실제로 확인한 것은 배포 기록에 적는다.
+
+## 배포 기록 (2026-11-19) — 법령 실수집 시작
+
+국가법령정보센터 OC를 받아 실수집을 켰다.
+
+| 항목 | 한 일과 확인한 것 |
+|---|---|
+| OPEN API 신청 | open.law.go.kr에서 신청 1건, 활용상태 "연결", 승인. 도메인은 "도메인 없음". 신청하면 자동 승인된다(활용목적이 비면 취소될 수 있다) |
+| OC 값 | 마이페이지 → API인증키관리에서 정한 값이다. 가입 이메일의 `@` 앞부분이 아니어도 된다 |
+| `LAW_OC` | Render(API로 `PUT /v1/services/<id>/env-vars/LAW_OC`)와 Vercel ai(`vercel env add LAW_OC production --sensitive`)에 넣었다. Vercel ai에는 `AI_TOKEN`이 먼저 걸려 있었다 |
+| 실응답 녹화 | 로컬에서 `scripts/record_lawapi.py`로 녹화해 `fixtures/lawapi/recorded/`에 두었다. 파서가 추정한 형태와 달라 고쳤다(#4, 자세한 차이는 `docs/notes/2026-11-16-spike.md`) |
+| 배포 | #4 머지(`468a7da`). Vercel ai는 push로 자동 배포됐다. Render는 `POST /v1/services/<id>/deploys`로 배포해 live, `/health` 200 |
+| 수집 | `collect` 수동 실행 성공, `{"created":3,"skipped":0}`. Render에서 호출해도 IP 검증에 걸리지 않았다 |
+
+수집된 실행 3건:
+
+| 법령 | 근거 수 | 신구조문 | 분류 |
+|---|---|---|---|
+| 약사법 시행규칙 | 98 | `ok` | 세 그룹 모두 관련 없음 |
+| 특별검사 임명 등에 관한 법률(제정) | 26 | `absent` | 세 그룹 모두 관련 없음 |
+| 치료감호 등에 관한 법률 시행규칙 | 55 | `absent` | 세 그룹 모두 관련 없음 |
+
+배포하면서 알게 된 것:
+- 같은 날 오전 예약 `collect`는 Render에 `LAW_OC`가 없어 502로 실패했다. 런북의 설명대로 법제처 호출 실패다.
+- Render 배포 API의 `commitId`는 전체 SHA여야 한다. 짧은 SHA를 넣으면 `does not have a commit`으로 거절된다.
+- Vercel ai에 `NVIDIA_API_KEY`가 없어 분류가 `similarity-fallback`으로 돌았다(신뢰도 0.10~0.21). 이번 세 법령은 실제로도 세 그룹과 거리가 멀지만, 키를 넣기 전에는 실제 개정에서 초안이 만들어지지 않는다.
+- 아직 확인하지 않은 것: 근거 본문에 항 내용까지 들어갔는지(실행 상세 API는 근거 개수만 보여 준다. 녹화본 테스트로만 확인), 실제 개정으로 초안과 크리틱까지 도는 한 바퀴(`NVIDIA_API_KEY` 필요).
 
 ## 배포 기록 (2026-11-16)
 
@@ -23,7 +50,7 @@
 - 예약 워크플로(`collect`, `reset-demo`)는 저장소의 **기본 브랜치**에서만 돈다. 처음 push한 `feat/mvp`가 기본 브랜치로 잡혀 있었고, `main`에 합친 뒤 기본 브랜치를 `main`으로 바꿨다. `reset-demo` 수동 실행으로 확인했다.
 - CLI로 만든 Vercel 프로젝트는 Root Directory가 비어 있어서, 저장소 루트에서 빌드하는 Git 연동 배포가 실패했다(web: `NEXT_NO_VERSION`, ai: `FASTAPI_ENTRYPOINT_NOT_FOUND`). 두 프로젝트에 `web`, `ai`를 넣은 뒤 Git 연동 배포가 성공한다. 이제 `main`에 push하면 Vercel 두 곳은 자동으로 배포된다.
 - Render 배포 브랜치는 `main`이다.
-- Render 자동 배포가 push에 반응하지 않는다(저장소를 URL로 연결해 GitHub 앱 웹훅이 없다). 새 커밋은 `POST /v1/services/<id>/deploys`에 `commitId`를 넣거나 대시보드에서 배포한다.
+- Render 자동 배포가 push에 반응하지 않는다(저장소를 URL로 연결해 GitHub 앱 웹훅이 없다). 새 커밋은 `POST /v1/services/<id>/deploys`에 `commitId`(전체 SHA)를 넣거나 대시보드에서 배포한다.
 - AI 토큰: 백엔드를 먼저 새 코드로 올리고(이전 ai는 헤더를 무시한다) 그다음 Vercel ai에 `AI_TOKEN`, `AI_REQUIRE_TOKEN=true`를 넣고 재배포했다. 토큰 없는 호출 401, `/docs`·`/openapi.json` 404, 백엔드 경유 채팅 200을 확인했다.
 - 아직 확인하지 않은 것: 실제 `/analyze` 한 건의 응답 시간(키 필요), Render 메모리 추이, `CLIENT_IP_HEADER` 값(키가 없으면 채팅이 할당량을 쓰지 않아 실험할 수 없다), UptimeRobot.
 
@@ -47,7 +74,7 @@ Render  --Postgres(세션 풀러)-->  Supabase (pgvector)
 | `AI_TOKEN` | Render, Vercel ai (같은 값) | Render → ai 호출의 `X-Ai-Token` 공유 토큰 | 비밀. 아래 "AI_TOKEN" 절. **`NVIDIA_API_KEY`·`LAW_OC`를 ai에 넣기 전에 먼저 설정** |
 | `AI_REQUIRE_TOKEN` | Vercel ai | `true`면 `AI_TOKEN`이 비었을 때 ai가 503으로 닫힌다 | 배포에서는 `true` 권장. 로컬·테스트는 비워 둔다 |
 | `CLIENT_IP_HEADER` | Render | 채팅 할당량이 클라이언트 IP를 읽을 헤더 하나(예: `True-Client-IP`) | 기본 비움. 아래 "클라이언트 IP" 절 먼저 읽을 것 |
-| `LAW_OC` | Render, (Vercel ai) | 법제처 OPEN API 인증값 | 비밀. 없으면 수집이 실패하고 재현 실행만 동작 |
+| `LAW_OC` | Render, Vercel ai | 법제처 OPEN API 인증값 | 비밀. 없으면 수집이 실패하고 재현 실행만 동작. ai의 에이전트 도구(`ai/app/lawapi.py`)도 법제처를 직접 부르므로 두 곳 모두 넣는다. 2026-11-19 설정 |
 | `Web__Origins` | Render | CORS 허용 오리진(쉼표 구분) | Vercel web 주소. 기본값은 `http://localhost:3000` |
 | `MIGRATE_ON_STARTUP` | Render | 시작 시 EF 마이그레이션 적용 | `true` (render.yaml이 설정) |
 | `DEMO_SEED_ON_STARTUP` | Render | 재현 실행이 하나도 없으면 시작 시 시드 | `true` (render.yaml이 설정) |
