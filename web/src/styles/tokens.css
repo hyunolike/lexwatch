@@ -1,0 +1,103 @@
+/*
+ * LexWatch 디자인 토큰. 색, 글자, 모서리, 그림자, 움직임의 유일한 원본이다.
+ * 설계: docs/features/design-system/design.md 2절
+ * 대비 검사: src/design/contrast.test.ts가 이 파일을 읽는다.
+ */
+@theme {
+  /* Tailwind 기본 색 팔레트를 비운다. 원색 클래스(slate-500 등)는 CSS가 생성되지 않는다. */
+  --color-*: initial;
+
+  /* 바탕 */
+  --color-canvas: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #eef1f5;
+
+  /* 글자 */
+  --color-ink: #1a2233;
+  --color-ink-muted: #4a5568;
+  --color-ink-subtle: #5f6779;
+
+  /* 경계 */
+  --color-line: #d9dee7;
+  --color-line-strong: #737d93;
+
+  /* 브랜드 */
+  --color-brand: #1f2a44;
+  --color-brand-hover: #2c3b5e;
+  --color-on-brand: #ffffff;
+  --color-focus: #1f6feb;
+
+  /* 상태 */
+  --color-success: #1e6b3a;
+  --color-success-bg: #e7f4ec;
+  --color-danger: #b3261e;
+  --color-danger-bg: #fcebea;
+  --color-warning: #8a5a00;
+  --color-warning-bg: #fff4d6;
+  --color-info: #1d4ed8;
+  --color-info-bg: #e8effd;
+  --color-neutral: #4a5568;
+  --color-neutral-bg: #eef1f5;
+
+  /* 출처 (상태 색 계열을 쓰지 않는다) */
+  --color-source-nvidia: #5b3fc4;
+  --color-source-nvidia-bg: #efebfc;
+  --color-source-fallback: #3d4a63;
+  --color-source-fallback-bg: #e9ecf2;
+  --color-source-replay: #5a6172;
+  --color-source-replay-bg: #ffffff;
+
+  /* 신구 대조 */
+  --color-diff-del: #9b1c1c;
+  --color-diff-del-bg: #fdecec;
+  --color-diff-ins: #14532d;
+  --color-diff-ins-bg: #e6f4ea;
+
+  /* 글꼴 */
+  --font-sans: "Pretendard Variable", "Pretendard Fallback", system-ui, -apple-system, "Apple SD Gothic Neo",
+    "Malgun Gothic", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* 글자 척도 */
+  --text-title-lg: 1.5rem;
+  --text-title-lg--line-height: 2rem;
+  --text-title-lg--font-weight: 700;
+  --text-title-md: 1.25rem;
+  --text-title-md--line-height: 1.75rem;
+  --text-title-md--font-weight: 700;
+  --text-title-sm: 1rem;
+  --text-title-sm--line-height: 1.5rem;
+  --text-title-sm--font-weight: 600;
+  --text-reading: 1rem;
+  --text-reading--line-height: 1.75rem;
+  --text-ui: 0.9375rem;
+  --text-ui--line-height: 1.5rem;
+  --text-label: 0.875rem;
+  --text-label--line-height: 1.25rem;
+  --text-label--font-weight: 500;
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.125rem;
+  --text-micro: 0.75rem;
+  --text-micro--line-height: 1rem;
+  --text-micro--font-weight: 600;
+
+  /* 모서리 (Tailwind 기본 척도를 덮어쓴다) */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* 그림자 */
+  --shadow-card: 0 1px 2px rgb(26 34 51 / 0.06);
+  --shadow-pop: 0 8px 24px rgb(26 34 51 / 0.14);
+  --shadow-dialog: 0 24px 48px rgb(26 34 51 / 0.24);
+
+  /* 움직임 */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* 웹 글꼴을 받기 전후의 줄바꿈 차이를 줄이는 대체 글꼴 */
+@font-face {
+  font-family: "Pretendard Fallback";
+  src: local("Apple SD Gothic Neo"), local("Malgun Gothic");
+  size-adjust: 96%;
+}

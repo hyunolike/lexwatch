@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./globals.css";
 import { DemoBanner } from "@/components/DemoBanner";
 import { Nav } from "@/components/Nav";
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="ko" className="h-full antialiased">
-      <body className="min-h-full bg-slate-50 text-slate-900">
+      <body className="min-h-full">
         <DemoBanner />
         <Suspense fallback={null}>
           <Nav />
