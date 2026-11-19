@@ -61,16 +61,16 @@
 | 대상 | 방식 | 테스트 통과를 기다리는가 |
 |---|---|---|
 | Vercel web, ai | Vercel Git 연동(Root Directory `web`, `ai`) | 아니요. push 즉시 빌드 |
-| Render API | `ci.yml`의 `deploy-api` 잡이 Render 배포 훅을 부른다 | 예. `backend`, `ai`, `openapi-drift`, `web`, `docker` 다섯 잡이 모두 통과해야 실행 |
+| Render API | `ci.yml`의 `deploy-api` 잡이 Render CLI로 배포한다 | 예. `backend`, `ai`, `openapi-drift`, `web`, `docker` 다섯 잡이 모두 통과해야 실행 |
 
-`deploy-api`는 배포 훅에 `ref=<커밋 SHA>`를 붙여 그 커밋을 배포하고, `/health` 응답의 `commit`(Render가 넣는 `RENDER_GIT_COMMIT`)이 그 커밋이 될 때까지 최대 20분 기다린다. 시간 안에 뜨지 않으면 잡이 실패한다. 동시에 두 배포가 돌지 않도록 `concurrency: deploy-api`로 줄을 세운다. Render의 자체 자동 배포(`autoDeploy`)는 꺼서 이중 배포를 막는다(`render.yaml`, 서비스 설정 둘 다).
+`deploy-api`는 Render CLI(버전 2.36.0, 체크섬 고정)를 받아 `render deploys create <서비스 ID> --commit <커밋> --wait`로 그 커밋을 배포하고 끝날 때까지 기다린다. 배포가 실패하면 잡도 실패한다. 이어서 공개 주소의 `/health` 응답 `commit`(Render가 넣는 `RENDER_GIT_COMMIT`)이 그 커밋인지 확인한다. 동시에 두 배포가 돌지 않도록 `concurrency: deploy-api`로 줄을 세운다. Render의 자체 자동 배포(`autoDeploy`)는 꺼서 이중 배포를 막는다(`render.yaml`, 서비스 설정 둘 다. 서비스 설정은 2026-11-19에 끔).
 
 준비(한 번):
-1. Render 대시보드 → `lexwatch-api-qinh` → Settings → **Deploy Hook**의 URL을 복사한다. 이 URL만 있으면 누구나 배포를 시작할 수 있으니 비밀로 다룬다.
-2. GitHub 저장소 → Settings → Secrets and variables → Actions에 `RENDER_DEPLOY_HOOK_URL`로 넣는다. 터미널이라면 `gh secret set RENDER_DEPLOY_HOOK_URL`을 실행하고 값을 붙여 넣는다(명령줄 인자로 넘기지 않는다).
+1. Render 대시보드 → Account Settings → **API Keys**에서 키를 만든다. 이 키는 워크스페이스 전체 권한(다른 서비스, 환경변수의 DB 비밀번호 읽기)을 가지므로 비밀로 다루고, 유출이 의심되면 바로 지우고 새로 만든다.
+2. 터미널에서 `gh secret set RENDER_API_KEY`를 실행하고 키를 붙여 넣는다(명령줄 인자로 넘기지 않는다).
 3. `API_BASE_URL` 시크릿은 예약 작업용으로 이미 있다.
 
-시크릿이 없으면 `deploy-api`가 실패하고 그 사실을 로그에 남긴다. 수동 배포가 필요하면 대시보드의 Manual Deploy나 `POST /v1/services/<id>/deploys`(`commitId`는 전체 SHA)를 쓴다.
+시크릿이 없으면 `deploy-api`가 실패하고 그 사실을 로그에 남긴다. 수동 배포는 `render deploys create srv-dbt9gtgae00c73a31iag --commit <전체 SHA> --wait` 또는 대시보드의 Manual Deploy.
 
 남은 빈틈: Vercel은 테스트 결과를 기다리지 않는다. 테스트가 실패한 커밋도 웹과 ai에는 배포될 수 있다.
 

@@ -86,32 +86,42 @@ jobs:
     needs: [backend, ai, openapi-drift, web, docker]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     concurrency:
       group: deploy-api
       cancel-in-progress: false
+    env:
+      RENDER_SERVICE_ID: srv-dbt9gtgae00c73a31iag
+      RENDER_CLI_VERSION: 2.36.0
+      RENDER_CLI_SHA256: 97c83ceae5e99c8bc2d342a71c18c0af39841bc8af3429d01ca9a629aca66d0e
     steps:
-      - name: Render 배포 요청
-        env:
-          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      - name: Render CLI 설치 (버전과 체크섬 고정)
         run: |
-          if [ -z "$HOOK" ]; then
-            echo "::error::RENDER_DEPLOY_HOOK_URL 시크릿이 없다. docs/deploy.md '자동 배포' 절을 보고 넣는다."
+          curl --silent --show-error --fail --location -o render.zip \
+            "https://github.com/render-oss/cli/releases/download/v${RENDER_CLI_VERSION}/cli_${RENDER_CLI_VERSION}_linux_amd64.zip"
+          echo "${RENDER_CLI_SHA256}  render.zip" | sha256sum --check -
+          unzip -q render.zip "cli_v${RENDER_CLI_VERSION}" -d "$RUNNER_TEMP"
+          install -m 0755 "$RUNNER_TEMP/cli_v${RENDER_CLI_VERSION}" /usr/local/bin/render
+          render --version
+      - name: 이 커밋을 배포하고 끝날 때까지 기다림
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          if [ -z "$RENDER_API_KEY" ]; then
+            echo "::error::RENDER_API_KEY 시크릿이 없다. docs/deploy.md '자동 배포' 절을 보고 넣는다."
             exit 1
           fi
-          # 훅 URL은 비밀이라 로그에 남기지 않는다. ref로 이 커밋을 배포하게 한다.
-          curl --silent --show-error --fail --max-time 30 -X POST "${HOOK}&ref=${GITHUB_SHA}" -o /dev/null
-          echo "배포 요청: ${GITHUB_SHA}"
-      - name: 새 커밋이 뜰 때까지 기다림
+          # --wait: 배포가 실패하면 0이 아닌 값으로 끝난다.
+          render deploys create "$RENDER_SERVICE_ID" --commit "$GITHUB_SHA" --wait --confirm -o text
+      - name: 공개 주소에서 새 커밋 확인
         env:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
         run: |
-          # 빌드와 기동, 무료 플랜 깨우기까지 최대 20분. /health의 commit이 이 커밋이 되면 끝.
-          for i in $(seq 1 80); do
+          for i in $(seq 1 20); do
             got=$(curl --silent --max-time 30 "${API_BASE_URL}/health" | jq -r '.commit // empty' 2>/dev/null || true)
             if [ "$got" = "$GITHUB_SHA" ]; then echo "live: $got"; exit 0; fi
-            echo "대기 ${i}/80 (현재 ${got:-응답 없음})"
+            echo "대기 ${i}/20 (현재 ${got:-응답 없음})"
             sleep 15
           done
-          echo "::error::20분 안에 ${GITHUB_SHA}가 뜨지 않았다. Render 대시보드의 배포 로그를 본다."
+          echo "::error::배포는 끝났는데 /health가 ${GITHUB_SHA}를 돌려주지 않는다."
           exit 1
