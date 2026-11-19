@@ -60,7 +60,7 @@
 
 | 대상 | 방식 | 테스트 통과를 기다리는가 |
 |---|---|---|
-| Vercel web, ai | Vercel Git 연동(Root Directory `web`, `ai`) | 아니요. push 즉시 빌드 |
+| Vercel web, ai | `ci.yml`의 `deploy-vercel` 잡이 Vercel CLI(`vercel deploy --prod`)로 배포한다. `vercel.json`의 `git.deploymentEnabled.main: false`로 Git 연동의 프로덕션 배포는 꺼져 있고 PR 미리보기만 만든다 | 예. 다섯 잡이 모두 통과해야 실행 |
 | Render API | `ci.yml`의 `deploy-api` 잡이 Render CLI로 배포한다 | 예. `backend`, `ai`, `openapi-drift`, `web`, `docker` 다섯 잡이 모두 통과해야 실행 |
 
 `deploy-api`는 Render CLI(버전 2.36.0, 체크섬 고정)를 받아 `render deploys create <서비스 ID> --commit <커밋> --wait`로 그 커밋을 배포하고 끝날 때까지 기다린다. 배포가 실패하면 잡도 실패한다. 이어서 공개 주소의 `/health` 응답 `commit`(Render가 넣는 `RENDER_GIT_COMMIT`)이 그 커밋인지 확인한다. 동시에 두 배포가 돌지 않도록 `concurrency: deploy-api`로 줄을 세운다. Render의 자체 자동 배포(`autoDeploy`)는 꺼서 이중 배포를 막는다(`render.yaml`, 서비스 설정 둘 다. 서비스 설정은 2026-11-19에 끔).
@@ -72,7 +72,12 @@
 
 시크릿이 없으면 `deploy-api`가 실패하고 그 사실을 로그에 남긴다. 수동 배포는 `render deploys create srv-dbt9gtgae00c73a31iag --commit <전체 SHA> --wait` 또는 대시보드의 Manual Deploy.
 
-남은 빈틈: Vercel은 테스트 결과를 기다리지 않는다. 테스트가 실패한 커밋도 웹과 ai에는 배포될 수 있다.
+Vercel 준비(한 번):
+1. Vercel 대시보드 → Account Settings → **Tokens**에서 토큰 두 개를 만든다. Scope는 팀 아래의 프로젝트 하나(`lexwatch-web`, `lexwatch-ai`)로, 만료는 180일. 같은 팀에 다른 서비스가 있어 팀 전체 토큰은 쓰지 않는다. 만들 때 본인 확인(OTP나 패스키)을 거친다. CLI 로그인 세션으로는 `vercel tokens add`가 403(Cannot create tokens for this app)이다.
+2. `gh secret set VERCEL_TOKEN_WEB`, `gh secret set VERCEL_TOKEN_AI`를 실행하고 각 토큰을 붙여 넣는다(명령줄 인자로 넘기지 않는다).
+3. 팀 ID(`team_JLPkhn7nreUDgCKarZrAD9ZP`)와 프로젝트 ID(web `prj_v2DhruJFOamdPmxiQZWSvJA8yTo5`, ai `prj_ZhL9slWEJ7pobFh283gtAJGJGC2F`)는 비밀이 아니라 `ci.yml`에 적어 두었다.
+
+저장소 루트에서 `vercel deploy`를 실행해도 프로젝트의 Root Directory 설정(`web`, `ai`)을 따른다. 2026-11-19에 두 프로젝트 모두 미리보기 배포로 확인했다.
 
 ## 구성과 순서
 

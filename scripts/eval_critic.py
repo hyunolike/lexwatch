@@ -21,8 +21,8 @@ CASES = ROOT / "eval" / "critic_cases.jsonl"
 OUT = ROOT / "eval" / "results"
 
 
-NOTE = ("self-fit pattern result written by the same author as the cases; NOT model accuracy; "
-        "real-model run pending NVIDIA_API_KEY")
+NOTE = ("pattern result; evidence is recorded real statutes but memo sentences are written by the same author "
+        "as the rules; NOT model accuracy")
 
 
 async def run_mode(cases: list[dict], use_rules: bool) -> dict:
@@ -47,7 +47,7 @@ async def run_mode(cases: list[dict], use_rules: bool) -> dict:
     result = {
         "mode": "rules" if use_rules else "norules",
         "provider": provider,
-        "source": "placeholder-fixture",
+        "source": sorted({c.get("source", "unknown") for c in cases}),
         "detected": sum(r["hit"] for r in over),
         "overclaims": len(over),
         "rule_id_correct": sum(r["rule_correct"] for r in over) if use_rules else None,
@@ -79,7 +79,7 @@ async def main() -> None:
     if res["provider"] == "pattern-fallback":
         print("!!! 경고: " + NOTE)
         print("!!! 규칙 없음 모드는 패턴 판정이 use_rules를 무시하므로 비교 무효(comparison_valid=false)")
-    print("주의: 케이스는 placeholder 조문 기반이다. 실녹화 후 재실행 전까지 수치는 placeholder 기준이다.")
+    print("주의: 근거는 실제 법령 녹화본이지만 초안 문장은 규칙 작성자가 썼다. 일반화 성능을 뜻하지 않는다.")
 
 
 asyncio.run(main())
