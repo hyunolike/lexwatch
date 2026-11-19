@@ -186,6 +186,22 @@ public class WorkflowWorkerTests(PostgresFixture pg) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Succeeded_step_persists_cloudflare_provider_kind()
+    {
+        var run = await Seed.RunAsync(pg);
+        var time = new FakeTime(T0);
+        var gid = (await AiSeed.GroupAsync(pg, run.Id)).Id;
+        var step = await EnqueueAsync(run, "analyze", time, gid);
+        var worker = Seed.Worker(pg, time,
+            new LambdaHandler("analyze", _ => new StepResult.NeedsReview("x", null, "cloudflare", "cloudflare-workers-ai")));
+
+        await worker.RunOnceAsync();
+
+        var a = await LoadAsync(step.Id);
+        Assert.Equal(("cloudflare", "cloudflare-workers-ai"), (a.ProviderKind, a.ProviderName));
+    }
+
+    [Fact]
     public async Task Stale_worker_result_is_discarded_after_reclaim()
     {
         var run = await Seed.RunAsync(pg);

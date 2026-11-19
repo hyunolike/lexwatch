@@ -1,5 +1,5 @@
 export type Role = "lawyer" | "admin";
-export type ProviderKind = "nvidia" | "fallback" | "replay" | "none";
+export type ProviderKind = "nvidia" | "cloudflare" | "fallback" | "replay" | "none";
 
 export interface ReviewSummary {
   id: string;

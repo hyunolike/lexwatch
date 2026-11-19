@@ -112,6 +112,7 @@ LexWatch는 사건을 처리하는 본업이 아니라 **법령 개정을 지켜
 ![Python](https://img.shields.io/badge/Python_3.12-3776AB?style=flat-square&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![NVIDIA](https://img.shields.io/badge/NVIDIA_NIM_Nemotron-76B900?style=flat-square&logo=nvidia&logoColor=white)
+![Cloudflare](https://img.shields.io/badge/Cloudflare_Workers_AI-F38020?style=flat-square&logo=cloudflare&logoColor=white)
 ![uv](https://img.shields.io/badge/uv-DE5FE9?style=flat-square&logo=uv&logoColor=white)
 ![pytest](https://img.shields.io/badge/pytest-0A9EDC?style=flat-square&logo=pytest&logoColor=white)
 
@@ -228,6 +229,7 @@ LexWatch는 사건을 처리하는 본업이 아니라 **법령 개정을 지켜
 | 연동 | 수준 |
 |---|---|
 | NIM 채팅 (Nemotron) | 실행 검증 |
+| Cloudflare Workers AI 채팅 (gpt-oss-120b) | 녹화 테스트. 실호출 확인 예정 |
 | 임베딩 (Nemotron Embed) | 실행 검증, 2,048차원 |
 | 리랭커 (Nemotron Rerank) | 녹화 테스트 |
 | NeMo Guardrails | 문서만 (실제로 도는 것은 결정적 입력 규칙) |
@@ -238,7 +240,7 @@ LexWatch는 사건을 처리하는 본업이 아니라 **법령 개정을 지켜
 - **녹화 테스트**: 재구성한 응답이나 가짜 전송 계층으로 우리 코드의 처리를 확인함.
 - **문서만**: 절차나 설정을 적기만 했음.
 
-공개 데모의 AI 서비스에는 아직 NVIDIA 키를 넣지 않아 분류와 분석이 대체 구현으로 돕니다. 화면의 출처 라벨이 이를 그대로 보여 주며, 대체 구현을 NVIDIA라고 표시하지 않습니다. 근거와 한계는 [docs/nvidia-integration.md](docs/nvidia-integration.md), 사내 배포 절차는 [docs/on-prem-nim.md](docs/on-prem-nim.md)(실행 검증하지 않음)에 있습니다.
+AI 서비스는 NVIDIA 키가 있으면 NVIDIA NIM을, 없으면 Cloudflare Workers AI(무료 하루 10,000 Neurons, `@cf/openai/gpt-oss-120b`)를, 둘 다 없으면 대체 구현을 씁니다. 화면의 출처 라벨은 NVIDIA(보라), Cloudflare(자주), 대체 구현(남회색), 재현(점선)으로 처리한 주체를 그대로 보여 주며, 다른 공급자를 NVIDIA라고 표시하지 않습니다. Cloudflare Workers AI는 처리한 고객 데이터를 학습에 쓰지 않는다고 공식 문서에 밝히고 있습니다([명세](docs/features/cloudflare-ai/spec.md)). 근거와 한계는 [docs/nvidia-integration.md](docs/nvidia-integration.md), 사내 배포 절차는 [docs/on-prem-nim.md](docs/on-prem-nim.md)(실행 검증하지 않음)에 있습니다.
 
 <br>
 

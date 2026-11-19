@@ -107,7 +107,10 @@ Render  --Postgres(세션 풀러)-->  Supabase (pgvector)
 | `PORT` | Render가 주입 | 수신 포트 | 없으면 8080 |
 | `NVIDIA_API_KEY` | Vercel ai | NIM 호출 키 | 비밀. 없으면 mock LLM과 lexical 검색으로 동작한다 |
 | `NIM_BASE_URL`, `NIM_MODEL`, `EMBED_MODEL`, `RERANK_MODEL`, `RERANK_URL` | Vercel ai | 모델·엔드포인트 | 기본값이 `.env.example`과 같다. 바꿀 때만 설정 |
-| `LLM_PROVIDER`, `RETRIEVER_PROVIDER` | Vercel ai | `auto`(기본)/mock/lexical 강제 | 키가 있어도 mock으로 데모하려면 지정 |
+| `CLOUDFLARE_ACCOUNT_ID` | Vercel ai | Cloudflare Workers AI 계정 | 비밀 아님. `96dc7e6d07c8cb414af597acfec30146` |
+| `CLOUDFLARE_API_TOKEN` | Vercel ai | Workers AI 호출 토큰(Workers AI 읽기와 편집, 계정 하나, 2027-11-19 만료) | 비밀. NVIDIA 키가 없고 이 값과 계정 ID가 있으면 채팅이 Cloudflare로 간다 |
+| `CLOUDFLARE_MODEL` | Vercel ai | Workers AI 모델 | 기본 `@cf/openai/gpt-oss-120b` |
+| `LLM_PROVIDER`, `RETRIEVER_PROVIDER` | Vercel ai | `LLM_PROVIDER`: `auto`(기본, NVIDIA → Cloudflare → 대체 구현), `nvidia`, `cloudflare`, `mock`. `RETRIEVER_PROVIDER`: `auto`, `lexical` | 키가 있어도 mock으로 데모하려면 지정 |
 | `NEXT_PUBLIC_API_BASE_URL` | Vercel web | 브라우저가 부를 백엔드 주소 | **빌드 때 번들에 박힌다.** 바꾸면 재배포 |
 
 비밀은 저장소에 두지 않는다. `render.yaml`은 비밀을 `sync: false`로 두고 값을 대시보드에서 넣게 한다.

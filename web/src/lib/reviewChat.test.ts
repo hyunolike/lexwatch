@@ -9,6 +9,11 @@ describe("mapChatResult", () => {
     expect(m).toMatchObject({ role: "assistant", refused: false, providerKind: "nvidia" });
     expect(m.citations).toEqual([{ id: "law:L1:23", title: "근로기준법 제23조" }]);
   });
+
+  it("Cloudflare가 답하면 출처를 cloudflare로 남긴다", () => {
+    const m = mapChatResult({ waking: false, status: 200, data: { answer: "답", citations: [], refused: false, provider: { name: "cloudflare-workers-ai", kind: "cloudflare" } } }, ev);
+    expect(m.providerKind).toBe("cloudflare");
+  });
   it("shows refusals plainly and never labels fallback as nvidia", () => {
     const m = mapChatResult({ waking: false, status: 200, data: { answer: "이 개정안의 근거 안에서만 답할 수 있어요.", citations: [], refused: true, provider: { name: "no-key", kind: "fallback" } } }, ev);
     expect(m.refused).toBe(true);

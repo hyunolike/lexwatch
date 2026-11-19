@@ -235,3 +235,20 @@ class NvidiaNimProvider(LLMProvider):
             model=data.get("model", self.model),
             usage=data.get("usage") or {},
         )
+
+
+CLOUDFLARE_DEFAULT_MODEL = "@cf/openai/gpt-oss-120b"
+
+
+class CloudflareWorkersAIProvider(NvidiaNimProvider):
+    """Cloudflare Workers AI. 같은 OpenAI 호환 Chat Completions라 재시도와 도구 호출 해석을 그대로 쓰고,
+    출처만 cloudflare로 남긴다. docs/features/cloudflare-ai/spec.md"""
+
+    info = ProviderInfo(name="cloudflare-workers-ai", kind="cloudflare")
+
+    def __init__(self, api_token: str, account_id: str, model: str = CLOUDFLARE_DEFAULT_MODEL, **kwargs: Any) -> None:
+        if not api_token or not account_id:
+            raise LLMError("CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required", code="LLM_NO_KEY")
+        super().__init__(
+            api_token, f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1", model, **kwargs
+        )

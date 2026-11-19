@@ -95,6 +95,7 @@ DS-12(Enter 전송)는 검토 결과 이번 범위에서 뺐다(1.2절).
 | `--color-info`, `--color-info-bg` | `#1D4ED8`, `#E8EFFD` | 진행 중, 승인 대기, 일반 안내 |
 | `--color-neutral`, `--color-neutral-bg` | `#4A5568`, `#EEF1F5` | 대기, 관련 없음, 모르는 값 |
 | `--color-source-nvidia`, `--color-source-nvidia-bg` | `#5B3FC4`, `#EFEBFC` | 출처 NVIDIA |
+| `--color-source-cloudflare`, `--color-source-cloudflare-bg` | `#8E2C7A`, `#F8E9F4` | 출처 Cloudflare Workers AI (2026-11-19 추가, [명세](../cloudflare-ai/spec.md)) |
 | `--color-source-fallback`, `--color-source-fallback-bg` | `#3D4A63`, `#E9ECF2` | 출처 대체 구현 |
 | `--color-source-replay`, `--color-source-replay-bg` | `#5A6172`, `#FFFFFF` | 출처 재현(테두리는 `line-strong` 점선) |
 | `--color-diff-del`, `--color-diff-del-bg` | `#9B1C1C`, `#FDECEC` | 신구 대조 삭제 |

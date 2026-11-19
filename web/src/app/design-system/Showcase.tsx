@@ -108,6 +108,7 @@ export function Showcase() {
         <Block title="SourceLabel" note="누가 만들었는지 알리는 분류. 품질 판정이 아니다. 마우스를 올리거나 Tab으로 설명을 본다.">
           <div className="flex flex-wrap gap-2">
             <SourceLabel kind="nvidia" />
+            <SourceLabel kind="cloudflare" />
             <SourceLabel kind="fallback" />
             <SourceLabel kind="replay" />
           </div>
