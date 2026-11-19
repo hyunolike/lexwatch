@@ -68,6 +68,7 @@
 | 검토 | 승인·수정 후 승인·반려, 승인자와 수정 전후 기록, 근거 안에서만 답하는 검토 보조 채팅 |
 | 알림 | 승인된 그룹의 데모 알림함 발송, 실패 시 관리자 알림과 알림만 다시 실행 |
 | 운영 | 매일 07:00 수집, 04:00 데모 초기화(GitHub Actions), 채팅 할당량, 공유 토큰으로 AI 서비스 보호 |
+| 화면 | 로펌 직원용 디자인 시스템: 의미 토큰과 WCAG 2.2 AA 대비 검사, 한국어 상태 라벨, 법제처 공식 변경 표시를 쓴 신구조문 대조, 인용 근거 팝오버, 승인 확인 대화상자, 마스코트 "렉스". 규칙은 앱의 `/design-system` 화면과 [설계 문서](docs/features/design-system/design.md)에 있습니다 |
 
 <br>
 
@@ -75,7 +76,7 @@
 
 | 영역 | 기술 |
 | --- | --- |
-| Web | Next.js 16, React 19, TypeScript, Tailwind CSS 4 |
+| Web | Next.js 16, React 19, TypeScript, Tailwind CSS 4, Base UI, Pretendard |
 | API | .NET 10, ASP.NET Core Minimal API, EF Core 10, Npgsql, Serilog, OpenTelemetry |
 | AI | Python 3.12, FastAPI, Pydantic, httpx, uv |
 | Model | NVIDIA NIM: Nemotron 3.5 Super VL(채팅), Nemotron Embed(임베딩), Nemotron Rerank |
@@ -185,7 +186,7 @@
 - **녹화 테스트**: 재구성한 응답이나 가짜 전송 계층으로 우리 코드의 처리를 확인함. 실제 서버가 그렇게 답하는지는 확인하지 않았습니다.
 - **문서만**: 절차나 설정을 적기만 했음.
 
-화면 배지는 NVIDIA(초록), 대체 구현(주황), 재현(회색)으로 구분하며 대체 구현을 NVIDIA라고 표시하지 않습니다. 근거와 한계는 [docs/nvidia-integration.md](docs/nvidia-integration.md), 사내 배포 절차는 [docs/on-prem-nim.md](docs/on-prem-nim.md)(실행 검증하지 않음)에 있습니다.
+화면의 출처 라벨은 NVIDIA(보라), 대체 구현(남회색), 재현(점선 테두리)으로 구분하며 대체 구현을 NVIDIA라고 표시하지 않습니다. 출처는 품질 판정이 아니어서 성공과 실패를 뜻하는 초록과 빨강을 쓰지 않습니다. 근거와 한계는 [docs/nvidia-integration.md](docs/nvidia-integration.md), 사내 배포 절차는 [docs/on-prem-nim.md](docs/on-prem-nim.md)(실행 검증하지 않음)에 있습니다.
 
 <br>
 
@@ -215,10 +216,10 @@ docker compose up --build          # 데이터 볼륨까지 지우려면 docker 
 ### 테스트
 
 ```bash
-cd ai && uv run pytest                      # AI 서비스 74건
-cd web && pnpm test                         # 화면 27건
+cd ai && uv run pytest                      # AI 서비스 77건
+cd web && pnpm test                         # 화면 85건(토큰 대비, 라벨, 신구 대조 포함)
 export DOTNET_ROOT=$HOME/.dotnet PATH=$HOME/.dotnet:$PATH
-make test-backend                           # .NET 134건, Testcontainers라 Docker 필요
+make test-backend                           # .NET 141건, Testcontainers라 Docker 필요
 make eval-critic                            # 크리틱 평가, 결과를 eval/results에 저장
 ```
 
@@ -252,7 +253,8 @@ lexwatch/
 - ReRoute (NVIDIA Korea Agentic AI Hackathon 본선 진출 10팀 중 하나, 팀 저장소): NIM 어댑터의 재시도와 `Retry-After` 처리, 텍스트 도구 호출 파싱, 에이전트 가드레일 방식을 참고했습니다.
 - FlyGate (팀 저장소): 크리틱 3단 설계를 참고했습니다. 법률 도메인에 맞게 새로 구현했고 코드는 옮기지 않았습니다.
 - 법령 데이터는 국가법령정보센터 Open API를 쓰도록 구현했습니다.
-- README의 구조도 세 장(`docs/images/`)은 Codex CLI 내장 이미지 생성으로 만들었습니다.
+- README의 구조도 세 장(`docs/images/`)과 마스코트 "렉스"(`web/public/mascot/`)는 Codex CLI 내장 이미지 생성으로 만들었습니다. 마스코트 프롬프트는 [assets.md](docs/features/design-system/assets.md)에 있습니다.
+- 디자인 시스템은 IBM Carbon, GOV.UK, Atlassian, KRDS의 공개 지침을 참고했습니다([조사 기록](docs/features/design-system/research.md)).
 
 <br>
 
