@@ -70,6 +70,9 @@ public class Evidence
     public string Body { get; set; } = "";
     public string? SourceUrl { get; set; }
     public DateTimeOffset FetchedAt { get; set; }
+
+    /// <summary>oldnew 근거의 법제처 공식 변경 구간. {"old":[[s,e],...],"new":[[s,e],...]}. 그 밖에는 null.</summary>
+    public string? ChangeMarksJson { get; set; }
 }
 
 public class AgentToolCall

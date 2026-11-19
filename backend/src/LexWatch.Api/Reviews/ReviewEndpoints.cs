@@ -81,7 +81,10 @@ public static class ReviewEndpoints
             }
             summary["oldNew"] = oldNew;
             summary["draft"] = draftDto;
-            summary["evidence"] = evidence.Select(e => new { id = e.EvidenceId, kind = e.Kind, title = e.Title, sourceUrl = e.SourceUrl });
+            summary["evidence"] = evidence.Select(e => new
+            {
+                id = e.EvidenceId, kind = e.Kind, title = e.Title, sourceUrl = e.SourceUrl, excerpt = Excerpt(e),
+            });
             summary["version"] = review.Version;
             return Results.Ok(summary);
         });
@@ -278,15 +281,47 @@ public static class ReviewEndpoints
     {
         var parts = e.EvidenceId.Split(':', 3);
         var articleNo = parts.Length == 3 ? parts[2] : e.Title;
-        string before = "", after = "";
-        var oldMark = e.Body.IndexOf("[구조문]\n", StringComparison.Ordinal);
-        var newMark = e.Body.IndexOf("\n\n[신조문]\n", StringComparison.Ordinal);
-        if (oldMark >= 0 && newMark > oldMark)
+        var (before, after) = SplitOldNew(e.Body);
+        int[][]? oldMarks = null, newMarks = null;
+        if (e.ChangeMarksJson is { } json)
         {
-            before = e.Body[(oldMark + "[구조문]\n".Length)..newMark];
-            after = e.Body[(newMark + "\n\n[신조문]\n".Length)..];
+            var m = JsonSerializer.Deserialize<ChangeMarks>(json, J);
+            oldMarks = m?.Old;
+            newMarks = m?.New;
         }
-        return new { articleNo, before, after };
+        return new
+        {
+            articleNo, before, after,
+            beforeMissing = before == Missing, afterMissing = after == Missing,
+            oldMarks, newMarks,
+        };
+    }
+
+    private const string Missing = "(없음)";
+    private const int ExcerptLength = 240;
+
+    private sealed record ChangeMarks(int[][]? Old, int[][]? New);
+
+    /// <summary>oldnew 근거 본문 "[구조문]\n…\n\n[신조문]\n…"을 나눈다. 형식이 아니면 둘 다 빈 문자열.</summary>
+    private static (string Before, string After) SplitOldNew(string body)
+    {
+        var oldMark = body.IndexOf("[구조문]\n", StringComparison.Ordinal);
+        var newMark = body.IndexOf("\n\n[신조문]\n", StringComparison.Ordinal);
+        if (oldMark < 0 || newMark <= oldMark) return ("", "");
+        return (body[(oldMark + "[구조문]\n".Length)..newMark], body[(newMark + "\n\n[신조문]\n".Length)..]);
+    }
+
+    /// <summary>근거 본문 앞부분. oldnew는 신조문에서, 신조문이 없으면(삭제 조문) 구조문에서 자른다.</summary>
+    private static string Excerpt(LexWatch.Api.Data.Entities.Evidence e)
+    {
+        var text = e.Body;
+        if (e.Kind == "oldnew")
+        {
+            var (before, after) = SplitOldNew(e.Body);
+            if (before != "" || after != "") text = after != Missing ? after : before;
+        }
+        text = text.Trim();
+        return text.Length <= ExcerptLength ? text : text[..ExcerptLength] + "…";
     }
 
     private static async Task<Dictionary<string, object?>?> SummaryAsync(LexWatchDb db, Guid id, CancellationToken ct)

@@ -82,6 +82,41 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Detail_returns_evidence_excerpt_and_official_change_marks()
+    {
+        var g = await SeedAsync();
+        await using (var db = pg.CreateDb())
+        {
+            var row = await db.Evidence.SingleAsync(e => e.RunId == g.RunId && e.EvidenceId == "oldnew:L1:제23조");
+            row.ChangeMarksJson = """{"old":[[0,3]],"new":[[1,4]]}""";
+            await db.SaveChangesAsync();
+        }
+        await using var f = Factory();
+        var d = await As(f, "lawyer").GetFromJsonAsync<JsonElement>($"/api/reviews/{g.Id}");
+
+        var on = d.GetProperty("oldNew")[0];
+        Assert.False(on.GetProperty("beforeMissing").GetBoolean());
+        Assert.False(on.GetProperty("afterMissing").GetBoolean());
+        Assert.Equal(0, on.GetProperty("oldMarks")[0][0].GetInt32());
+        Assert.Equal(3, on.GetProperty("oldMarks")[0][1].GetInt32());
+        Assert.Equal(4, on.GetProperty("newMarks")[0][1].GetInt32());
+
+        var ev = d.GetProperty("evidence").EnumerateArray().ToDictionary(e => e.GetProperty("id").GetString()!);
+        Assert.Equal("사용자는 근로자에게 정당한 이유 없이 해고를 하지 못한다.", ev["law:L1:제23조"].GetProperty("excerpt").GetString());
+        // oldnew 근거는 신조문 부분에서 240자로 자르고 말줄임표를 붙인다.
+        Assert.Equal(new string('가', 240) + "…", ev["oldnew:L1:제23조"].GetProperty("excerpt").GetString());
+    }
+
+    [Fact]
+    public async Task Detail_without_change_marks_returns_null_marks()
+    {
+        var g = await SeedAsync();
+        await using var f = Factory();
+        var d = await As(f, "lawyer").GetFromJsonAsync<JsonElement>($"/api/reviews/{g.Id}");
+        Assert.Equal(JsonValueKind.Null, d.GetProperty("oldNew")[0].GetProperty("oldMarks").ValueKind);
+    }
+
+    [Fact]
     public async Task Approve_enqueues_notify_and_records_actor()
     {
         var g = await SeedAsync();
