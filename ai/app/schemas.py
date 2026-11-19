@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 class ProviderInfo(BaseModel):
     name: str
-    kind: Literal["nvidia", "fallback"]
+    kind: Literal["nvidia", "cloudflare", "fallback"]
 
 
 class Evidence(BaseModel):

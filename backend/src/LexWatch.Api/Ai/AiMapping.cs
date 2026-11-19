@@ -14,6 +14,7 @@ public static class AiMapping
     public static string ProviderKind(ProviderInfo p) => p.Kind switch
     {
         ProviderInfoKind.Nvidia => "nvidia",
+        ProviderInfoKind.Cloudflare => "cloudflare",
         ProviderInfoKind.Fallback => "fallback",
         _ => "fallback",
     };

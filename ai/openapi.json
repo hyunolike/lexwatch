@@ -669,6 +669,7 @@
             "type": "string",
             "enum": [
               "nvidia",
+              "cloudflare",
               "fallback"
             ],
             "title": "Kind"

@@ -42,6 +42,8 @@
   /* 출처 (상태 색 계열을 쓰지 않는다) */
   --color-source-nvidia: #5b3fc4;
   --color-source-nvidia-bg: #efebfc;
+  --color-source-cloudflare: #8e2c7a;
+  --color-source-cloudflare-bg: #f8e9f4;
   --color-source-fallback: #3d4a63;
   --color-source-fallback-bg: #e9ecf2;
   --color-source-replay: #5a6172;
