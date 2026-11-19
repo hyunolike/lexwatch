@@ -79,3 +79,39 @@ jobs:
       - run: docker build -f backend/Dockerfile -t lexwatch-api:ci .
       - run: docker build -f ai/Dockerfile -t lexwatch-ai:ci .
       - run: docker build -f web/Dockerfile -t lexwatch-web:ci .
+
+  deploy-api:
+    # main에 push되고 위 다섯 잡이 모두 통과했을 때만 Render API를 배포한다.
+    # Vercel(web, ai)은 Git 연동으로 따로 배포된다. 절차와 시크릿: docs/deploy.md "자동 배포"
+    needs: [backend, ai, openapi-drift, web, docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    concurrency:
+      group: deploy-api
+      cancel-in-progress: false
+    steps:
+      - name: Render 배포 요청
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK_URL 시크릿이 없다. docs/deploy.md '자동 배포' 절을 보고 넣는다."
+            exit 1
+          fi
+          # 훅 URL은 비밀이라 로그에 남기지 않는다. ref로 이 커밋을 배포하게 한다.
+          curl --silent --show-error --fail --max-time 30 -X POST "${HOOK}&ref=${GITHUB_SHA}" -o /dev/null
+          echo "배포 요청: ${GITHUB_SHA}"
+      - name: 새 커밋이 뜰 때까지 기다림
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          # 빌드와 기동, 무료 플랜 깨우기까지 최대 20분. /health의 commit이 이 커밋이 되면 끝.
+          for i in $(seq 1 80); do
+            got=$(curl --silent --max-time 30 "${API_BASE_URL}/health" | jq -r '.commit // empty' 2>/dev/null || true)
+            if [ "$got" = "$GITHUB_SHA" ]; then echo "live: $got"; exit 0; fi
+            echo "대기 ${i}/80 (현재 ${got:-응답 없음})"
+            sleep 15
+          done
+          echo "::error::20분 안에 ${GITHUB_SHA}가 뜨지 않았다. Render 대시보드의 배포 로그를 본다."
+          exit 1

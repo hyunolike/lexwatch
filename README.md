@@ -106,14 +106,14 @@
 | --- | --- | --- |
 | 웹 (`lexwatch-web`) | Vercel, sin1 | `main` push 시 자동 배포, Root Directory `web` |
 | AI 서비스 (`lexwatch-ai`) | Vercel, sin1, Fluid Compute | `main` push 시 자동 배포, Root Directory `ai` |
-| API (`lexwatch-api`) | Render free, Singapore, Docker | `render.yaml` 블루프린트, `main` 자동 배포 |
+| API (`lexwatch-api`) | Render free, Singapore, Docker | `render.yaml` 블루프린트. `main`에서 CI가 모두 통과하면 `ci`의 `deploy-api` 잡이 배포 |
 | DB | Supabase PostgreSQL + pgvector, ap-southeast-1 | 세션 풀러로 연결, API 기동 시 마이그레이션 |
 
 ### CI/CD
 
 | 워크플로 | 시점 | 하는 일 |
 | --- | --- | --- |
-| `ci` | push, PR | .NET 테스트, Python 테스트, AI 클라이언트 재생성 비교, 웹 타입체크·린트·테스트·빌드, 이미지 3종 빌드 |
+| `ci` | push, PR | .NET 테스트, Python 테스트, AI 클라이언트 재생성 비교, 웹 타입체크·린트·테스트·빌드, 이미지 3종 빌드. `main` push에서 모두 통과하면 Render API 배포 후 `/health`의 커밋으로 확인 |
 | `collect` | 매일 07:00 KST | 잠든 무료 서버를 깨우고 `POST /jobs/collect`, 처리하는 10분 동안 `/health` 호출 |
 | `reset-demo` | 매일 04:00 KST | `POST /jobs/reset-demo`로 재현 예시와 채팅 할당량 재생성 |
 
