@@ -93,9 +93,11 @@ jobs:
         include:
           - name: web
             project_id: prj_v2DhruJFOamdPmxiQZWSvJA8yTo5
+            token_secret: VERCEL_TOKEN_WEB
             check_url: https://lexwatch-web.vercel.app/
           - name: ai
             project_id: prj_ZhL9slWEJ7pobFh283gtAJGJGC2F
+            token_secret: VERCEL_TOKEN_AI
             check_url: https://lexwatch-ai.vercel.app/health
     concurrency:
       group: deploy-vercel-${{ matrix.name }}
@@ -110,10 +112,11 @@ jobs:
           node-version: 22
       - name: Vercel 프로덕션 배포 (${{ matrix.name }})
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          # 프로젝트 하나로 범위를 제한한 토큰을 프로젝트마다 따로 둔다.
+          VERCEL_TOKEN: ${{ secrets[matrix.token_secret] }}
         run: |
           if [ -z "$VERCEL_TOKEN" ]; then
-            echo "::error::VERCEL_TOKEN 시크릿이 없다. docs/deploy.md '자동 배포' 절을 보고 넣는다."
+            echo "::error::${{ matrix.token_secret }} 시크릿이 없다. docs/deploy.md '자동 배포' 절을 보고 넣는다."
             exit 1
           fi
           npm install --global --no-fund --no-audit vercel@59.11.2
