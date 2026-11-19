@@ -50,22 +50,32 @@ const SOURCES: Record<string, { label: string; icon: LucideIcon; cls: string; he
  * 출처 라벨(DS-03). 누가 만들었는지를 알리는 분류이고 품질 판정이 아니다.
  * none이나 빈 값은 그리지 않는다. 모르는 값은 원문을 중립 색으로.
  */
-export function SourceLabel({ kind }: { kind: string | null | undefined }) {
+export function SourceLabel({ kind, tooltip = true }: { kind: string | null | undefined; tooltip?: boolean }) {
   if (!kind || kind === "none") return null;
   const s = SOURCES[kind];
   if (!s)
     return <span className="rounded-sm bg-neutral-bg px-2 py-0.5 text-micro text-neutral">{kind}</span>;
   const Icon = s.icon;
+  const cls = cx("inline-flex items-center gap-1 rounded-sm px-2 py-0.5 text-micro", s.cls);
+  const content = (
+    <>
+      <Icon aria-hidden className="size-3.5" />
+      {s.label}
+      <span className="sr-only">: {s.help}</span>
+    </>
+  );
+  // 링크 안처럼 포커스를 받으면 안 되는 곳에서는 툴팁 없이 title로만 설명한다.
+  if (!tooltip)
+    return (
+      <span className={cls} title={s.help}>
+        {content}
+      </span>
+    );
   return (
     <Tooltip
       trigger={
-        <span
-          tabIndex={0}
-          className={cx("inline-flex cursor-help items-center gap-1 rounded-sm px-2 py-0.5 text-micro", s.cls)}
-        >
-          <Icon aria-hidden className="size-3.5" />
-          {s.label}
-          <span className="sr-only">: {s.help}</span>
+        <span tabIndex={0} className={cx(cls, "cursor-help")}>
+          {content}
         </span>
       }
     >

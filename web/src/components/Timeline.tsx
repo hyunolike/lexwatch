@@ -1,68 +1,104 @@
 "use client";
-import { formatDuration, stepLabel, type TimelineItem } from "@/lib/api";
-import { ProviderBadge } from "@/components/ProviderBadge";
+import { CheckCheck, Mail, Search, Wrench } from "lucide-react";
+import type { ReactNode } from "react";
+import { formatDuration, type TimelineItem } from "@/lib/api";
+import { groupLabel, statusLabel, stepLabel } from "@/lib/labels";
+import { SourceLabel, StatusLozenge } from "@/components/ds/badges";
+import { cx } from "@/lib/cx";
 
-function StatusPill({ status }: { status: string }) {
-  const cls =
-    status === "Failed" ? "bg-red-100 text-red-800" : status === "Succeeded" ? "bg-green-100 text-green-800" : "bg-slate-200 text-slate-700";
-  return <span className={`rounded px-2 py-0.5 text-xs ${cls}`}>{status}</span>;
+function Group({ code }: { code: string | null }) {
+  if (!code) return null;
+  return <span className="rounded-sm bg-surface-sunken px-1.5 py-0.5 text-micro text-ink-muted">{groupLabel(code)}</span>;
 }
 
-export function Timeline({
-  items,
-}: {
-  items: TimelineItem[];
-}) {
-  if (items.length === 0) return <p className="text-slate-500">기록된 단계가 없어요.</p>;
+function Row({ icon, nested, children }: { icon?: ReactNode; nested?: boolean; children: ReactNode }) {
   return (
-    <ol className="space-y-1">
+    <li className={cx("relative flex gap-3", nested && "ml-6")}>
+      <span aria-hidden className="mt-3 flex size-5 shrink-0 items-center justify-center text-ink-subtle">
+        {icon ?? <span className="size-2 rounded-full bg-line-strong" />}
+      </span>
+      <div className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2">{children}</div>
+    </li>
+  );
+}
+
+/** 실행 타임라인. 단계 상태, 출처, 도구 호출, 크리틱 판정, 승인, 알림을 시간순으로. */
+export function Timeline({ items }: { items: TimelineItem[] }) {
+  if (items.length === 0) return <p className="text-ui text-ink-subtle">기록된 단계가 없어요.</p>;
+  return (
+    <ol className="space-y-2">
       {items.map((it, i) => {
-        const group = it.groupCode ? <span className="rounded bg-slate-100 px-1.5 text-xs">{it.groupCode}</span> : null;
-        if (it.kind === "step") {
-          return (
-            <li key={i} className="flex flex-wrap items-center gap-3 rounded border bg-white p-2">
-              <span className="font-medium">{stepLabel(it.step)}</span>
-              {group}
-              <span className="text-sm text-slate-500">시도 {it.attempt}</span>
-              <span className="text-sm text-slate-500">{formatDuration(it.durationMs)}</span>
-              <StatusPill status={it.status} />
-              <ProviderBadge kind={it.providerKind} />
-              {it.errorCode && (
-                <span className="text-sm text-red-700" title={it.errorMessage ?? undefined}>
-                  {it.errorCode}
-                </span>
-              )}
-            </li>
-          );
+        switch (it.kind) {
+          case "step":
+            return (
+              <Row key={i}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-ui font-semibold text-ink">{stepLabel(it.step)}</span>
+                  <Group code={it.groupCode} />
+                  <StatusLozenge domain="step" value={it.status} />
+                  <SourceLabel kind={it.providerKind} />
+                  <span className="ml-auto text-caption text-ink-subtle tabular-nums">
+                    시도 {it.attempt} · {formatDuration(it.durationMs)}
+                  </span>
+                </div>
+                {it.errorCode && (
+                  <p className="mt-1 text-caption text-danger">
+                    <span className="font-mono">{it.errorCode}</span>
+                    {it.errorMessage && <span className="text-ink-muted"> — {it.errorMessage}</span>}
+                  </p>
+                )}
+              </Row>
+            );
+          case "tool_call":
+            return (
+              <Row key={i} nested icon={<Wrench className="size-3.5" />}>
+                <p className="text-ui text-ink">
+                  <span className="font-mono text-label">{it.tool}</span>{" "}
+                  <span className="text-caption text-ink-subtle">
+                    {stepLabel(it.step)} · 시도 {it.attempt}
+                  </span>
+                </p>
+                <p className="text-caption text-ink-muted">{it.resultSummary}</p>
+                {it.evidenceIds.length > 0 && (
+                  <p className="text-caption text-ink-subtle">근거: {it.evidenceIds.join(", ")}</p>
+                )}
+              </Row>
+            );
+          case "finding":
+            return (
+              <Row key={i} nested icon={<Search className="size-3.5 text-danger" />}>
+                <p className="flex flex-wrap items-center gap-2 text-ui text-ink">
+                  <span className="font-semibold">크리틱 {it.tier}단</span>
+                  <span className="font-mono text-label text-danger">{it.ruleId}</span>
+                  <Group code={it.groupCode} />
+                </p>
+                <p className="text-caption text-ink-muted">{it.message}</p>
+              </Row>
+            );
+          case "approval":
+            return (
+              <Row key={i} icon={<CheckCheck className="size-3.5" />}>
+                <p className="flex flex-wrap items-center gap-2 text-ui text-ink">
+                  <span className="font-semibold">결정</span>
+                  <StatusLozenge domain="decision" value={it.decision} />
+                  <Group code={it.groupCode} />
+                  <span className="text-caption text-ink-subtle">{statusLabel("role", it.actorRole).label}</span>
+                </p>
+                {it.comment && <p className="text-caption text-ink-muted">{it.comment}</p>}
+              </Row>
+            );
+          default:
+            return (
+              <Row key={i} icon={<Mail className="size-3.5" />}>
+                <p className="flex flex-wrap items-center gap-2 text-ui text-ink">
+                  <span className="font-semibold">알림</span>
+                  <StatusLozenge domain="notification" value={it.status} />
+                  <Group code={it.groupCode} />
+                </p>
+                <p className="text-caption text-ink-muted">{it.message}</p>
+              </Row>
+            );
         }
-        if (it.kind === "tool_call")
-          return (
-            <li key={i} className="ml-8 rounded border-l-4 border-slate-300 bg-white p-2 text-sm">
-              <span className="font-mono">{it.tool}</span> <span className="text-slate-500">({stepLabel(it.step)} · 시도 {it.attempt})</span>
-              <p className="text-slate-600">{it.resultSummary}</p>
-              {it.evidenceIds.length > 0 && <p className="text-xs text-slate-500">근거: {it.evidenceIds.join(", ")}</p>}
-            </li>
-          );
-        if (it.kind === "finding")
-          return (
-            <li key={i} className="ml-8 rounded border-l-4 border-orange-300 bg-white p-2 text-sm">
-              <span className="font-semibold">{it.tier}단</span> <span className="font-mono">{it.ruleId}</span> {group}
-              <p className="text-slate-600">{it.message}</p>
-            </li>
-          );
-        if (it.kind === "approval")
-          return (
-            <li key={i} className="rounded border bg-white p-2 text-sm">
-              <span className="font-medium">결정: {it.decision}</span> {group} <span className="text-slate-500">({it.actorRole})</span>
-              {it.comment && <p className="text-slate-600">{it.comment}</p>}
-            </li>
-          );
-        return (
-          <li key={i} className="rounded border bg-white p-2 text-sm">
-            <span className="font-medium">알림 {it.status}</span> {group}
-            <p className="text-slate-600">{it.message}</p>
-          </li>
-        );
       })}
     </ol>
   );

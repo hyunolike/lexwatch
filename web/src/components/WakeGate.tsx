@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { MAX_RETRIES, RETRY_INTERVAL_MS, type ApiResult } from "@/lib/api";
+import { Mascot } from "@/components/ds/layout";
+import { Button } from "@/components/ui/Button";
 
 type Ready<T> = { status: number; data: T };
 
@@ -59,24 +61,26 @@ export function WakeGate<T>({
   }, []);
 
   if (res) return <>{children(res, reload)}</>;
-  if (failed)
+  if (failed || gaveUp)
     return (
-      <div className="p-8 text-center">
-        <p>화면을 불러오지 못했어요.</p>
-        <button onClick={reload} className="mt-3 rounded border px-3 py-1">다시 시도</button>
-      </div>
-    );
-  if (gaveUp)
-    return (
-      <div className="p-8 text-center">
-        <p>서버가 아직 깨어나지 않았어요. 잠시 뒤에 다시 시도해 주세요.</p>
-        <button onClick={reload} className="mt-3 rounded border px-3 py-1">다시 시도</button>
+      <div className="flex flex-col items-center py-10 text-center">
+        <Mascot pose="error" size={180} />
+        <p className="mt-4 text-title-sm text-ink">
+          {failed ? "화면을 불러오지 못했어요" : "서버가 아직 깨어나지 않았어요"}
+        </p>
+        <p className="mt-1 text-ui text-ink-muted">잠시 뒤에 다시 시도해 주세요.</p>
+        <Button className="mt-4" onClick={reload}>
+          다시 시도
+        </Button>
       </div>
     );
   return (
-    <div className="p-8 text-center text-slate-600">
-      <p className="text-lg font-medium">서버를 깨우는 중이에요</p>
-      <p className="mt-1 text-sm">무료 서버라 첫 접속은 1분쯤 걸릴 수 있어요. ({attempt}/{MAX_RETRIES})</p>
+    <div role="status" aria-live="polite" className="flex flex-col items-center py-10 text-center">
+      <Mascot pose="waking" size={180} />
+      <p className="mt-4 text-title-sm text-ink">서버를 깨우는 중이에요</p>
+      <p className="mt-1 text-ui text-ink-muted">
+        무료 서버라 첫 접속은 1분쯤 걸릴 수 있어요. <span className="tabular-nums">({attempt}/{MAX_RETRIES})</span>
+      </p>
     </div>
   );
 }

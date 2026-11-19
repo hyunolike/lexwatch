@@ -201,10 +201,8 @@ DS-12(Enter 전송)는 검토 결과 이번 범위에서 뺐다(1.2절).
 | `lib/api.ts` | 고침(단계 3) | `OldNew`, `EvidenceItem` 타입에 3.2 필드. `stepLabel`을 `labels.ts`에서 다시 내보냄 |
 | `components/ui/Button.tsx` | 만듦 | Base UI `button` |
 | `components/ui/ConfirmDialog.tsx` | 만듦 | Base UI `alert-dialog` |
-| `components/ui/Popover.tsx`, `Tooltip.tsx`, `Tabs.tsx` | 만듦 | Base UI 해당 부품에 토큰 스타일 |
-| `components/ds/SourceLabel.tsx` | 만듦 | `ProviderBadge.tsx`를 대체 |
-| `components/ds/StatusLozenge.tsx` | 만듦 | `Timeline.tsx` 안의 `StatusPill`과 화면의 상태 글자를 대체 |
-| `components/ds/CountBadge.tsx`, `ConfidenceMeter.tsx`, `Callout.tsx`, `EmptyState.tsx`, `Mascot.tsx`, `SummaryList.tsx` | 만듦 | 4.2 |
+| `components/ui/Floating.tsx`(Popover, Tooltip), `Tabs.tsx` | 만듦 | Base UI 해당 부품에 토큰 스타일 |
+| `components/ds/badges.tsx`(StatusLozenge, SourceLabel, CountBadge, ConfidenceMeter), `Callout.tsx`, `layout.tsx`(Mascot, EmptyState, SummaryList, PageHeader, CARD) | 만듦 | 4.2 |
 | `components/ds/CitationChip.tsx` | 만듦 | `DraftEditor.tsx` 안의 `Chip`을 대체 |
 | `components/ds/RedlineDiff.tsx` | 만듦 | `OldNewDiff.tsx`를 대체 |
 | `components/ds/AppHeader.tsx` | 만듦 | `Nav.tsx`, `DemoBanner.tsx`, 각 화면의 `RoleSwitch` 배치를 합침. 경로를 읽는 클라이언트 부분은 지금처럼 `layout.tsx`에서 `<Suspense>`로 감쌈(`cacheComponents`) |
@@ -225,8 +223,8 @@ DS-12(Enter 전송)는 검토 결과 이번 범위에서 뺐다(1.2절).
 
 | 부품 | props | 규칙 |
 |---|---|---|
-| `Button` | `variant: "primary" \| "secondary" \| "danger" \| "ghost"`, `size: "sm" \| "md"`, `loading?: boolean` | 높이 32px/36px. `loading`이면 앞에 회전 아이콘, `aria-busy`, 클릭 막음. 비활성은 `opacity-50` 하나 |
-| `SourceLabel` | `kind: ProviderKind \| string` | `none`이나 빈 값은 그리지 않는다. 아이콘+글자+툴팁. NVIDIA(`Cpu` 아이콘) "NVIDIA Nemotron이 실제로 처리했어요", 대체 구현(`Wrench`) "모델 대신 규칙 기반 대체 구현이 만들었어요. 품질 판정이 아니에요", 재현(`History`, 점선 테두리) "녹화한 예시를 다시 보여 주는 데모 데이터예요". 모르는 값은 원문을 `neutral`로 |
+| `Button` | `variant: "primary" \| "secondary" \| "danger" \| "danger-ghost" \| "ghost"`, `size: "sm" \| "md"`, `loading?: boolean` | 높이 32px/36px. `loading`이면 앞에 회전 아이콘, `aria-busy`, 클릭 막음. 비활성은 `opacity-50` 하나 |
+| `SourceLabel` | `kind: ProviderKind \| string`, `tooltip?: boolean` | `none`이나 빈 값은 그리지 않는다. 링크 안(목록 행)처럼 포커스를 받으면 안 되는 곳에서는 `tooltip={false}`로 `title`과 숨김 글로만 설명한다. 아이콘+글자+툴팁. NVIDIA(`Cpu` 아이콘) "NVIDIA Nemotron이 실제로 처리했어요", 대체 구현(`Wrench`) "모델 대신 규칙 기반 대체 구현이 만들었어요. 품질 판정이 아니에요", 재현(`History`, 점선 테두리) "녹화한 예시를 다시 보여 주는 데모 데이터예요". 모르는 값은 원문을 `neutral`로 |
 | `StatusLozenge` | `domain`, `value` | `statusLabel`(5.2)로 라벨과 의미를 얻어 색 점+라벨 |
 | `CountBadge` | `count`, `label`, `tone?: "neutral" \| "danger"` | 부르는 쪽이 `tone`을 정한다. 크리틱 적발 수만 `danger`로 부르고, 0이면 그려도 `neutral` |
 | `ConfidenceMeter` | `value: number \| null` | 숫자는 `Math.round(v*100)%`. 막대 5칸, 채울 칸은 `Math.round(v*5)`, 0~1 밖은 잘라 낸다. `null`이면 "—"만. Base UI `meter`로 `aria-valuenow` |

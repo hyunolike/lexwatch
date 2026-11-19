@@ -4,12 +4,13 @@ import { LoaderCircle } from "lucide-react";
 import type { ComponentProps } from "react";
 import { cx } from "@/lib/cx";
 
-export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
+export type ButtonVariant = "primary" | "secondary" | "danger" | "danger-ghost" | "ghost";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: "bg-brand text-on-brand hover:bg-brand-hover",
   secondary: "border border-line-strong bg-surface text-ink hover:bg-surface-sunken",
   danger: "bg-danger text-on-brand hover:brightness-110",
+  "danger-ghost": "text-danger hover:bg-danger-bg",
   ghost: "text-ink-muted hover:bg-surface-sunken hover:text-ink",
 };
 

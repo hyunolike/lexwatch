@@ -1,9 +1,13 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import { apiFetch, hasRetryableStep, retryRun, type RunDetail } from "@/lib/api";
-import { ReplayNote } from "@/components/ReplayNote";
-import { ProviderBadge } from "@/components/ProviderBadge";
-import { RoleSwitch, useRole } from "@/components/RoleSwitch";
+import { REPLAY_NOTE } from "@/lib/labels";
+import { SourceLabel, StatusLozenge } from "@/components/ds/badges";
+import { Callout } from "@/components/ds/Callout";
+import { Button } from "@/components/ui/Button";
+import { useRole } from "@/components/RoleSwitch";
 import { Timeline } from "@/components/Timeline";
 import { WakeGate } from "@/components/WakeGate";
 
@@ -21,19 +25,23 @@ function Detail({ data, reload }: { data: RunDetail; reload: () => void }) {
   };
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-lg font-semibold">{data.lawChange.lawName}</h2>
-        <span className="text-sm">{data.run.status}</span>
-        {data.run.isReplay && <ProviderBadge kind="replay" />}
-        {!data.run.isReplay && <span className="text-sm text-slate-500">{data.lawChange.promulgationDate} 공포</span>}
+      <div className="flex flex-wrap items-center gap-2">
+        <h1 className="text-title-md text-ink">{data.lawChange.lawName}</h1>
+        <StatusLozenge domain="run" value={data.run.status} />
+        {data.run.isReplay && <SourceLabel kind="replay" />}
+        {!data.run.isReplay && <span className="text-caption text-ink-subtle">{data.lawChange.promulgationDate} 공포</span>}
       </div>
-      {data.run.isReplay && <ReplayNote />}
+      {data.run.isReplay && <Callout tone="info">{REPLAY_NOTE}</Callout>}
       {role === "admin" && !data.run.isReplay && hasRetryableStep(data.timeline, data.groups ?? []) && (
-        <button onClick={onRetry} disabled={retrying} className="rounded border bg-white px-3 py-1 text-sm disabled:opacity-50">
-          실패한 단계 다시 실행
-        </button>
+        <Button loading={retrying} onClick={onRetry}>
+          <RotateCcw aria-hidden className="size-4" /> 실패한 단계 다시 실행
+        </Button>
       )}
-      {notice && <p role="alert" className="rounded border border-orange-300 bg-orange-50 p-2 text-sm">{notice}</p>}
+      {notice && (
+        <Callout tone="warning" live>
+          {notice}
+        </Callout>
+      )}
       <Timeline items={data.timeline} />
     </div>
   );
@@ -43,20 +51,19 @@ export function RunClient({ id }: { id: string }) {
   const role = useRole();
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">실행 타임라인</h1>
-        <RoleSwitch />
-      </div>
+      <Link href="/runs" className="inline-flex items-center gap-1 rounded-md text-label text-ink-muted hover:text-ink">
+        <ArrowLeft aria-hidden className="size-4" /> 실행 이력
+      </Link>
       <WakeGate<RunDetail> key={role} load={() => apiFetch<RunDetail>(`/api/runs/${id}`)}>
         {(res, reload) =>
           res.status === 401 || res.status === 403 ? (
-            <p>이 화면을 보려면 변호사 또는 관리자 역할이 필요해요. 위에서 역할을 골라 주세요.</p>
+            <Callout tone="warning">이 화면을 보려면 변호사 또는 관리자 역할이 필요해요. 위에서 역할을 골라 주세요.</Callout>
           ) : res.status === 404 ? (
-            <p>실행을 찾을 수 없어요.</p>
+            <Callout tone="warning">실행을 찾을 수 없어요.</Callout>
           ) : res.data && Array.isArray(res.data.timeline) ? (
             <Detail data={res.data} reload={reload} />
           ) : (
-            <p>실행 정보를 불러오지 못했어요.</p>
+            <Callout tone="danger">실행 정보를 불러오지 못했어요.</Callout>
           )
         }
       </WakeGate>
