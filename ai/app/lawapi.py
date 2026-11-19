@@ -1,6 +1,6 @@
 """국가법령정보센터 DRF client. All response-shape knowledge lives here.
 
-Shapes follow docs/notes/2026-11-16-spike.md (일부 추정 — 실호출로 확정 필요).
+Shapes follow docs/notes/2026-11-16-spike.md (2026-11-19 실응답 녹화로 확인, fixtures/lawapi/recorded).
 OC comes from env LAW_OC and is never logged or echoed.
 """
 
@@ -64,6 +64,33 @@ def _flatten(unit: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+_ART_HEAD = re.compile(r"^\s*제\s*\d+\s*조(?:\s*의\s*\d+)?")
+_CHANGE_MARK = re.compile(r"</?P>")
+
+
+def _group_old_new(section: Any) -> dict[str, str]:
+    """신구조문 목록 -> {조문키: 본문}.
+
+    실응답은 항목이 {"content", "no"} 객체이고, 한 조문이 항마다 여러 항목으로 나뉘어 온다.
+    "제N조"로 시작하는 항목이 새 조문을 열고, 나머지 항목은 앞 조문에 붙는다.
+    바뀐 부분을 감싼 <P>…</P> 표시는 걷어낸다. 문자열 항목(합성 fixture)도 받는다.
+    """
+    out: dict[str, list[str]] = {}
+    current: str | None = None
+    for e in _as_list((section or {}).get("조문") if isinstance(section, dict) else None):
+        raw = e if isinstance(e, str) else (e.get("content") or e.get("조문내용") or "") if isinstance(e, dict) else ""
+        text = _CHANGE_MARK.sub("", str(raw)).strip()
+        if not text:
+            continue
+        head = _ART_HEAD.match(text)
+        if head:
+            current = article_key(head.group(0))
+            out.setdefault(current, [])
+        if current is not None:
+            out[current].append(text)
+    return {k: "\n".join(v) for k, v in out.items()}
+
+
 def _check(data: Any) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise LawApiError("법령 API 응답 형식 오류")
@@ -121,8 +148,8 @@ class LawApi:
     async def old_new(self, law_id: str, mst: str | None = None) -> dict[str, dict[str, str]]:
         data = await self._get("lawService.do", {"target": "oldAndNew", **self._key(law_id, mst)})
         svc = data.get("OldAndNewService") or {}
-        old = {article_key(s): s for s in _as_list((svc.get("구조문목록") or {}).get("조문")) if article_key(s)}
-        new = {article_key(s): s for s in _as_list((svc.get("신조문목록") or {}).get("조문")) if article_key(s)}
+        old = _group_old_new(svc.get("구조문목록"))
+        new = _group_old_new(svc.get("신조문목록"))
         keys = list(dict.fromkeys([*new, *old]))
         if not keys:
             raise LawApiError("신구조문 없음")
