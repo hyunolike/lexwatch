@@ -246,9 +246,26 @@ class CloudflareWorkersAIProvider(NvidiaNimProvider):
 
     info = ProviderInfo(name="cloudflare-workers-ai", kind="cloudflare")
 
-    def __init__(self, api_token: str, account_id: str, model: str = CLOUDFLARE_DEFAULT_MODEL, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        api_token: str,
+        account_id: str,
+        model: str = CLOUDFLARE_DEFAULT_MODEL,
+        *,
+        reasoning_effort: str | None = None,
+        **kwargs: Any,
+    ) -> None:
         if not api_token or not account_id:
             raise LLMError("CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required", code="LLM_NO_KEY")
         super().__init__(
             api_token, f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1", model, **kwargs
         )
+        self.reasoning_effort = reasoning_effort
+
+    def _prepare(self, messages: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+        msgs, extra = super()._prepare(messages)
+        # gpt-oss 추론 강도. None이면 모델 기본값. 분류처럼 단순한 판정만 low로 낮춘다(CF-06).
+        # 크리틱은 low에서 규칙 ID 정확도가 13/13에서 9/13으로 떨어져 기본값을 둔다. 다른 모델에는 보내지 않는다.
+        if "gpt-oss" in self.model and self.reasoning_effort:
+            extra["reasoning_effort"] = self.reasoning_effort
+        return msgs, extra
