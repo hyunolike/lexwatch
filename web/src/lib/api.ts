@@ -35,10 +35,19 @@ export interface Draft {
   openQuestions: string[];
 }
 
+/** 변경 구간 [시작, 끝). 법제처 공식 표시를 지운 글 기준. */
+export type MarkRange = [number, number];
+
 export interface OldNew {
   articleNo: string;
   before: string;
   after: string;
+  /** 해당 칸이 "(없음)"이었는지(신설, 삭제 조문) */
+  beforeMissing: boolean;
+  afterMissing: boolean;
+  /** 법제처 공식 변경 구간. 배포 전 수집분과 재현 데이터는 null */
+  oldMarks: MarkRange[] | null;
+  newMarks: MarkRange[] | null;
 }
 
 export interface EvidenceItem {
@@ -46,6 +55,8 @@ export interface EvidenceItem {
   kind: string;
   title: string;
   sourceUrl: string | null;
+  /** 근거 본문 앞부분(최대 240자) */
+  excerpt?: string;
 }
 
 export interface ReviewDetail extends ReviewSummary {
