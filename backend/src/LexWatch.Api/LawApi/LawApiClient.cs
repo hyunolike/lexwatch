@@ -27,13 +27,14 @@ public record OldNewBody(bool Exists, IReadOnlyList<OldNewArticle> Articles);
 
 /// <summary>
 /// 국가법령정보센터 DRF 클라이언트. JSON 형태에 대한 지식은 전부 이 파일에만 둔다
-/// (최상위 키는 문서 기반 추정 — 실녹화 후 여기만 고친다). OC 값은 로그·오류 메시지에 싣지 않는다.
+/// (2026-11-19 실응답 녹화로 확인, fixtures/lawapi/recorded). OC 값은 로그·오류 메시지에 싣지 않는다.
 /// </summary>
 public class LawApiClient
 {
     private const int PageSize = 100;
     private const int MaxPages = 20;
     private static readonly Regex ArticleNo = new(@"^\s*(제\d+조(?:의\d+)?)", RegexOptions.Compiled);
+    private static readonly Regex ChangeMark = new(@"</?P>", RegexOptions.Compiled);
 
     private readonly HttpClient _http;
     private readonly LawApiOptions _opt;
@@ -93,7 +94,7 @@ public class LawApiClient
                 if (no == "") continue;
                 var branch = Str(e, "조문가지번호");
                 var number = $"제{no}조" + (branch is not "" and not "0" ? $"의{branch}" : "");
-                articles.Add(new LawArticle(number, Str(e, "조문제목"), Str(e, "조문내용")));
+                articles.Add(new LawArticle(number, Str(e, "조문제목"), FlattenArticle(e)));
             }
         return new LawApiResult<LawBody>.Ok(new LawBody(lawId, name, articles), r.Body!);
     }
@@ -121,17 +122,49 @@ public class LawApiClient
     private static string Key(string lawId, string mst) =>
         mst != "" ? $"MST={Uri.EscapeDataString(mst)}" : $"ID={Uri.EscapeDataString(lawId)}";
 
+    /// <summary>
+    /// 신구조문 목록 → {조문번호: 본문}. 실응답은 항목이 {"content","no"} 객체이고 한 조문이 항마다 여러 항목으로 온다.
+    /// "제N조"로 시작하는 항목이 새 조문을 열고 나머지는 앞 조문에 붙는다. 변경 표시 &lt;P&gt;…&lt;/P&gt;는 걷어낸다.
+    /// 문자열 항목(합성 fixture)도 받는다.
+    /// </summary>
     private static Dictionary<string, string> ArticleTexts(JsonElement root, string listKey)
     {
-        var d = new Dictionary<string, string>();
-        if (!TryProp(root, listKey, out var list)) return d;
+        var parts = new Dictionary<string, List<string>>();
+        if (!TryProp(root, listKey, out var list)) return [];
+        string? current = null;
         foreach (var e in Elements(list, "조문"))
         {
-            var text = e.ValueKind == JsonValueKind.String ? e.GetString() ?? "" : Str(e, "조문내용");
+            var raw = e.ValueKind == JsonValueKind.String ? e.GetString() ?? ""
+                : Str(e, "content") is { Length: > 0 } c ? c : Str(e, "조문내용");
+            var text = ChangeMark.Replace(raw, "").Trim();
+            if (text == "") continue;
             var m = ArticleNo.Match(text);
-            if (m.Success) d.TryAdd(m.Groups[1].Value, text);
+            if (m.Success)
+            {
+                current = m.Groups[1].Value;
+                if (!parts.ContainsKey(current)) parts[current] = [];
+            }
+            if (current is not null) parts[current].Add(text);
         }
-        return d;
+        return parts.ToDictionary(p => p.Key, p => string.Join("\n", p.Value));
+    }
+
+    /// <summary>조문내용 뒤에 항 → 호 → 목 본문을 순서대로 붙인다. 실응답의 조문내용은 제목 줄뿐인 경우가 많다.</summary>
+    private static string FlattenArticle(JsonElement unit)
+    {
+        var lines = new List<string>();
+        void Add(string s) { s = s.Trim(); if (s != "") lines.Add(s); }
+        Add(Str(unit, "조문내용"));
+        foreach (var hang in Elements(unit, "항"))
+        {
+            Add(Str(hang, "항내용"));
+            foreach (var ho in Elements(hang, "호"))
+            {
+                Add(Str(ho, "호내용"));
+                foreach (var mok in Elements(ho, "목")) Add(Str(mok, "목내용"));
+            }
+        }
+        return string.Join("\n", lines);
     }
 
     private sealed record Fetched(JsonDocument? Doc, string? Body, LawApiResult<object>.Error? Error);

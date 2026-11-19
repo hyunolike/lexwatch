@@ -1,5 +1,7 @@
-"""국가법령정보센터 응답 녹화. 실행: uv run --with httpx --with python-dotenv scripts/record_lawapi.py
-LAW_OC 없으면 종료. 응답 본문은 가공하지 않고 저장한다."""
+"""국가법령정보센터 응답 녹화. 실행: uv run --with httpx --with python-dotenv scripts/record_lawapi.py [출력 디렉터리]
+LAW_OC 없으면 종료. 응답 본문은 가공하지 않고 저장한다.
+출력 디렉터리를 주지 않으면 fixtures/lawapi/recorded 에 쓴다. fixtures/lawapi 바로 아래 파일은
+테스트가 쓰는 합성 fixture라서 덮어쓰지 않는다."""
 import datetime as dt, json, os, pathlib, sys
 import httpx
 from dotenv import load_dotenv
@@ -9,7 +11,8 @@ OC = os.environ.get("LAW_OC")
 if not OC:
     sys.exit("LAW_OC 가 없습니다. .env 에 설정한 뒤 다시 실행하세요 (open.law.go.kr 에서 OC 신청).")
 BASE = "https://www.law.go.kr/DRF"
-OUT = pathlib.Path(__file__).resolve().parent.parent / "fixtures" / "lawapi"
+OUT = (pathlib.Path(sys.argv[1]).resolve() if len(sys.argv) > 1
+       else pathlib.Path(__file__).resolve().parent.parent / "fixtures" / "lawapi" / "recorded")
 OUT.mkdir(parents=True, exist_ok=True)
 
 def is_error_body(text):
@@ -31,6 +34,8 @@ def get(path, expect_error=False, **p):
     return r.text
 
 def save(name, text):
+    # 목록의 법령상세링크에 OC가 그대로 실려 온다. 커밋되는 fixture에는 남기지 않는다.
+    text = text.replace(f"OC={OC}", "OC=")
     (OUT / name).write_text(text, encoding="utf-8")
     print("saved", name)
 
