@@ -9,11 +9,14 @@ from app.agent.prompts import CLASSIFY_SYSTEM
 from app.providers.llm.base import OutputInvalid
 from app.providers.llm.factory import get_llm
 from app.providers.llm.mock import MockLLMProvider
+from app.providers.llm.nim import CloudflareWorkersAIProvider
 from app.schemas import LawSummary, ProviderInfo
 
 MISSING_REASON = "판정 누락"
 KEYLESS_REASON = "키 없음: 임베딩 유사도 기준 대체 판정"
 KEYLESS_PROVIDER = ProviderInfo(name="similarity-fallback", kind="fallback")
+# 운영에서 gpt-oss 기본 추론 강도로는 분류 한 번이 30초를 넘겨 재시도 끝에 시간 초과가 났다(CF-06).
+CLASSIFY_REASONING_EFFORT = "low"
 
 
 class GroupCandidate(BaseModel):
@@ -89,6 +92,8 @@ async def classify(req: ClassifyRequest) -> ClassifyResponse:
             ],
             provider=KEYLESS_PROVIDER,
         )
+    if isinstance(llm, CloudflareWorkersAIProvider):
+        llm.reasoning_effort = CLASSIFY_REASONING_EFFORT
     codes = [c.group_code for c in req.candidates]
     messages = [
         {"role": "system", "content": CLASSIFY_SYSTEM},

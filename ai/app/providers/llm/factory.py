@@ -23,7 +23,12 @@ def _cloudflare() -> LLMProvider | None:
     account = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
     if not token or not account:
         return None
-    return CloudflareWorkersAIProvider(token, account, os.environ.get("CLOUDFLARE_MODEL", CLOUDFLARE_DEFAULT_MODEL))
+    return CloudflareWorkersAIProvider(
+        token,
+        account,
+        os.environ.get("CLOUDFLARE_MODEL", CLOUDFLARE_DEFAULT_MODEL),
+        reasoning_effort=os.environ.get("CLOUDFLARE_REASONING_EFFORT", "").strip() or None,
+    )
 
 
 def get_llm() -> LLMProvider:
