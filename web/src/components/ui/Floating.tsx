@@ -31,7 +31,7 @@ export function Tooltip({ trigger, children }: { trigger: ReactElement; children
     <BaseTooltip.Root>
       <BaseTooltip.Trigger render={trigger} delay={300} />
       <BaseTooltip.Portal>
-        <BaseTooltip.Positioner sideOffset={6} className="z-50">
+        <BaseTooltip.Positioner sideOffset={6} className="z-(--layer-tooltip)">
           <BaseTooltip.Popup className={`max-w-xs rounded-md bg-ink px-3 py-2 text-caption text-on-brand shadow-pop ${POPUP}`}>
             {children}
           </BaseTooltip.Popup>

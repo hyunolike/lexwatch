@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/verify-design-css.mjs",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run && node --test scripts/verify-design-css.test.mjs",
+    "verify:design": "node scripts/verify-design-css.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",

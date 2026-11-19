@@ -349,6 +349,19 @@ function stepLabel(step: string): string;    // api.ts에서 옮김
 
 ## 7. 위험
 
+### 2026-11-19 화면 진단 후 결정
+
+- 배포 HTML은 새 클래스인데 CSS에는 이전 body와 다크 규칙이 남아 있다. Vercel 로그는 이전 빌드 캐시 복원을 보여 준다. 캐시가 없는 배포로 비교하고, 검증 전에는 캐시의 세부 무효화 결함을 확정하지 않는다.
+- `pnpm build`에 최종 CSS 검사를 연결한다. `web/scripts/verify-design-css.mjs`는 로컬 `.next` 또는 명시한 공개 URL의 HTML에 연결된 CSS를 읽고 동일한 검사를 수행한다. HTTP 실패나 스타일 누락은 성공으로 처리하지 않는다. Vercel의 immutable 경로와 CSS 분할을 지원한다.
+- CSS 검사 계약: `canvas`, `surface`, `ink`, `brand`, `danger`, `warning`, `focus`의 `--color-*` 선언은 `tokens.css`의 값과 같아야 한다(축약 hex 허용). `.bg-surface`/`.bg-brand`는 대응 `background-color:var(--color-*)`, `.text-ink`/`.text-danger`/`.text-warning`는 대응 `color:var(--color-*)`, `.text-title-lg`는 `font-size:var(--text-title-lg)`, `:focus-visible` 규칙은 `outline-color:var(--color-focus)`가 있어야 한다. body는 `background-color:var(--color-canvas)`, `font-family:var(--font-sans)`, `color:var(--color-ink)`, html은 `color-scheme:light`를 포함한다. `--font-sans`에 Pretendard Variable, `--text-title-lg:1.5rem`도 필요하다. 이전 `--background`/`--foreground` 선언, `prefers-color-scheme:dark`와 Arial body는 정상 스타일과 혼재해도 실패다. 정상/분할 fixture는 통과, 누락/값 불일치/이전 규칙 혼재/HTTP 오류는 실패한다. 이는 배포 smoke 검사이며 전체 CSS 캐스케이드/접근성 인증이 아니다.
+- 제품 값 변경이나 새 의존성 없이 기존 의미 토큰을 사용한다. `tokens.css`에 작업 폭(70rem), 읽기 폭(48rem), 팝오버/모달 레이어 규칙을 정의하고 문서 화면에 설명한다. 기존 4px 간격 척도를 사용한다.
+- 목록은 데스크톱에서 법령명/확인 필요/그룹 관련성/근거/출처 열을 고정해 행마다 정렬한다. 문제 0건도 중립 표시해 빈 열이 다른 정보를 밀지 않게 한다. 작은 화면은 법령명과 보조 정보를 줄바꿈한다. 재현 여부 안내는 유지한다.
+- 상세는 상태와 지적 요약을 먼저 놓고 초안은 가운데 읽기 폭으로, 조문 비교는 그 아래 전체 작업 폭으로 놓는다. 상세 상단 ‘확인할 문장 n개’는 첫 지적 문장 앵커로 연결한다. 기본 정보는 접힌 details로 제공한다. 결정 영역은 기존 sticky 위치와 권한/확인 동작을 유지한다.
+- 모바일 헤더는 로고와 짧은 역할 이름을 첫 줄에, 내비게이션을 둘째 줄에 놓는다. 역할의 접근 가능한 이름은 ‘변호사로 보기’/‘관리자로 보기’를 유지한다. 문장 바로가기에서 문장 번호가 헤더 뒤로 가려지지 않아야 한다.
+- `reviewPresentation.ts`는 지적 문장 수와 첫 지적 위치를 계산한다. 초안 없음, 지적 없음, 여러 지적이 한 문장에 있는 경우를 구분한다. 검사 메시지는 변경하지 않고 문장 아래 먼저 표시하며 `details` 안에 단계와 규칙 ID를 둔다.
+- 대안: 색과 부품을 전면 교체하는 재디자인은 이미 있는 접근성과 업무 패턴을 다시 검증해야 하므로 제외한다. 좌우 초안/조문 배치는 조문을 다시 두 칸으로 쪼개는 문제 때문에 순차 배치를 택한다. 선택한 근거 팝오버는 그대로 쓴다.
+
+
 - Base UI 1.9.0의 `alert-dialog`, `popover` 동작을 처음 쓴다. 단계 3에서 부품 하나씩 수동 확인 1번 절차로 확인하고 문제가 있으면 그 부품만 직접 구현으로 바꾼다.
 - `next.config.ts`의 `"*.css"` Turbopack 규칙이 `pretendard` CSS에도 Tailwind 로더를 적용한다. 단계 1의 `pnpm build`와 브라우저 네트워크 탭에서 글꼴 조각이 받아지는지 확인한다. 실패하면 글꼴 CSS를 `public/fonts`로 복사해 `<link>`로 불러온다.
 - Pretendard의 `tnum` 지원은 확인하지 못했다. 단계 1에서 신뢰도 열이 정렬되는지 보고, 안 되면 숫자 열만 `ui-monospace`로 바꾼다.

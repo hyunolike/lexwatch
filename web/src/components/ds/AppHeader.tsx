@@ -30,12 +30,12 @@ export function AppHeader() {
         데모 데이터는 매일 새벽 초기화됩니다.
       </p>
       <div className="border-b border-line bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2">
+        <div className="mx-auto flex max-w-workspace flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2">
           <Link href="/" className="flex items-center gap-2 rounded-md">
             <Mascot pose="avatar" size={32} className="rounded-full bg-surface-sunken" />
             <span className="text-title-sm text-brand">LexWatch</span>
           </Link>
-          <nav aria-label="주 메뉴" className="flex gap-1">
+          <nav aria-label="주 메뉴" className="order-3 flex w-full gap-1 sm:order-none sm:w-auto">
             {LINKS.map((l) => (
               <Link
                 key={l.href}

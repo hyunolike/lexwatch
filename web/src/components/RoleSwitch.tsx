@@ -32,13 +32,15 @@ export function RoleSwitch() {
           key={r}
           type="button"
           aria-pressed={role === r}
+          aria-label={label}
           onClick={() => pick(r)}
           className={cx(
             "h-7 rounded-[6px] px-3 text-label transition-colors duration-[120ms]",
             role === r ? "bg-surface text-ink shadow-card" : "text-ink-muted hover:text-ink",
           )}
         >
-          {label}
+          <span className="sm:hidden">{r === "lawyer" ? "변호사" : "관리자"}</span>
+          <span className="hidden sm:inline">{label}</span>
         </button>
       ))}
     </div>

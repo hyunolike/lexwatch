@@ -36,10 +36,10 @@ export function ConfirmDialog({ trigger, title, description, confirmLabel, cance
     <AlertDialog.Root open={open} onOpenChange={(o) => !busy && setOpen(o)}>
       <AlertDialog.Trigger render={trigger} />
       <AlertDialog.Portal>
-        <AlertDialog.Backdrop className="fixed inset-0 bg-ink/40 transition-opacity duration-[240ms] ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
+        <AlertDialog.Backdrop className="fixed inset-0 z-(--layer-modal) bg-ink/40 transition-opacity duration-[240ms] ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
         <AlertDialog.Popup
           initialFocus={cancelRef}
-          className="fixed top-1/2 left-1/2 w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-lg bg-surface p-6 shadow-dialog transition-[opacity,scale] duration-[240ms] ease-out data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0"
+          className="fixed top-1/2 left-1/2 z-(--layer-modal) max-h-[calc(100dvh-2rem)] w-[min(28rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg bg-surface p-6 shadow-dialog transition-[opacity,scale] duration-[240ms] ease-out data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0"
         >
           <AlertDialog.Title className="text-title-sm text-ink">{title}</AlertDialog.Title>
           <AlertDialog.Description className="mt-2 text-ui text-ink-muted">{description}</AlertDialog.Description>

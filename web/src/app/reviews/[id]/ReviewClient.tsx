@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { apiFetch, decisionActions, submitDecision, type ApiError, type EditedSentence, type ReviewDetail } from "@/lib/api";
 import { REPLAY_NOTE } from "@/lib/labels";
+import { reviewAttention } from "@/lib/reviewPresentation";
 import { DraftEditor } from "@/components/DraftEditor";
 import { ReviewChat } from "@/components/ReviewChat";
 import { SourceLabel, StatusLozenge } from "@/components/ds/badges";
@@ -29,6 +30,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
   const [busy, setBusy] = useState(false);
 
   const actions = decisionActions(role, review.status, draft != null);
+  const attention = reviewAttention(draft);
   const kinds =
     review.isReplay && !review.providerKinds.includes("replay") ? [...review.providerKinds, "replay" as const] : review.providerKinds;
 
@@ -54,24 +56,32 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
 
       <header className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-title-md text-ink">{review.lawName}</h1>
+          <h1 className="text-title-lg break-words text-ink">{review.lawName}</h1>
           <StatusLozenge domain="review" value={review.status} />
           {kinds.map((k) => (
             <SourceLabel key={k} kind={k} />
           ))}
         </div>
         {review.isReplay && <Callout tone="info">{REPLAY_NOTE}</Callout>}
-        <div className={`${CARD} p-4`}>
-          <SummaryList
-            rows={[
-              { term: "실무그룹", value: review.groupName },
-              { term: "공포일", value: review.isReplay ? "재현 예시" : review.promulgationDate },
-              { term: "초안", value: draft ? `v${draft.version} · ${draft.createdBy === "agent" ? "에이전트 작성" : draft.createdBy}` : "없음" },
-              { term: "근거", value: `${review.evidence.length}건` },
-            ]}
-          />
-        </div>
       </header>
+
+      {attention.hasDraft && (
+        <Callout
+          tone={attention.flaggedSentences > 0 ? "warning" : "info"}
+          title={attention.flaggedSentences > 0 ? `확인할 문장 ${attention.flaggedSentences}개가 있어요` : "자동 검사에서 발견된 문제가 없어요"}
+        >
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-label text-ink-muted">
+              {editing ? "수정 전 초안의 검사 결과예요. 수정한 문장과 근거를 다시 확인해 주세요." : "승인하기 전에 초안의 문장과 인용 근거를 직접 확인해 주세요."}
+            </p>
+            {attention.firstFlaggedIndex !== null && (
+              <a href={`#draft-sentence-${attention.firstFlaggedIndex + 1}`} className="rounded-sm text-label font-semibold text-ink underline underline-offset-4">
+                첫 확인 문장 보기
+              </a>
+            )}
+          </div>
+        </Callout>
+      )}
 
       {notice && (
         <Callout tone={notice.tone} live>
@@ -86,23 +96,37 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
         </Callout>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <section aria-labelledby="oldnew" className="space-y-3">
-          <h2 id="oldnew" className="text-title-sm text-ink">신구조문 비교</h2>
-          <RedlineDiff items={review.oldNew} />
-        </section>
-        <section aria-labelledby="draft" className="space-y-3">
-          <h2 id="draft" className="text-title-sm text-ink">영향 검토 초안</h2>
+      <div className="space-y-8">
+        <section aria-labelledby="draft" className="mx-auto max-w-reading space-y-3">
+          <h2 id="draft" className="text-title-md text-ink">영향 검토 초안</h2>
           {draft ? (
             <DraftEditor draft={draft} evidence={review.evidence} editing={editing} edited={edited} onChange={setEdited} />
           ) : (
             <Callout tone="warning">아직 초안이 없어요. 근거가 부족하면 사유를 적어 반려할 수 있어요.</Callout>
           )}
         </section>
+        <section aria-labelledby="oldnew" className="space-y-3">
+          <h2 id="oldnew" className="text-title-md text-ink">신구조문 비교</h2>
+          <RedlineDiff items={review.oldNew} />
+        </section>
       </div>
 
+      <details className={`${CARD} p-4`}>
+        <summary className="w-fit cursor-pointer rounded-sm text-label font-medium text-ink-muted">법령과 초안 정보</summary>
+        <div className="mt-4">
+          <SummaryList
+            rows={[
+              { term: "실무그룹", value: review.groupName },
+              { term: "공포일", value: review.isReplay ? "재현 예시" : review.promulgationDate },
+              { term: "초안", value: draft ? `v${draft.version} · ${draft.createdBy === "agent" ? "에이전트 작성" : draft.createdBy}` : "없음" },
+              { term: "근거", value: `${review.evidence.length}건` },
+            ]}
+          />
+        </div>
+      </details>
+
       {actions.reject && (
-        <section aria-label="결정" className={`${CARD} sticky bottom-4 space-y-3 p-4 shadow-pop`}>
+        <section aria-label="결정" className={`${CARD} sticky bottom-4 z-20 space-y-3 p-4 shadow-pop`}>
           <div className="flex flex-wrap items-center gap-2">
             {actions.approve && !editing && (
               <ConfirmDialog
