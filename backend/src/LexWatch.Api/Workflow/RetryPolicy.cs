@@ -9,6 +9,7 @@ public static class RetryPolicy
         ["collect"] = 3,
         ["fetch_articles"] = 3,
         ["classify"] = 5,
+        ["index_articles"] = 3,
         ["analyze"] = 3,
         ["critic_judge"] = 3,
         ["notify"] = 3,
