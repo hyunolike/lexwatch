@@ -7,12 +7,15 @@ public class LexWatchDb(DbContextOptions<LexWatchDb> options) : DbContext(option
 {
     /// <summary>임베딩 차원 (docs/notes/2026-11-16-spike.md).</summary>
     public const int EmbedDim = 2048;
+    /// <summary>조문 청크 임베딩 차원(Cloudflare bge-m3). 실제 값은 hybrid-rag 작업 11에서 확인한다.</summary>
+    public const int ChunkEmbedDim = 1024;
 
     public DbSet<LawChange> LawChanges => Set<LawChange>();
     public DbSet<WorkflowRun> WorkflowRuns => Set<WorkflowRun>();
     public DbSet<GroupReview> GroupReviews => Set<GroupReview>();
     public DbSet<StepRun> StepRuns => Set<StepRun>();
     public DbSet<Evidence> Evidence => Set<Evidence>();
+    public DbSet<ArticleChunk> ArticleChunks => Set<ArticleChunk>();
     public DbSet<AgentToolCall> AgentToolCalls => Set<AgentToolCall>();
     public DbSet<MemoDraft> MemoDrafts => Set<MemoDraft>();
     public DbSet<CriticFinding> CriticFindings => Set<CriticFinding>();
@@ -60,6 +63,14 @@ public class LexWatchDb(DbContextOptions<LexWatchDb> options) : DbContext(option
         {
             e.HasKey(x => new { x.RunId, x.EvidenceId });
             e.HasOne<WorkflowRun>().WithMany().HasForeignKey(x => x.RunId);
+        });
+
+        b.Entity<ArticleChunk>(e =>
+        {
+            e.HasKey(x => new { x.RunId, x.ChunkId });
+            e.Property(x => x.Embedding).HasColumnType($"vector({ChunkEmbedDim})");
+            // 모든 청크는 원래 근거로 되돌아간다(RAG-01). 실행이 지워지면 근거와 함께 지워진다.
+            e.HasOne<Evidence>().WithMany().HasForeignKey(x => new { x.RunId, x.EvidenceId }).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<AgentToolCall>(e =>
