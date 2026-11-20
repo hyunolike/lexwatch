@@ -3,6 +3,8 @@ using LexWatch.Api.Workflow;
 
 namespace LexWatch.Api.Ai;
 
+/// <param name="Standard">분류, 임베딩. AI 서비스 분류 예산(50초)보다 길어야 한다.</param>
+/// <param name="Analyze">분석과 크리틱. 추론 모델의 크리틱은 운영에서 27~52초가 걸렸다. AI 서비스 예산(120초)보다 길어야 한다.</param>
 public record AiGatewayOptions(TimeSpan Standard, TimeSpan Analyze)
 {
     public static readonly AiGatewayOptions Default = new(TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(130));
@@ -29,7 +31,7 @@ public class AiGateway(IAiClient client, AiGatewayOptions options)
         CallAsync((c, t) => c.AnalyzeAsync(req, t), attempt, options.Analyze, ct);
 
     public Task<AiOutcome<CritiqueResponse>> CritiqueAsync(CritiqueRequest req, int attempt, CancellationToken ct) =>
-        CallAsync((c, t) => c.CritiqueAsync(req, t), attempt, options.Standard, ct);
+        CallAsync((c, t) => c.CritiqueAsync(req, t), attempt, options.Analyze, ct);
 
     /// <param name="attempt">방금 시작한 시도 번호(1부터). 두 번째 출력 오류부터 사람 검토로 넘긴다.</param>
     public async Task<AiOutcome<T>> CallAsync<T>(Func<IAiClient, CancellationToken, Task<T>> call, int attempt,

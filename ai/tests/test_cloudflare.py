@@ -143,3 +143,72 @@ def test_factory_reads_reasoning_effort(env):
     assert get_llm().reasoning_effort is None
     env.setenv("CLOUDFLARE_REASONING_EFFORT", "high")
     assert get_llm().reasoning_effort == "high"
+
+
+class _Deadlines:
+    """chat에 넘긴 deadline이 지금부터 몇 초 뒤인지 기록하는 가짜 LLM."""
+
+    def __init__(self, content: str):
+        import time
+
+        from app.schemas import ProviderInfo
+
+        self.info = ProviderInfo(name="cf", kind="cloudflare")
+        self.content = content
+        self.left: list[float] = []
+        self._now = time.monotonic
+
+    async def chat(self, messages, tools=None, response_format=None, deadline=None):
+        from app.providers.llm.base import LLMResponse
+
+        self.left.append(deadline - self._now())
+        return LLMResponse(content=self.content, provider=self.info)
+
+
+async def test_classify_budget_fits_inside_backend_wait(env):
+    # CF-07: 백엔드는 분류를 60초 기다린다. AI 서비스가 먼저 끝내야 오류 코드가 남는다.
+    from app import classify as classify_mod
+
+    llm = _Deadlines(json.dumps({"groups": [{"group_code": "labor", "relevant": False, "confidence": 0.1, "reason": "r"}]}))
+    env.setattr(classify_mod, "get_llm", lambda: llm)
+    req = classify_mod.ClassifyRequest.model_validate({
+        "run_id": "r",
+        "law": {"law_id": "1", "name": "법", "promulgation_date": "2026-11-18", "summary": "s"},
+        "candidates": [{"group_code": "labor", "interest_text": "노동", "similarity": 0.3}],
+    })
+    await classify_mod.classify(req)
+    assert 40 < llm.left[0] <= 50
+
+
+async def test_critique_budget_fits_inside_backend_wait(env):
+    # CF-07: 백엔드는 크리틱을 130초 기다린다(분석과 같은 긴 대기). AI 서비스 예산은 120초.
+    from app.critique import judge as judge_mod
+
+    llm = _Deadlines(json.dumps({"findings": []}))
+    env.setattr(judge_mod, "get_llm", lambda: llm)
+    req = judge_mod.CritiqueRequest.model_validate({
+        "run_id": "r",
+        "memo": [{"sentence": "s", "citations": ["e"]}],
+        "evidence": [{"id": "e", "kind": "law", "title": "t", "body": "b"}],
+        "use_rules": True,
+    })
+    await judge_mod.critique(req)
+    assert 100 < llm.left[0] <= 120
+
+
+def test_cloudflare_attempts_are_not_cut_before_slow_answers():
+    # CF-07: 운영에서 크리틱 응답이 27~52초 걸렸다. 30초에 끊고 다시 부르면 매번 같은 자리에서 끊긴다.
+    llm = CloudflareWorkersAIProvider("tok", "acct")
+    assert llm.attempt_timeout_s >= 110
+    assert llm.budget_s >= 110
+
+
+async def test_cloudflare_allows_longer_outputs_for_reasoning():
+    # CF-07: 생각 토큰 때문에 6문장 크리틱이 2,048 토큰에서 잘렸다(finish=length).
+    seen, transport = _capture()
+    await CloudflareWorkersAIProvider("tok", "acct", transport=transport).chat([{"role": "user", "content": "u"}])
+    assert seen["body"]["max_tokens"] == 4096
+    seen, transport = _capture()
+    nv = NvidiaNimProvider("k", "https://nim.example/v1", "nvidia/nemotron", transport=transport)
+    await nv.chat([{"role": "user", "content": "u"}])
+    assert seen["body"]["max_tokens"] == 2048
