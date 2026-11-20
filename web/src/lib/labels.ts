@@ -67,6 +67,7 @@ export const groupLabel = (code: string) => GROUPS[code] ?? code;
 const STEP_LABELS: Record<string, string> = {
   fetch_articles: "조문 수집",
   classify: "분류",
+  index_articles: "조문 색인",
   analyze: "분석",
   critic_citation: "인용 검증",
   critic_source: "출처 검증",

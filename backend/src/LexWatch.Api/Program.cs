@@ -32,6 +32,7 @@ builder.Services.AddAiGateway();
 builder.Services.AddScoped<DemoSeeder>();
 builder.Services.AddScoped<IStepHandler, FetchArticlesStep>();
 builder.Services.AddScoped<IStepHandler, ClassifyStep>();
+builder.Services.AddScoped<IStepHandler, IndexArticlesStep>();
 builder.Services.AddScoped<IStepHandler, AnalyzeStep>();
 builder.Services.AddScoped<IStepHandler, CriticCitationStep>();
 builder.Services.AddScoped<IStepHandler, CriticSourceStep>();
