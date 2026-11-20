@@ -10,7 +10,8 @@ from app.agent.prompts import CLASSIFY_SYSTEM
 from app.providers.llm.base import OutputInvalid
 from app.providers.llm.factory import get_llm
 from app.providers.llm.mock import MockLLMProvider
-from app.providers.llm.nim import CloudflareWorkersAIProvider
+from app.providers.llm.failover import FailoverLLM
+from app.providers.llm.nim import GptOssProvider
 from app.schemas import LawSummary, ProviderInfo
 
 MISSING_REASON = "판정 누락"
@@ -95,7 +96,7 @@ async def classify(req: ClassifyRequest) -> ClassifyResponse:
             ],
             provider=KEYLESS_PROVIDER,
         )
-    if isinstance(llm, CloudflareWorkersAIProvider):
+    if isinstance(llm, (GptOssProvider, FailoverLLM)):
         llm.reasoning_effort = CLASSIFY_REASONING_EFFORT
     codes = [c.group_code for c in req.candidates]
     messages = [
