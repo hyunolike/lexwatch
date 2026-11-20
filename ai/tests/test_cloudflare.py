@@ -29,8 +29,10 @@ def test_auto_prefers_nvidia_when_both_present(env):
     env.setenv("NVIDIA_API_KEY", "nv")
     env.setenv("CLOUDFLARE_API_TOKEN", "cf")
     env.setenv("CLOUDFLARE_ACCOUNT_ID", "acct")
-    assert isinstance(get_llm(), NvidiaNimProvider)
-    assert get_llm().info.kind == "nvidia"
+    # 둘 다 있으면 NVIDIA를 앞에 둔 교체 묶음이 된다(docs/features/llm-failover).
+    llm = get_llm()
+    assert isinstance(llm.providers[0], NvidiaNimProvider)
+    assert llm.info.kind == "nvidia"
 
 
 def test_auto_uses_cloudflare_without_nvidia_key(env):

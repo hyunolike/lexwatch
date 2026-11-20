@@ -243,7 +243,7 @@ LexWatch는 사건을 처리하는 본업이 아니라 **법령 개정을 지켜
 - **녹화 테스트**: 재구성한 응답이나 가짜 전송 계층으로 우리 코드의 처리를 확인함.
 - **문서만**: 절차나 설정을 적기만 했음.
 
-AI 서비스는 NVIDIA 키가 있으면 NVIDIA NIM을, 없으면 Cloudflare Workers AI(무료 하루 10,000 Neurons, `@cf/openai/gpt-oss-120b`)를, 둘 다 없으면 대체 구현을 씁니다. 화면의 출처 라벨은 NVIDIA(보라), Cloudflare(자주), 대체 구현(남회색), 재현(점선)으로 처리한 주체를 그대로 보여 주며, 다른 공급자를 NVIDIA라고 표시하지 않습니다. Cloudflare Workers AI는 처리한 고객 데이터를 학습에 쓰지 않는다고 공식 문서에 밝히고 있습니다([명세](docs/features/cloudflare-ai/spec.md)). 근거와 한계는 [docs/nvidia-integration.md](docs/nvidia-integration.md), 사내 배포 절차는 [docs/on-prem-nim.md](docs/on-prem-nim.md)(실행 검증하지 않음)에 있습니다.
+AI 서비스는 값이 있는 NVIDIA NIM, Cloudflare Workers AI(무료 하루 10,000 Neurons), Groq(무료 등급)를 이 순서로 묶어, 앞 공급자가 한도 초과나 장애로 실패하면 같은 요청을 다음으로 넘깁니다. Cloudflare와 Groq는 같은 `gpt-oss-120b`라 넘어가도 판정 성향이 비슷합니다. 모두 없으면 대체 구현을 씁니다([교체 명세](docs/features/llm-failover/spec.md)). 화면의 출처 라벨은 NVIDIA(보라), Cloudflare(자주), Groq(청록), 대체 구현(남회색), 재현(점선)으로 처리한 주체를 그대로 보여 주며, 다른 공급자를 NVIDIA라고 표시하지 않습니다. Cloudflare Workers AI는 처리한 고객 데이터를 학습에 쓰지 않는다고 공식 문서에 밝히고 있습니다([명세](docs/features/cloudflare-ai/spec.md)). 근거와 한계는 [docs/nvidia-integration.md](docs/nvidia-integration.md), 사내 배포 절차는 [docs/on-prem-nim.md](docs/on-prem-nim.md)(실행 검증하지 않음)에 있습니다.
 
 <br>
 

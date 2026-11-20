@@ -41,7 +41,7 @@ export function mapChatResult(res: ApiResult<ChatResponse | ApiError>, evidence:
     citations: d.citations.filter((c) => titles.has(c)).map((c) => ({ id: c, title: titles.get(c)! })),
     refused: d.refused,
     // 알려진 모델 공급자만 그대로 두고, 모르는 값은 대체 구현으로 본다(NVIDIA로 부풀리지 않는다).
-    providerKind: d.provider.kind === "nvidia" || d.provider.kind === "cloudflare" ? d.provider.kind : "fallback",
+    providerKind: d.provider.kind === "nvidia" || d.provider.kind === "cloudflare" || d.provider.kind === "groq" ? d.provider.kind : "fallback",
     error: false,
   };
 }

@@ -1526,9 +1526,13 @@ namespace LexWatch.Api.Ai
         [System.Text.Json.Serialization.JsonStringEnumMemberName("cloudflare")]
         Cloudflare = 1,
 
+        [System.Runtime.Serialization.EnumMember(Value = @"groq")]
+        [System.Text.Json.Serialization.JsonStringEnumMemberName("groq")]
+        Groq = 2,
+
         [System.Runtime.Serialization.EnumMember(Value = @"fallback")]
         [System.Text.Json.Serialization.JsonStringEnumMemberName("fallback")]
-        Fallback = 2,
+        Fallback = 3,
 
     }
 
