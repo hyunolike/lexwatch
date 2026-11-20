@@ -101,6 +101,16 @@ def _user_prompt(req: AnalyzeRequest) -> str:
     )
 
 
+def is_korean(text: str) -> bool:
+    """한글이 라틴 문자보다 많으면 한국어로 본다. 법령명, 조문 번호, 외국 법 이름이 섞여도 통과한다."""
+    hangul = sum(1 for ch in text if "\uac00" <= ch <= "\ud7a3")
+    latin = sum(1 for ch in text if ch.isascii() and ch.isalpha())
+    return hangul > 0 and hangul >= latin
+
+
+KOREAN_FIX = "메모 문장과 open_questions를 한국어로 다시 써서 같은 JSON 형식으로 답하세요. 인용 ID는 그대로 둡니다."
+
+
 def _parse(content: str | None) -> _Final:
     text = (content or "").strip()
     m = re.search(r"\{.*\}", text, re.S)
@@ -136,6 +146,7 @@ async def analyze(req: AnalyzeRequest, llm: LLMProvider | None = None) -> Analyz
     ]
     nudges = 0
     corrected = False
+    korean_fixed = False
     used = 0
 
     while True:
@@ -221,6 +232,14 @@ async def analyze(req: AnalyzeRequest, llm: LLMProvider | None = None) -> Analyz
                     f"확보한 근거 ID({', '.join(sorted(collected))})만 인용하도록 고쳐서 다시 JSON으로 답하세요.",
                 }
             )
+            continue
+        # 변호사가 읽는 초안이다. Cloudflare gpt-oss가 한국어 프롬프트에도 영어로 쓴 적이 있다(2026-11-20).
+        text = " ".join([s.sentence for s in final.memo] + list(final.open_questions))
+        if final.memo and not is_korean(text):
+            if korean_fixed:
+                raise OutputInvalid("초안이 한국어가 아니다")
+            korean_fixed = True
+            messages.append({"role": "user", "content": KOREAN_FIX})
             continue
         return AnalyzeResponse(
             status="ok" if final.memo else "insufficient_evidence",
