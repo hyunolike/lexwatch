@@ -670,6 +670,7 @@
             "enum": [
               "nvidia",
               "cloudflare",
+              "groq",
               "fallback"
             ],
             "title": "Kind"

@@ -132,3 +132,21 @@ async def test_keyless_clips_confidence(monkeypatch):
     body["candidates"][1]["similarity"] = -0.2
     g = (await post(MockLLMProvider(), monkeypatch, body)).json()["groups"]
     assert (g[0]["confidence"], g[1]["confidence"]) == (1.0, 0.0)
+
+
+
+async def test_classify_lowers_reasoning_effort_on_failover_chain(monkeypatch):
+    # FO-06: 공급자가 여러 개(FailoverLLM)여도 분류는 추론 강도를 low로 낮춘다. 구성원 전달은 test_failover가 본다.
+    from app.providers.llm.failover import FailoverLLM
+
+    class Probe(LLMProvider):
+        info = ProviderInfo(name="p", kind="groq")
+        reasoning_effort = None
+
+        async def chat(self, messages, tools=None, response_format=None, deadline=None):
+            return LLMResponse(content=json.dumps({"groups": [v("privacy")]}), provider=self.info)
+
+    probe = Probe()
+    r = await post(FailoverLLM([probe, Probe()]), monkeypatch, {**REQ, "candidates": [REQ["candidates"][0]]})
+    assert r.status_code == 200
+    assert probe.reasoning_effort == "low"

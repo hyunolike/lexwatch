@@ -49,7 +49,7 @@ const pairs = (fgs: string[], bgs: string[], min: number): ContrastPair[] =>
 
 const BACKGROUNDS = ["canvas", "surface", "surface-sunken"];
 const TONES = ["success", "danger", "warning", "info", "neutral"];
-export const SOURCE_TOKENS = ["source-nvidia", "source-cloudflare", "source-fallback", "source-replay"];
+export const SOURCE_TOKENS = ["source-nvidia", "source-cloudflare", "source-groq", "source-fallback", "source-replay"];
 
 /** design.md 2.2절 대비 검사 쌍. 글자 4.5, UI 경계와 포커스 링 3.0. */
 export const CONTRAST_PAIRS: ContrastPair[] = [

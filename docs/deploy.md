@@ -113,7 +113,9 @@ Render  --Postgres(세션 풀러)-->  Supabase (pgvector)
 | `CLOUDFLARE_REASONING_EFFORT` | Vercel ai | gpt-oss 추론 강도 전체 기본값(`low`, `medium`, `high`) | 비우면 모델 기본값. 분류는 이 값과 관계없이 `low` |
 
 > Cloudflare 무료 한도(하루 10,000 Neurons)는 로컬 평가와 공개 데모가 함께 쓴다. `make eval-critic` 한 번이 약 3,000 Neurons다. 한도를 넘기면 UTC 자정까지 모든 호출이 429(`code 4006`)를 받는다.
-| `LLM_PROVIDER`, `RETRIEVER_PROVIDER` | Vercel ai | `LLM_PROVIDER`: `auto`(기본, NVIDIA → Cloudflare → 대체 구현), `nvidia`, `cloudflare`, `mock`. `RETRIEVER_PROVIDER`: `auto`, `lexical` | 키가 있어도 mock으로 데모하려면 지정 |
+| `GROQ_API_KEY` | Vercel ai | Groq 호출 키(무료 등급) | 비밀. Cloudflare 한도 초과나 장애 때 자동으로 넘어가는 예비 공급자. Groq 콘솔 Data Controls에서 보관 끄기(ZDR)를 켠다 |
+| `GROQ_MODEL` | Vercel ai | Groq 모델 | 기본 `openai/gpt-oss-120b` |
+| `LLM_PROVIDER`, `RETRIEVER_PROVIDER` | Vercel ai | `LLM_PROVIDER`: `auto`(기본, 값이 있는 NVIDIA → Cloudflare → Groq를 묶어 한도 초과·장애 시 다음으로, 없으면 대체 구현), `nvidia`, `cloudflare`, `groq`, `mock`. `RETRIEVER_PROVIDER`: `auto`, `lexical` | 키가 있어도 mock으로 데모하려면 지정 |
 | `NEXT_PUBLIC_API_BASE_URL` | Vercel web | 브라우저가 부를 백엔드 주소 | **빌드 때 번들에 박힌다.** 바꾸면 재배포 |
 
 비밀은 저장소에 두지 않는다. `render.yaml`은 비밀을 `sync: false`로 두고 값을 대시보드에서 넣게 한다.

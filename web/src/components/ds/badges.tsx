@@ -1,5 +1,5 @@
 "use client";
-import { Cloud, Cpu, History, Wrench, type LucideIcon } from "lucide-react";
+import { Cloud, Cpu, History, Wrench, Zap, type LucideIcon } from "lucide-react";
 import { Meter } from "@base-ui/react/meter";
 import { Tooltip } from "@/components/ui/Floating";
 import { cx } from "@/lib/cx";
@@ -37,6 +37,12 @@ const SOURCES: Record<string, { label: string; icon: LucideIcon; cls: string; he
     icon: Cloud,
     cls: "bg-source-cloudflare-bg text-source-cloudflare",
     help: "Cloudflare Workers AI의 공개 모델(gpt-oss)이 처리했어요.",
+  },
+  groq: {
+    label: "Groq",
+    icon: Zap,
+    cls: "bg-source-groq-bg text-source-groq",
+    help: "Cloudflare 무료 한도가 끝나 Groq의 공개 모델(gpt-oss)이 대신 처리했어요.",
   },
   fallback: {
     label: "대체 구현",

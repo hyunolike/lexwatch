@@ -15,6 +15,7 @@ public static class AiMapping
     {
         ProviderInfoKind.Nvidia => "nvidia",
         ProviderInfoKind.Cloudflare => "cloudflare",
+        ProviderInfoKind.Groq => "groq",
         ProviderInfoKind.Fallback => "fallback",
         _ => "fallback",
     };
