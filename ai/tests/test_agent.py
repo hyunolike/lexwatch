@@ -10,6 +10,7 @@ from pydantic import ValidationError
 import app.agent.loop as loop
 from app.agent.loop import AnalyzeRequest, analyze
 from app.lawapi import LawApi
+from app.providers.llm.base import OutputInvalid
 from app.main import app
 from app.providers.llm.base import LLMError, LLMProvider, LLMResponse, RateLimited, ToolCall
 from app.schemas import Evidence, MemoSentence, ProviderInfo
@@ -295,3 +296,37 @@ async def test_oc_never_logged(caplog):
     api = law_api()
     await api.law_articles("001872", "100001")
     assert "test-oc" not in caplog.text
+
+
+ENGLISH = {"memo": [{"sentence": "The amendment may change working hour rules.", "citations": ["law:001872:50"]}],
+           "open_questions": ["Scope of application"]}
+
+
+def test_prompts_require_korean_output():
+    # Cloudflare gpt-oss가 한국어 프롬프트에도 영어 초안을 썼다(2026-11-20 고등교육법 시행령).
+    from app.agent.prompts import ANALYZE_SYSTEM
+    from app.critique.judge import build_system
+    from app.review_chat import SYSTEM as CHAT_SYSTEM
+
+    for p in (ANALYZE_SYSTEM, build_system(True), build_system(False), CHAT_SYSTEM):
+        assert "한국어로" in p
+
+
+async def test_english_memo_gets_one_korean_correction():
+    llm = Scripted(tc("get_article", law_id="001872", article_no="50"), ENGLISH, final(["law:001872:50"]))
+    r = await analyze(req(), llm)
+    assert r.status == "ok"
+    assert r.memo[0].sentence.startswith("근로시간")
+    assert "한국어로 다시" in json.dumps(llm.last_messages, ensure_ascii=False)
+
+
+async def test_english_memo_twice_is_output_invalid():
+    llm = Scripted(tc("get_article", law_id="001872", article_no="50"), ENGLISH, ENGLISH)
+    with pytest.raises(OutputInvalid):
+        await analyze(req(), llm)
+
+
+def test_korean_check_allows_law_names_and_numbers():
+    assert loop.is_korean("개인정보 보호법 제29조(안전조치의무)에 따라 접속기록을 보관해야 할 수 있다.")
+    assert loop.is_korean("GDPR Article 32와 비교하면 개인정보 보호법 제29조가 더 구체적이다.")
+    assert not loop.is_korean("The amendment introduces a mandatory student residence survey (제4조의11).")

@@ -20,6 +20,7 @@ KEYLESS_PROVIDER = ProviderInfo(name="pattern-fallback", kind="fallback")
 SYSTEM_BASE = """당신은 법령 영향 메모의 과잉해석을 잡는 검수자입니다.
 메모의 각 문장이 제시된 근거(evidence)가 뒷받침하는 범위를 넘어 단정하거나 확장하는지 판정합니다.
 문제 있는 문장만 findings에 낸다. 문제가 없으면 빈 배열을 낸다. sentence_index는 0부터 시작한다.
+message는 변호사가 읽으므로 한국어로 쓴다.
 JSON만 출력한다."""
 
 
