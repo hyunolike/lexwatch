@@ -20,7 +20,11 @@ public class CritiqueStep(AiGateway ai) : IStepHandler
             .FirstOrDefaultAsync(ct);
         if (draft is null) return new StepResult.Failed("NO_DRAFT", "검토할 초안이 없다");
         var memo = JsonSerializer.Deserialize<List<MemoSentenceDto>>(draft.SentencesJson, AiMapping.Json) ?? [];
-        var evidence = await db.Evidence.AsNoTracking().Where(e => e.RunId == ctx.Run.Id).ToListAsync(ct);
+        // 과잉해석은 초안이 인용한 근거 기준으로 판정한다. 실행의 근거 전체(운영에서 135건)를 보내면
+        // 입력이 커져 추론 모델 응답이 시간 제한을 넘긴다. 인용 누락과 없는 ID는 크리틱 1단이 맡는다.
+        var cited = memo.SelectMany(m => m.Citations).ToHashSet();
+        var evidence = await db.Evidence.AsNoTracking()
+            .Where(e => e.RunId == ctx.Run.Id && cited.Contains(e.EvidenceId)).ToListAsync(ct);
 
         var res = await ai.CritiqueAsync(new CritiqueRequest
         {

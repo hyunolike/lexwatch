@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError
@@ -17,6 +18,8 @@ KEYLESS_REASON = "키 없음: 임베딩 유사도 기준 대체 판정"
 KEYLESS_PROVIDER = ProviderInfo(name="similarity-fallback", kind="fallback")
 # 운영에서 gpt-oss 기본 추론 강도로는 분류 한 번이 30초를 넘겨 재시도 끝에 시간 초과가 났다(CF-06).
 CLASSIFY_REASONING_EFFORT = "low"
+# 백엔드는 분류를 60초 기다린다. 그보다 먼저 끝나야 시간 초과 대신 오류 코드가 남는다(CF-07).
+CLASSIFY_BUDGET_S = 50.0
 
 
 class GroupCandidate(BaseModel):
@@ -102,8 +105,9 @@ async def classify(req: ClassifyRequest) -> ClassifyResponse:
     verdicts: dict[str, GroupVerdict] = {}
     last_err: OutputInvalid | None = None
     resp = None
+    deadline = time.monotonic() + CLASSIFY_BUDGET_S
     for _ in range(2):  # one retry on invalid or incomplete output
-        resp = await llm.chat(messages, response_format=_FORMAT)
+        resp = await llm.chat(messages, response_format=_FORMAT, deadline=deadline)
         try:
             verdicts = _parse(resp.content, set(codes))
         except OutputInvalid as e:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
@@ -95,6 +96,10 @@ def pattern_judge(req: CritiqueRequest) -> list[Finding]:
     return out
 
 
+# 백엔드는 크리틱을 130초 기다린다(분석과 같은 긴 대기). 그보다 먼저 끝낸다(CF-07).
+CRITIQUE_BUDGET_S = 120.0
+
+
 async def critique(req: CritiqueRequest) -> CritiqueResponse:
     llm = get_llm()
     if isinstance(llm, MockLLMProvider):
@@ -104,8 +109,9 @@ async def critique(req: CritiqueRequest) -> CritiqueResponse:
         {"role": "user", "content": _user_prompt(req)},
     ]
     last: OutputInvalid | None = None
+    deadline = time.monotonic() + CRITIQUE_BUDGET_S
     for _ in range(2):
-        resp = await llm.chat(messages, response_format=_FORMAT)
+        resp = await llm.chat(messages, response_format=_FORMAT, deadline=deadline)
         try:
             out = _Out.model_validate(json.loads(resp.content or ""))
         except (ValueError, ValidationError) as e:

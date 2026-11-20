@@ -50,6 +50,21 @@ public class CritiqueStepTests(PostgresFixture pg) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Sends_only_cited_evidence_to_the_judge()
+    {
+        // 운영에서 한 실행의 근거 135건을 모두 보내 응답이 30초를 넘겼다. 과잉해석은 인용한 근거 기준으로 판정한다.
+        using var ai = new AiStub();
+        ai.Json("/critique", 200, new { findings = new object[0], provider = AiStub.Provider("cloudflare", "cf") });
+        var (_, _, step) = await ArrangeAsync();
+
+        Assert.IsType<StepResult.Succeeded>(await AiSeed.ExecuteAsync(pg, new CritiqueStep(ai.Gateway()), step));
+
+        var sent = ai.Requests("/critique").Single().RootElement.GetProperty("evidence").EnumerateArray()
+            .Select(e => e.GetProperty("id").GetString()).ToList();
+        Assert.Equal(["law:L1:제23조"], sent);
+    }
+
+    [Fact]
     public async Task No_findings_waits_for_approval()
     {
         using var ai = new AiStub();

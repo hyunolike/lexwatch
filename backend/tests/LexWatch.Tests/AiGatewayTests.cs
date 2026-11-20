@@ -65,6 +65,20 @@ public class AiGatewayTests
     }
 
     [Fact]
+    public async Task Critique_waits_for_the_long_timeout()
+    {
+        // 추론 모델의 크리틱은 운영에서 27~52초가 걸렸다. 분석과 같은 긴 대기 시간을 쓴다.
+        using var ai = new AiStub();
+        ai.Json("/critique", 200, new { findings = new object[0], provider = AiStub.Provider() }, delayMs: 800);
+        var gw = ai.Gateway(new AiGatewayOptions(TimeSpan.FromMilliseconds(300), TimeSpan.FromSeconds(5)));
+        var r = await gw.CritiqueAsync(new CritiqueRequest
+        {
+            Run_id = "r", Memo = [new MemoSentence { Sentence = "s", Citations = ["c"] }], Evidence = [], Use_rules = true,
+        }, 1, CancellationToken.None);
+        Assert.True(r.Ok);
+    }
+
+    [Fact]
     public async Task Connection_failure_maps_to_ai_unavailable()
     {
         using var ai = new AiStub();

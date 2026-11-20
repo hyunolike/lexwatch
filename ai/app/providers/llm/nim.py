@@ -114,6 +114,7 @@ class NvidiaNimProvider(LLMProvider):
         clock: Callable[[], float] = time.monotonic,
         budget_s: float = 90.0,
         attempt_timeout_s: float = 30.0,
+        max_tokens: int = 2048,
     ) -> None:
         if not api_key:
             raise LLMError("NVIDIA_API_KEY is required", code="LLM_NO_KEY")
@@ -129,6 +130,7 @@ class NvidiaNimProvider(LLMProvider):
         self.clock = clock
         self.budget_s = budget_s
         self.attempt_timeout_s = attempt_timeout_s
+        self.max_tokens = max_tokens
         self.retry_base_delay = 1.0
         self.retry_max_delay = 8.0
 
@@ -189,7 +191,7 @@ class NvidiaNimProvider(LLMProvider):
             "model": self.model,
             "messages": msgs,
             "temperature": self.temperature,
-            "max_tokens": 2048,
+            "max_tokens": self.max_tokens,
             **extra,
         }
         if tools:
@@ -257,6 +259,11 @@ class CloudflareWorkersAIProvider(NvidiaNimProvider):
     ) -> None:
         if not api_token or not account_id:
             raise LLMError("CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required", code="LLM_NO_KEY")
+        # gpt-oss 응답은 운영에서 27~52초 걸렸다. 시도마다 30초로 끊으면 재시도도 같은 자리에서 끊겨
+        # 성공할 수 없으므로 한 번을 길게 기다린다. 생각 토큰 때문에 2,048 토큰에서 잘린 응답도 있었다(CF-07).
+        kwargs.setdefault("attempt_timeout_s", 110.0)
+        kwargs.setdefault("budget_s", 120.0)
+        kwargs.setdefault("max_tokens", 4096)
         super().__init__(
             api_token, f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1", model, **kwargs
         )
