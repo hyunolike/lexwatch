@@ -6,6 +6,7 @@ using LexWatch.Api.Observability;
 using LexWatch.Api.Runs;
 using LexWatch.Api.LawApi;
 using LexWatch.Api.Reviews;
+using LexWatch.Api.Retrieval;
 using LexWatch.Api.Workflow.Steps;
 using LexWatch.Api.Workflow;
 using Microsoft.EntityFrameworkCore;
@@ -33,7 +34,9 @@ builder.Services.AddScoped<DemoSeeder>();
 builder.Services.AddScoped<IStepHandler, FetchArticlesStep>();
 builder.Services.AddScoped<IStepHandler, ClassifyStep>();
 builder.Services.AddScoped<IStepHandler, IndexArticlesStep>();
-builder.Services.AddScoped<IStepHandler, AnalyzeStep>();
+builder.Services.AddScoped<IStepHandler>(sp => new AnalyzeStep(
+    sp.GetRequiredService<AiGateway>(), sp.GetRequiredService<TimeProvider>(),
+    Enum.TryParse<SearchMode>(builder.Configuration["Retrieval:Mode"], true, out var m) ? m : SearchMode.Hybrid));
 builder.Services.AddScoped<IStepHandler, CriticCitationStep>();
 builder.Services.AddScoped<IStepHandler, CriticSourceStep>();
 builder.Services.AddScoped<IStepHandler, CritiqueStep>();

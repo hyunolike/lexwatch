@@ -1,14 +1,23 @@
 using System.Text.Json;
 using LexWatch.Api.Ai;
+using LexWatch.Api.Data;
+using LexWatch.Api.Retrieval;
 using LexWatch.Api.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using EvidenceRow = LexWatch.Api.Data.Entities.Evidence;
 
 namespace LexWatch.Api.Workflow.Steps;
 
-/// <summary>그룹별 영향 분석 에이전트를 부르고 도구 호출·새 근거·초안 v(n+1)을 저장한다.</summary>
-public class AnalyzeStep(AiGateway ai, TimeProvider time) : IStepHandler
+/// <summary>
+/// 그룹별 영향 분석 에이전트를 부르고 도구 호출·새 근거·초안 v(n+1)을 저장한다.
+/// 분석에는 근거 전체 대신 변경 조문(최대 12)과 조문 검색 상위 8건을 보낸다(hybrid-rag RAG-04).
+/// </summary>
+public class AnalyzeStep(AiGateway ai, TimeProvider time, SearchMode mode = SearchMode.Hybrid) : IStepHandler
 {
+    public const int MaxOldNew = 12;
+    public const int SearchCount = 8;
+    public static readonly TimeSpan QueryEmbedTimeout = TimeSpan.FromSeconds(10);
+
     public string Step => "analyze";
 
     public async Task<StepResult> ExecuteAsync(StepContext ctx, CancellationToken ct)
@@ -20,6 +29,7 @@ public class AnalyzeStep(AiGateway ai, TimeProvider time) : IStepHandler
         var group = await db.PracticeGroups.AsNoTracking().SingleAsync(g => g.Code == review.GroupCode, ct);
         var change = await db.LawChanges.AsNoTracking().SingleAsync(l => l.Id == ctx.Run.LawChangeId, ct);
         var evidence = await db.Evidence.Where(e => e.RunId == ctx.Run.Id).ToListAsync(ct);
+        var (send, retrieval) = await SelectEvidenceAsync(db, ctx, group, change, evidence, ct);
 
         var res = await ai.AnalyzeAsync(new AnalyzeRequest
         {
@@ -27,7 +37,7 @@ public class AnalyzeStep(AiGateway ai, TimeProvider time) : IStepHandler
             Group_code = group.Code,
             Interest_text = group.InterestText,
             Law = AiMapping.Summary(change, change.LawName),
-            Evidence = AiMapping.Evidence(evidence),
+            Evidence = send,
         }, ctx.Step.Attempt, ct);
         if (res.Failure is not null) return res.Failure;
         var r = res.Value!;
@@ -89,8 +99,57 @@ public class AnalyzeStep(AiGateway ai, TimeProvider time) : IStepHandler
             CreatedBy = "agent",
         });
 
-        return new StepResult.Succeeded(new { output.toolCalls, output.newEvidence, draftVersion = version },
+        return new StepResult.Succeeded(new { output.toolCalls, output.newEvidence, draftVersion = version, retrieval },
             [new NextStep("critic_citation", groupId, null)],
             AiMapping.ProviderKind(r.Provider), r.Provider.Name);
     }
+
+    /// <summary>
+    /// 변경 조문 + 검색 상위를 고른다. 색인이 없거나 둘 다 0건이면 지금처럼 근거 전체를 보낸다.
+    /// 출력(retrieval)은 타임라인 300자 요약에 들어가도록 조문 번호만 담는다.
+    /// </summary>
+    private async Task<(List<LexWatch.Api.Ai.Evidence> Send, object Retrieval)> SelectEvidenceAsync(
+        LexWatchDb db, StepContext ctx, PracticeGroup group, LawChange change, List<EvidenceRow> evidence, CancellationToken ct)
+    {
+        var runId = ctx.Run.Id;
+        var chunkModel = await db.ArticleChunks.Where(c => c.RunId == runId)
+            .Select(c => new { c.EmbedModel }).FirstOrDefaultAsync(ct);
+        if (chunkModel is null)
+            return (AiMapping.Evidence(evidence), new { status = "no_index", sent = evidence.Count });
+
+        var allOldNew = evidence.Where(e => e.Kind == "oldnew").OrderBy(e => e.EvidenceId, ArticleOrder.Comparer).ToList();
+        var oldNew = allOldNew.Take(MaxOldNew).ToList();
+        var query = RetrievalQuery.Build(group.InterestText, change.LawName, oldNew);
+
+        // 질의 임베딩: 청크에 임베딩이 있을 때만, 짧은 제한 시간으로. 실패해도 단계는 계속한다(BM25만).
+        float[]? vector = null;
+        if (mode != SearchMode.Bm25 && chunkModel.EmbedModel is { } model)
+        {
+            var q = await ai.CallAsync((c, t) => c.EmbedAsync(new EmbedRequest { Texts = [query.Text], Input_type = EmbedRequestInput_type.Query }, t),
+                ctx.Step.Attempt, QueryEmbedTimeout, ct);
+            if (q.Ok && q.Value!.Provider.Name == model && q.Value.Provider.Kind != ProviderInfoKind.Fallback && q.Value.Vectors.Count == 1)
+                vector = q.Value.Vectors.First().Select(x => (float)x).ToArray();
+        }
+
+        var changedArticles = oldNew.Select(e => ArticleNumber(e.EvidenceId)).ToHashSet();
+        var hits = await HybridSearch.SearchAsync(db, runId, query.Tokens, vector, chunkModel.EmbedModel, mode,
+            SearchCount + oldNew.Count, ct);
+        var byId = evidence.ToDictionary(e => e.EvidenceId);
+        var searched = hits.Where(h => !changedArticles.Contains(ArticleNumber(h.EvidenceId)) && byId.ContainsKey(h.EvidenceId))
+            .Take(SearchCount).Select(h => byId[h.EvidenceId]).ToList();
+
+        if (oldNew.Count == 0 && searched.Count == 0)
+            return (AiMapping.Evidence(evidence), new { status = "fallback_all", sent = evidence.Count });
+
+        var send = oldNew.Concat(searched).ToList();
+        var denseUsed = vector is { Length: LexWatchDb.ChunkEmbedDim } && hits.Any(h => h.DenseRank is not null);
+        return (AiMapping.EvidenceInOrder(send), new
+        {
+            status = "ok", mode = mode.ToString(), sent = send.Count, oldnew = oldNew.Count, searched = searched.Count,
+            oldnewTruncated = allOldNew.Count > oldNew.Count, denseUsed,
+            top = searched.Take(5).Select(e => ArticleNumber(e.EvidenceId)).ToArray(),
+        });
+    }
+
+    private static string ArticleNumber(string evidenceId) => evidenceId[(evidenceId.LastIndexOf(':') + 1)..];
 }
