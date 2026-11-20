@@ -18,7 +18,7 @@ jobs:
         with:
           global-json-file: backend/global.json
       # Testcontainers가 ubuntu 러너의 Docker를 그대로 쓴다.
-      - run: dotnet test backend/LexWatch.sln --nologo
+      - run: dotnet test backend/LexWatch.sln --nologo --filter "Category!=eval"
 
   ai:
     runs-on: ubuntu-latest

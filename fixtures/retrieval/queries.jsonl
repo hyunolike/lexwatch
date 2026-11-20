@@ -1,0 +1,36 @@
+{"id": "lab-k1", "law_id": "001872", "type": "keyword", "query": "연장 근로 야간 근로 휴일 근로 가산임금", "answers": ["제56조"]}
+{"id": "lab-p1", "law_id": "001872", "type": "paraphrase", "query": "밤에 일하거나 쉬는 날 일하면 돈을 더 받나요", "answers": ["제56조"]}
+{"id": "lab-k2", "law_id": "001872", "type": "keyword", "query": "해고의 예고", "answers": ["제26조"]}
+{"id": "lab-p2", "law_id": "001872", "type": "paraphrase", "query": "직원을 내보내려면 언제까지 미리 알려야 하나", "answers": ["제26조", "제27조"]}
+{"id": "lab-k3", "law_id": "001872", "type": "keyword", "query": "연차 유급휴가 사용 촉진", "answers": ["제60조", "제61조"]}
+{"id": "lab-p3", "law_id": "001872", "type": "paraphrase", "query": "1년 일하면 쉬는 날을 며칠 받나", "answers": ["제60조"]}
+{"id": "lab-p4", "law_id": "001872", "type": "paraphrase", "query": "회사에서 상사가 괴롭히면 회사는 무엇을 해야 하나", "answers": ["제76조의2", "제76조의3"]}
+{"id": "lab-p5", "law_id": "001872", "type": "paraphrase", "query": "월급을 늦게 주면 이자를 더 내야 하나", "answers": ["제37조"]}
+{"id": "lab-k4", "law_id": "001872", "type": "keyword", "query": "임산부의 보호", "answers": ["제74조"]}
+{"id": "lab-p6", "law_id": "001872", "type": "paraphrase", "query": "아이를 가진 직원의 근무를 어떻게 보호하나", "answers": ["제74조", "제74조의2"]}
+{"id": "priv-k1", "law_id": "011357", "type": "keyword", "query": "안전조치의무", "answers": ["제29조"]}
+{"id": "priv-p1", "law_id": "011357", "type": "paraphrase", "query": "해킹으로 고객 정보가 새면 고객에게 알려야 하나", "answers": ["제34조"]}
+{"id": "priv-k2", "law_id": "011357", "type": "keyword", "query": "개인정보의 국외 이전", "answers": ["제28조의8"]}
+{"id": "priv-p2", "law_id": "011357", "type": "paraphrase", "query": "고객 데이터를 해외 서버로 옮겨도 되나", "answers": ["제28조의8", "제28조의9"]}
+{"id": "priv-k3", "law_id": "011357", "type": "keyword", "query": "가명정보의 처리", "answers": ["제28조의2"]}
+{"id": "priv-p3", "law_id": "011357", "type": "paraphrase", "query": "이름을 지운 데이터로 통계를 내도 되나", "answers": ["제28조의2", "제28조의3"]}
+{"id": "priv-p4", "law_id": "011357", "type": "paraphrase", "query": "주민번호를 받아도 되나", "answers": ["제24조의2"]}
+{"id": "priv-p5", "law_id": "011357", "type": "paraphrase", "query": "매장에 CCTV를 달려면 무엇을 지켜야 하나", "answers": ["제25조"]}
+{"id": "priv-k4", "law_id": "011357", "type": "keyword", "query": "과징금의 부과", "answers": ["제64조의2"]}
+{"id": "priv-p6", "law_id": "011357", "type": "paraphrase", "query": "AI가 자동으로 대출을 거절하면 설명을 요구할 수 있나", "answers": ["제37조의2"]}
+{"id": "fin-k1", "law_id": "010199", "type": "keyword", "query": "접근매체의 분실과 도난 책임", "answers": ["제10조"]}
+{"id": "fin-p1", "law_id": "010199", "type": "paraphrase", "query": "인증서를 잃어버려 돈이 빠져나가면 누가 책임지나", "answers": ["제9조", "제10조"]}
+{"id": "fin-k2", "law_id": "010199", "type": "keyword", "query": "전자금융기반시설의 취약점 분석 평가", "answers": ["제21조의3"]}
+{"id": "fin-p2", "law_id": "010199", "type": "paraphrase", "query": "은행 전산망 보안 점검 의무", "answers": ["제21조", "제21조의3"]}
+{"id": "fin-k3", "law_id": "010199", "type": "keyword", "query": "선불충전금의 보호", "answers": ["제25조의2"]}
+{"id": "fin-p3", "law_id": "010199", "type": "paraphrase", "query": "간편결제 앱에 충전한 돈은 회사가 망해도 안전한가", "answers": ["제25조의2"]}
+{"id": "fin-p4", "law_id": "010199", "type": "paraphrase", "query": "해킹 사고가 나면 금융당국에 보고해야 하나", "answers": ["제21조의5"]}
+{"id": "fin-k4", "law_id": "010199", "type": "keyword", "query": "정보보호최고책임자 지정", "answers": ["제21조의2"]}
+{"id": "fin-p5", "law_id": "010199", "type": "paraphrase", "query": "잘못 보낸 이체를 취소할 수 있나", "answers": ["제14조"]}
+{"id": "fin-k5", "law_id": "010199", "type": "keyword", "query": "전자금융업의 허가와 등록", "answers": ["제28조"]}
+{"id": "lab-o1", "law_id": "001872", "type": "operational", "interest": "근로기준·임금·근로시간·산업안전 관련 법령 개정에 관심이 있다.", "change_title": "근로시간", "change_text": "1주 간의 근로시간은 휴게시간을 제외하고 40시간을 초과할 수 없다", "answers": ["제50조", "제53조"]}
+{"id": "lab-o2", "law_id": "001872", "type": "operational", "interest": "근로기준·임금·근로시간·산업안전 관련 법령 개정에 관심이 있다.", "change_title": "탄력적 근로시간제", "change_text": "단위기간을 평균하여 1주 간의 근로시간이 40시간을 초과하지 아니하는 범위에서", "answers": ["제51조", "제51조의2"]}
+{"id": "priv-o1", "law_id": "011357", "type": "operational", "interest": "개인정보 처리·정보통신망·위치정보 관련 법령 개정에 관심이 있다.", "change_title": "개인정보 유출등의 통지ㆍ신고", "change_text": "개인정보가 유출등이 되었음을 알게 되었을 때에는 지체 없이 해당 정보주체에게 알려야 한다", "answers": ["제34조", "제34조의2"]}
+{"id": "priv-o2", "law_id": "011357", "type": "operational", "interest": "개인정보 처리·정보통신망·위치정보 관련 법령 개정에 관심이 있다.", "change_title": "개인정보 보호책임자의 지정 등", "change_text": "개인정보의 처리에 관한 업무를 총괄해서 책임질 개인정보 보호책임자를 지정하여야 한다", "answers": ["제31조"]}
+{"id": "fin-o1", "law_id": "010199", "type": "operational", "interest": "금융소비자 보호·자본시장·전자금융 관련 법령 개정에 관심이 있다.", "change_title": "안전성의 확보의무", "change_text": "전자금융거래가 안전하게 처리될 수 있도록 선량한 관리자로서의 주의를 다하여야 하며 정보기술부문 계획을 수립", "answers": ["제21조"]}
+{"id": "fin-o2", "law_id": "010199", "type": "operational", "interest": "금융소비자 보호·자본시장·전자금융 관련 법령 개정에 관심이 있다.", "change_title": "소액후불결제업무의 겸영", "change_text": "소액후불결제업무를 겸영할 수 있으며 이용자별 한도를 정하여야 한다", "answers": ["제35조의2"]}
