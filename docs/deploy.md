@@ -1,8 +1,23 @@
-# 배포 런북 (Supabase + Render + Vercel + GitHub Actions)
+# 배포 런북 (Supabase + Render + Netlify + GitHub Actions)
 
 저장소에서 준비된 것: `backend/Dockerfile`, `ai/Dockerfile`, `web/Dockerfile`, `docker-compose.yml`, `render.yaml`, `ai/vercel.json`, `.github/workflows/{ci,collect,reset-demo}.yml`.
 아래 1~5단계는 계정이 필요한 작업이다. 2026-11-16에 한 번 실행했고 결과는 아래 배포 기록에 있다. 각 단계의 "확인" 항목이 통과해야 다음으로 넘어간다.
 **검증 표기**: `[검증됨]`은 로컬에서 실제로 돌려 본 것, `[미검증]`은 외부 서비스에서만 확인할 수 있는 것이다. 단계 제목의 `[미검증]`은 작성 당시 표기이고, 실제로 확인한 것은 배포 기록에 적는다.
+
+## 배포 기록 (2026-11-21) — Vercel에서 Render와 Netlify로 이전
+
+Vercel Hobby 팀이 공정 사용 한도(Fluid Active CPU 5시간 28분)에 걸려 2026-12-21까지 모든 프로젝트가 멈췄다(`402 DEPLOYMENT_DISABLED`). 사용량의 95%는 같은 팀의 다른 프로젝트(`hanjeok` 3시간 39분, `hanjeok-api` 1시간 32분)였고 LexWatch는 44초였다. 팀 단위로 멈추므로 다른 무료 호스팅으로 옮겼다.
+
+| 구성 | 이전 | 이후 | 확인 |
+|---|---|---|---|
+| AI 서비스 | Vercel `lexwatch-ai` | Render `lexwatch-ai`(`srv-dc0ihi6k1f9s7399c1m0`, free, Singapore, `ai/Dockerfile`) https://lexwatch-ai-xno4.onrender.com | `/health` 200, 토큰 전 다른 경로 503(`AI_REQUIRE_TOKEN=true`) |
+| 웹 | Vercel `lexwatch-web` | Netlify `lexwatch-web`(사이트 `ef87905f-8288-4e53-93f0-4f67604f3415`, `web/netlify.toml`) https://lexwatch-web.netlify.app | `/`, `/inbox`, `/runs`, `/design-system` 200 |
+| API 설정 | `AI_BASE_URL`=Vercel ai, `Web__Origins`=Vercel web | `AI_BASE_URL`=Render ai, `Web__Origins`=Netlify web(이전 주소도 남김) | Render API로 변경 뒤 재배포 |
+| CI | `deploy-vercel`(web, ai), `deploy-api` | `deploy-web`(Netlify CLI, 시크릿 `NETLIFY_AUTH_TOKEN`), `deploy-render`(api, ai) | |
+
+- Render AI 서비스의 비밀 환경변수(`AI_TOKEN`, `LAW_OC`, `CLOUDFLARE_API_TOKEN`, `GROQ_API_KEY`)는 작성자가 스크립트로 넣는다. API 서비스의 값을 복사하고 화면에 출력하지 않는다.
+- Render 무료 인스턴스는 15분 동안 요청이 없으면 잠든다. API와 AI 서비스 모두 첫 요청에 약 1분이 걸린다(화면은 "깨우는 중"을 보인다). 웹(Netlify)은 잠들지 않는다.
+- Netlify 배포는 `web` 폴더에서 실행해야 Next.js 런타임이 함수를 만든다. 저장소 루트에서 `--dir web/.next`로 올리면 모든 경로가 404였다.
 
 ## 배포 기록 (2026-11-19) — 법령 실수집 시작
 
@@ -94,7 +109,7 @@ Render  --Postgres(세션 풀러)-->  Supabase (pgvector)
 | 이름 | 어디서 | 용도 | 비고 |
 |---|---|---|---|
 | `DATABASE_URL` | Render | DB 연결. `Host=...;...` 형식 또는 `postgresql://` URI 모두 받는다 | 비밀. 코드가 URI를 Npgsql 형식으로 바꾼다 (`ConnectionStringNormalizer`) |
-| `AI_BASE_URL` | Render | Vercel ai 주소 | 예: `https://lexwatch-ai.vercel.app` |
+| `AI_BASE_URL` | Render | AI 서비스 주소 | `https://lexwatch-ai-xno4.onrender.com`(2026-11-21부터 Render) |
 | `JOB_TOKEN` | Render, GitHub 시크릿 | `/jobs/*` 인증, 채팅 IP 해시 솔트 | 비밀. 비어 있으면 잡과 채팅이 닫힌다 |
 | `AI_TOKEN` | Render, Vercel ai (같은 값) | Render → ai 호출의 `X-Ai-Token` 공유 토큰 | 비밀. 아래 "AI_TOKEN" 절. **`NVIDIA_API_KEY`·`LAW_OC`를 ai에 넣기 전에 먼저 설정** |
 | `AI_REQUIRE_TOKEN` | Vercel ai | `true`면 `AI_TOKEN`이 비었을 때 ai가 503으로 닫힌다 | 배포에서는 `true` 권장. 로컬·테스트는 비워 둔다 |

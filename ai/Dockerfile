@@ -1,4 +1,4 @@
-# 로컬 compose용. 실제 배포는 Vercel(ai/vercel.json)이다.
+# 로컬 compose와 Render 배포(2026-11-21부터, render.yaml lexwatch-ai)에 쓴다.
 FROM python:3.12-slim
 COPY --from=ghcr.io/astral-sh/uv:0.6.10 /uv /usr/local/bin/uv
 WORKDIR /app
