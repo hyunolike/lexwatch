@@ -1,4 +1,4 @@
-# Render Blueprint. 백엔드 한 서비스만 올린다(ai와 web은 Vercel, DB는 Supabase).
+# Render Blueprint. API와 AI 서비스를 올린다(웹은 Netlify, DB는 Supabase). 2026-11-21 AI 서비스를 Vercel에서 옮겼다.
 # 값이 sync:false인 항목은 대시보드에서 직접 넣는다. 비밀은 저장소에 두지 않는다.
 services:
   - type: web
@@ -32,3 +32,25 @@ services:
         value: "false"
       # CLIENT_IP_HEADER(예: True-Client-IP, CF-Connecting-IP)는 Render가 실제로 넘기는 헤더를
       # 확인한 뒤 대시보드에서 넣는다. 비어 있으면 TRUST_FORWARDED_FOR/원격 IP를 쓴다(docs/deploy.md).
+  - type: web
+    name: lexwatch-ai
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./ai/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: false      # 배포는 CI(ci.yml deploy-render)가 테스트 통과 뒤에 한다
+    envVars:
+      - key: AI_REQUIRE_TOKEN    # 토큰이 비면 503으로 닫는다
+        value: "true"
+      - key: AI_TOKEN            # API의 AI_TOKEN과 같은 값
+        sync: false
+      - key: CLOUDFLARE_ACCOUNT_ID
+        value: 96dc7e6d07c8cb414af597acfec30146
+      - key: CLOUDFLARE_API_TOKEN
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: LLM_PROVIDER
+        value: auto
