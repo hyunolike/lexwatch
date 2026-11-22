@@ -286,3 +286,6 @@ class GroqProvider(GptOssProvider):
         if not api_key:
             raise LLMError("GROQ_API_KEY is required", code="LLM_NO_KEY")
         super().__init__(api_key, "https://api.groq.com/openai/v1", model, **kwargs)
+        # 무료 등급은 분당 8,000 토큰, 하루 1,000회(2026-11-22 응답 헤더 확인). 분당 한도는 1분 안에 풀리므로
+        # 429의 Retry-After를 30초까지 기다렸다가 다시 부른다(기본 8초면 큰 크리틱 요청이 매번 실패한다).
+        self.retry_max_delay = 30.0

@@ -1,0 +1,304 @@
+{
+  "mode": "norules",
+  "provider": "groq",
+  "source": [
+    "lawapi-recorded-2026-11-19"
+  ],
+  "detected": 13,
+  "overclaims": 13,
+  "rule_id_correct": null,
+  "false_positive_findings": 1,
+  "clean_cases_flagged": 0,
+  "clean": 7,
+  "rows": [
+    {
+      "id": "oc01-a",
+      "expected": [
+        "OC-01"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "법령 텍스트는 안전조치 의무의 적용 대상과 시기를 규정하지 않으며, 계약 체결 시점에 대한 적용 여부는 별도 규정이 필요함에도 불구하고 본 문장은 이를 근거 없이 확대 해석하고 있다."
+        }
+      ]
+    },
+    {
+      "id": "oc01-b",
+      "expected": [
+        "OC-01"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "법령 텍스트는 1일 8시간 상한 규정만을 명시하고 있으며, 시행일 이전에 체결된 근로계약에 대한 적용 여부는 언급하지 않는다. 따라서 ‘시행일 전에 체결된 근로계약에도 적용된다’는 주장은 근거를 초과한 과잉해석이다."
+        }
+      ]
+    },
+    {
+      "id": "oc02-a",
+      "expected": [
+        "OC-02"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "법령(개인정보 보호법 제29조)에서는 대통령령이 정하는 바에 따라 접속기록을 보관하도록 규정하고 있으나 보관 기간을 '1년 이상'이라고 구체적으로 명시하고 있지 않음. 따라서 메모의 진술은 근거를 초과해 과잉해석하고 있음."
+        }
+      ]
+    },
+    {
+      "id": "oc02-b",
+      "expected": [
+        "OC-02"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "법령 제21조 제4항은 대통령령으로 정하는 바에 따라 연간 계획을 수립·제출하도록 규정하고 있으나, 제출 시점(예: 매년 3월 말)까지는 명시하고 있지 않다. 따라서 메모는 근거를 넘어선 구체적인 기한을 부여하고 있어 과잉해석이다."
+        }
+      ]
+    },
+    {
+      "id": "oc03-a",
+      "expected": [
+        "OC-03"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "‘대법원 판결은 근로자 수가 일시적으로 5명 미만인 사업장에도 항상 가산임금 규정이 적용된다는 원칙을 세웠다’는 문장은 판결이 ‘상시 5명 이상 사업장’의 의미를 객관적으로 판단하도록 했다는 점을 넘어, 모든 경우에 가산임금 규정이 무조건 적용된다고 확대 해석하고 있어 근거(prec:235109)의 범위를 초과합니다."
+        }
+      ]
+    },
+    {
+      "id": "oc03-b",
+      "expected": [
+        "OC-03"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "법령 제34조는 손해배상 책임을 직접 규정하지 않으며, 대법원 판례는 과징금 부과에 관한 내용만을 다루고 있다. 따라서 ‘개인정보가 유출되면 일반적으로 정보주체에 대한 손해배상 책임이 인정된다’는 주장은 제시된 근거를 넘어선 과잉해석이다."
+        }
+      ]
+    },
+    {
+      "id": "oc04-a",
+      "expected": [
+        "OC-04"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "법령은 개인정보처리자에게만 접속기록 보관 의무를 부과하고 있으며, 모든 기업에 적용된다고 명시하지 않는다. 따라서 ‘모든 기업은 반드시 접속기록을 보관해야 한다’는 문장은 근거 범위를 초과한 과잉해석이다."
+        }
+      ]
+    },
+    {
+      "id": "oc04-b",
+      "expected": [
+        "OC-04"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "법령에 따르면 휴일근로 8시간 이내는 통상임금의 50% 가산, 8시간 초과 시에만 100% 가산이 적용됩니다. 그러나 메모는 시간과 관계없이 모든 근로자가 100% 가산받는다고 단정하고 있어 근거 범위를 초과한 과잉해석입니다."
+        }
+      ]
+    },
+    {
+      "id": "oc05-a",
+      "expected": [
+        "OC-05"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "메모는 동물보호법 제101조 제2항 위반 시 300만원 이하의 과태료가 부과된다고 주장하지만, 신조문(신법)에서는 제2항에 해당하는 위반에 대해 500만원 이하의 과태료가 부과된다고 규정하고 있다. 따라서 근거가 최신 법령과 일치하지 않아 과잉해석·오해가 발생한다."
+        }
+      ]
+    },
+    {
+      "id": "oc05-b",
+      "expected": [
+        "OC-05"
+      ],
+      "overclaim_sentence_index": 0,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 0,
+          "rule_id": "GENERAL",
+          "message": "메모는 동물보호법 제101조 제4항 위반에 대한 과태료를 50만원 이하라고 단정하고 있으나, 신조문에서는 제4항에 해당하는 과태료가 100만원 이하로 상향된 점을 반영하지 않아 근거를 초과하고 있습니다."
+        }
+      ]
+    },
+    {
+      "id": "multi-1",
+      "expected": [
+        "OC-04"
+      ],
+      "overclaim_sentence_index": 2,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 2,
+          "rule_id": "GENERAL",
+          "message": "법령은 '휴게시간을 제외하고 8시간을 초과할 수 없다'라고 규정하지만, 예외(연장·야간·휴일 근로 등)와 협정에 따라 초과 근로가 허용될 수 있다. 따라서 '반드시 하루 8시간을 넘겨 근로시키면 안 된다'는 과도한 해석이다."
+        }
+      ]
+    },
+    {
+      "id": "multi-2",
+      "expected": [
+        "OC-01"
+      ],
+      "overclaim_sentence_index": 1,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": [
+        {
+          "sentence_index": 1,
+          "rule_id": "GENERAL",
+          "message": "법령에는 개정 조항이 시행일 이전에 발생한 개인정보 유출에도 적용된다는 규정이 없으며, 해당 조문의 내용은 현재 및 향후 발생하는 유출에만 적용된다는 점을 넘어서는 과잉해석이다."
+        }
+      ]
+    },
+    {
+      "id": "multi-3",
+      "expected": [
+        "OC-02"
+      ],
+      "overclaim_sentence_index": 1,
+      "hit": true,
+      "rule_correct": false,
+      "false_positive_findings": 1,
+      "findings": [
+        {
+          "sentence_index": 1,
+          "rule_id": "GENERAL",
+          "message": "법령 ④항은 연간 계획 수립 및 제출을 요구하지만, 메모는 분기별 보고를 요구하고 있어 근거를 초과해 단정하고 있다."
+        },
+        {
+          "sentence_index": 2,
+          "rule_id": "GENERAL",
+          "message": "법령은 대상 금융회사의 구체적 범위나 하위법령 확인 필요성을 명시하지 않으므로, 메모의 진술은 근거를 넘어서는 확장이다."
+        }
+      ]
+    },
+    {
+      "id": "clean-1",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-2",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-3",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-4",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-5",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-6",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    },
+    {
+      "id": "clean-7",
+      "expected": [],
+      "overclaim_sentence_index": null,
+      "hit": false,
+      "rule_correct": false,
+      "false_positive_findings": 0,
+      "findings": []
+    }
+  ]
+}

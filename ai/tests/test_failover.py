@@ -138,3 +138,8 @@ def test_factory_builds_chain_in_order(monkeypatch):
     assert [type(p) for p in llm.providers] == [NvidiaNimProvider, CloudflareWorkersAIProvider, GroqProvider]
     monkeypatch.setenv("LLM_PROVIDER", "groq")
     assert isinstance(get_llm(), GroqProvider)
+
+
+def test_groq_waits_longer_for_per_minute_token_limit():
+    # 분당 8,000 토큰 한도는 1분 안에 풀린다. 8초에서 포기하지 않는다.
+    assert GroqProvider("g").retry_max_delay >= 30
