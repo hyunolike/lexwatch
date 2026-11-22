@@ -75,6 +75,22 @@ public class Evidence
     public string? ChangeMarksJson { get; set; }
 }
 
+/// <summary>조문 검색 색인(hybrid-rag). 실행의 law 근거를 조문 구조 단위로 나눈 청크.</summary>
+public class ArticleChunk
+{
+    public Guid RunId { get; set; }
+    /// <summary>"{근거 ID}#{n}", n은 1부터.</summary>
+    public string ChunkId { get; set; } = "";
+    public string EvidenceId { get; set; } = "";
+    /// <summary>실행 안 순번(근거 자연 정렬 → n). 검색 동점 정렬에 쓴다.</summary>
+    public int Ord { get; set; }
+    public string Text { get; set; } = "";
+    /// <summary>KoreanTokenizer 결과(중복 포함, BM25 tf용).</summary>
+    public string[] Tokens { get; set; } = [];
+    public Vector? Embedding { get; set; }
+    public string? EmbedModel { get; set; }
+}
+
 public class AgentToolCall
 {
     public Guid Id { get; set; }

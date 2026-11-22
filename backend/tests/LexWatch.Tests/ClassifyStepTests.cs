@@ -49,8 +49,9 @@ public class ClassifyStepTests(PostgresFixture pg) : IAsyncLifetime
 
         var ok = Assert.IsType<StepResult.Succeeded>(result);
         Assert.Equal("nvidia", ok.ProviderKind);
-        Assert.Equal(2, ok.Next.Count);
-        Assert.All(ok.Next, n => Assert.Equal("analyze", n.Step));
+        // 진행할 그룹이 있으면 색인 단계 하나를 낸다. 그룹별 analyze는 index_articles가 낸다(hybrid-rag RAG-02).
+        var next = Assert.Single(ok.Next);
+        Assert.Equal(("index_articles", (Guid?)null), (next.Step, next.GroupReviewId));
 
         await using var v = pg.CreateDb();
         var reviews = await v.GroupReviews.Where(g => g.RunId == run.Id).ToDictionaryAsync(g => g.GroupCode);
@@ -59,9 +60,6 @@ public class ClassifyStepTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal(ReviewStatus.ClosedIrrelevant, reviews["finance"].Status);
         Assert.Equal(0.8, reviews["labor"].Confidence);
         Assert.Equal("r1", reviews["labor"].Reason);
-        Assert.Equal(
-            new[] { reviews["labor"].Id, reviews["privacy"].Id }.Order(),
-            ok.Next.Select(n => n.GroupReviewId!.Value).Order());
         Assert.Equal(RunStatus.InReview, (await v.WorkflowRuns.SingleAsync(r => r.Id == run.Id)).Status);
     }
 

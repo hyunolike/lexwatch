@@ -31,6 +31,9 @@ public static class AiMapping
     };
 
     public static List<Api.Ai.Evidence> Evidence(IEnumerable<Data.Entities.Evidence> rows) =>
-        rows.OrderBy(e => e.EvidenceId, StringComparer.Ordinal)
-            .Select(e => new Api.Ai.Evidence { Id = e.EvidenceId, Kind = e.Kind, Title = e.Title, Body = e.Body }).ToList();
+        EvidenceInOrder(rows.OrderBy(e => e.EvidenceId, StringComparer.Ordinal));
+
+    /// <summary>주어진 순서를 그대로 둔다(변경 조문 → 검색 순위).</summary>
+    public static List<Api.Ai.Evidence> EvidenceInOrder(IEnumerable<Data.Entities.Evidence> rows) =>
+        rows.Select(e => new Api.Ai.Evidence { Id = e.EvidenceId, Kind = e.Kind, Title = e.Title, Body = e.Body }).ToList();
 }

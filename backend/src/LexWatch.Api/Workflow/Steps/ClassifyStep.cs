@@ -76,6 +76,7 @@ public class ClassifyStep(AiGateway ai, TimeProvider time) : IStepHandler
         var verdicts = cls.Value!.Groups.GroupBy(v => v.Group_code).ToDictionary(x => x.Key, x => x.First());
         var existing = await db.GroupReviews.Where(r => r.RunId == ctx.Run.Id).ToDictionaryAsync(r => r.GroupCode, ct);
         var next = new List<NextStep>();
+        var proceed = false;
         var summaryOut = new List<object>();
         foreach (var g in groups)
         {
@@ -98,8 +99,10 @@ public class ClassifyStep(AiGateway ai, TimeProvider time) : IStepHandler
             review.Confidence = confidence;
             review.Reason = reason;
             summaryOut.Add(new { group = g.Code, confidence, status = status.ToString(), modelRelevant = relevant, modelConfidence = raw });
-            if (status != ReviewStatus.ClosedIrrelevant) next.Add(new NextStep("analyze", review.Id, null));
+            if (status != ReviewStatus.ClosedIrrelevant) proceed = true;
         }
+        // 진행할 그룹이 있을 때만 조문을 색인한다. 그룹별 analyze는 index_articles가 낸다(hybrid-rag RAG-02).
+        if (proceed) next.Add(new NextStep("index_articles", null, null));
 
         if (next.Count == 0)
         {

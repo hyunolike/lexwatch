@@ -93,6 +93,42 @@ namespace LexWatch.Api.Data.Migrations
                     b.ToTable("Approvals");
                 });
 
+            modelBuilder.Entity("LexWatch.Api.Data.Entities.ArticleChunk", b =>
+                {
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ChunkId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EmbedModel")
+                        .HasColumnType("text");
+
+                    b.Property<Vector>("Embedding")
+                        .HasColumnType("vector(1024)");
+
+                    b.Property<string>("EvidenceId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Ord")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.PrimitiveCollection<string[]>("Tokens")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.HasKey("RunId", "ChunkId");
+
+                    b.HasIndex("RunId", "EvidenceId");
+
+                    b.ToTable("ArticleChunks");
+                });
+
             modelBuilder.Entity("LexWatch.Api.Data.Entities.ChatQuota", b =>
                 {
                     b.Property<DateOnly>("Day")
@@ -505,6 +541,15 @@ namespace LexWatch.Api.Data.Migrations
                     b.HasOne("LexWatch.Api.Data.Entities.GroupReview", null)
                         .WithMany()
                         .HasForeignKey("GroupReviewId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LexWatch.Api.Data.Entities.ArticleChunk", b =>
+                {
+                    b.HasOne("LexWatch.Api.Data.Entities.Evidence", null)
+                        .WithMany()
+                        .HasForeignKey("RunId", "EvidenceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

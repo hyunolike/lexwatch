@@ -39,3 +39,15 @@ async def test_malformed_responses_raise_retriever_error():
         await p.embed(["a"], "query")
     with pytest.raises(RetrieverError):
         await p.rerank("q", ["a"])
+
+
+def test_tokenizer_matches_shared_golden_file():
+    # C# KoreanTokenizer와 같은 파일을 통과해야 색인과 질의 토큰이 맞는다(hybrid-rag RAG-03).
+    import json
+    from pathlib import Path
+
+    from app.rag.lexical import tokenize
+
+    golden = json.loads((Path(__file__).resolve().parents[2] / "fixtures/retrieval/tokenizer_golden.json").read_text())
+    for case in golden:
+        assert tokenize(case["text"]) == case["tokens"], case["text"]
