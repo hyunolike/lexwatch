@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://lexwatch-web.vercel.app"><b>🔗 LexWatch 바로가기</b></a>
+  <a href="https://lexwatch-web.netlify.app"><b>🔗 LexWatch 바로가기</b></a>
   &nbsp;|&nbsp;
   <a href="docs/deploy.md">배포 런북</a>
   &nbsp;|&nbsp;
@@ -118,7 +118,7 @@ LexWatch는 사건을 처리하는 본업이 아니라 **법령 개정을 지켜
 
 ### 인프라
 
-![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white)
+![Netlify](https://img.shields.io/badge/Netlify-00C7B7?style=flat-square&logo=netlify&logoColor=white)
 ![Render](https://img.shields.io/badge/Render-000000?style=flat-square&logo=render&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?style=flat-square&logo=supabase&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
@@ -145,8 +145,8 @@ LexWatch는 사건을 처리하는 본업이 아니라 **법령 개정을 지켜
 
 | 구성 | 위치 | 역할 |
 | --- | --- | --- |
-| 웹 (`lexwatch-web`) | Vercel, sin1 | Next.js 화면 |
-| AI 서비스 (`lexwatch-ai`) | Vercel, sin1, Fluid Compute | 분류, 영향 분석 에이전트, 크리틱 3단, 검토 보조 |
+| 웹 (`lexwatch-web`) | Netlify | Next.js 화면 |
+| AI 서비스 (`lexwatch-ai`) | Render free, Singapore, Docker | 분류, 영향 분석 에이전트, 크리틱 3단, 검토 보조 |
 | API (`lexwatch-api`) | Render free, Singapore, Docker | Workflow 엔진, 크리틱 1단과 2단, 승인과 알림 |
 | DB | Supabase PostgreSQL + pgvector, ap-southeast-1 | 세션 풀러로 연결 |
 | 외부 | 국가법령정보센터 Open API, NVIDIA NIM | 법령 수집, 모델 호출 |
@@ -161,7 +161,7 @@ LexWatch는 사건을 처리하는 본업이 아니라 **법령 개정을 지켜
 
 1. PR과 push마다 `ci` 워크플로가 다섯 가지를 검사합니다: .NET 테스트, Python 테스트, AI 클라이언트 계약 비교, 웹 타입 검사와 린트와 테스트와 빌드, Docker 이미지 세 종 빌드.
 2. 다섯 검사가 모두 통과해야 배포가 시작됩니다. 테스트가 실패하면 웹, AI 서비스, API 어느 것도 배포하지 않습니다.
-3. 웹과 AI 서비스는 `deploy-vercel` 잡이 Vercel CLI(`vercel deploy --prod`)로, API는 `deploy-api` 잡이 Render CLI(`render deploys create --commit --wait`)로 배포합니다. Vercel의 Git 연동은 PR 미리보기만 만들고 프로덕션은 배포하지 않습니다.
+3. 웹은 `deploy-web` 잡이 Netlify CLI(`netlify deploy --build --prod`)로, API와 AI 서비스는 `deploy-render` 잡이 Render CLI(`render deploys create --commit --wait`)로 배포합니다. 2026-11-21 Vercel 팀이 같은 팀의 다른 프로젝트 사용량으로 공정 사용 한도에 걸려 멈춘 뒤 옮겼습니다([런북](docs/deploy.md)).
 4. API는 기동하면서 DB 마이그레이션을 적용합니다. 각 잡은 공개 주소가 응답하는지(API는 `/health`가 새 커밋을 돌려주는지) 확인하고 끝납니다.
 
 | 워크플로 | 시점 | 하는 일 |
@@ -251,7 +251,7 @@ AI 서비스는 NVIDIA 키가 있으면 NVIDIA NIM을, 없으면 Cloudflare Work
 
 ![디자인 시스템](docs/screenshots/07-design-system.png)
 
-로펌 직원이 긴 법령 문장을 오래 읽고, 근거를 확인한 뒤 승인하는 흐름에 맞춘 디자인 시스템입니다. 앱의 [`/design-system`](https://lexwatch-web.vercel.app/design-system) 화면에서 토큰과 부품을 직접 눌러 볼 수 있습니다.
+로펌 직원이 긴 법령 문장을 오래 읽고, 근거를 확인한 뒤 승인하는 흐름에 맞춘 디자인 시스템입니다. 앱의 [`/design-system`](https://lexwatch-web.netlify.app/design-system) 화면에서 토큰과 부품을 직접 눌러 볼 수 있습니다.
 
 - **출처는 판정이 아니다**: NVIDIA(보라), 대체 구현(남회색), 재현(점선 테두리) 라벨은 성공과 실패를 뜻하는 초록과 빨강을 쓰지 않습니다. IBM Carbon과 Atlassian이 분류 색과 상태 색을 나누는 원칙을 따랐습니다.
 - **대비는 테스트가 지킨다**: 색 토큰의 원본은 `web/src/styles/tokens.css` 하나이고, 테스트가 32개 색 쌍을 WCAG 2.2 AA로 검사합니다. Tailwind 기본 팔레트를 비워 토큰 밖의 색은 쓸 수 없습니다.

@@ -80,72 +80,73 @@ jobs:
       - run: docker build -f ai/Dockerfile -t lexwatch-ai:ci .
       - run: docker build -f web/Dockerfile -t lexwatch-web:ci .
 
-  deploy-vercel:
-    # main에 push되고 다섯 검사가 모두 통과했을 때만 Vercel(web, ai) 프로덕션을 배포한다.
-    # vercel.json의 git.deploymentEnabled.main=false로 Git 연동의 프로덕션 자동 배포는 꺼져 있다. PR 미리보기는 그대로.
+  deploy-web:
+    # main에 push되고 다섯 검사가 모두 통과했을 때만 웹을 Netlify 프로덕션에 배포한다.
+    # 2026-11-21 Vercel 팀이 다른 프로젝트의 사용량으로 공정 사용 한도에 걸려 멈춰 Netlify로 옮겼다(docs/deploy.md).
     needs: [backend, ai, openapi-drift, web, docker]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: web
-            project_id: prj_v2DhruJFOamdPmxiQZWSvJA8yTo5
-            token_secret: VERCEL_TOKEN_WEB
-            check_url: https://lexwatch-web.vercel.app/
-          - name: ai
-            project_id: prj_ZhL9slWEJ7pobFh283gtAJGJGC2F
-            token_secret: VERCEL_TOKEN_AI
-            check_url: https://lexwatch-ai.vercel.app/health
     concurrency:
-      group: deploy-vercel-${{ matrix.name }}
+      group: deploy-web
       cancel-in-progress: false
     env:
-      VERCEL_ORG_ID: team_JLPkhn7nreUDgCKarZrAD9ZP
-      VERCEL_PROJECT_ID: ${{ matrix.project_id }}
+      NETLIFY_SITE_ID: ef87905f-8288-4e53-93f0-4f67604f3415
+      NETLIFY_CLI_VERSION: 27.16.2
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Vercel 프로덕션 배포 (${{ matrix.name }})
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - name: Netlify 프로덕션 배포
+        working-directory: web
         env:
-          # 프로젝트 하나로 범위를 제한한 토큰을 프로젝트마다 따로 둔다(대시보드 Tokens에서 Scope를 프로젝트로).
-          VERCEL_TOKEN: ${{ secrets[matrix.token_secret] }}
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
         run: |
-          if [ -z "$VERCEL_TOKEN" ]; then
-            echo "::error::${{ matrix.token_secret }} 시크릿이 없다. docs/deploy.md '자동 배포' 절을 보고 넣는다."
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "::error::NETLIFY_AUTH_TOKEN 시크릿이 없다. docs/deploy.md '자동 배포' 절을 보고 넣는다."
             exit 1
           fi
-          npm install --global --no-fund --no-audit vercel@59.11.2
-          # 저장소 루트에서 배포하면 프로젝트의 Root Directory(web, ai) 설정을 따른다.
-          vercel deploy --prod --yes --token "$VERCEL_TOKEN" > deploy-url.txt
-          echo "배포: $(cat deploy-url.txt)"
-      - name: 공개 주소 확인 (${{ matrix.name }})
+          # web/netlify.toml을 따른다(pnpm build, .next, NEXT_PUBLIC_API_BASE_URL).
+          npx --yes "netlify-cli@${NETLIFY_CLI_VERSION}" deploy --build --prod --site "$NETLIFY_SITE_ID" --message "ci ${GITHUB_SHA::7}"
+      - name: 공개 주소 확인
         run: |
           for i in $(seq 1 10); do
-            code=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 30 "${{ matrix.check_url }}" || true)
-            if [ "$code" = "200" ]; then echo "ok: ${{ matrix.check_url }}"; exit 0; fi
+            code=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 30 https://lexwatch-web.netlify.app/ || true)
+            if [ "$code" = "200" ]; then echo "ok"; exit 0; fi
             echo "대기 ${i}/10 (HTTP ${code})"
             sleep 10
           done
-          echo "::error::${{ matrix.check_url }}가 200을 돌려주지 않는다."
+          echo "::error::https://lexwatch-web.netlify.app/ 가 200을 돌려주지 않는다."
           exit 1
 
-  deploy-api:
-    # main에 push되고 위 다섯 잡이 모두 통과했을 때만 Render API를 배포한다.
-    # Vercel(web, ai)은 Git 연동으로 따로 배포된다. 절차와 시크릿: docs/deploy.md "자동 배포"
+  deploy-render:
+    # main에 push되고 위 다섯 잡이 모두 통과했을 때만 Render(API, AI 서비스)를 배포한다.
+    # AI 서비스는 2026-11-21 Vercel에서 Render로 옮겼다. 절차와 시크릿: docs/deploy.md "자동 배포"
     needs: [backend, ai, openapi-drift, web, docker]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api
+            service_id: srv-dbt9gtgae00c73a31iag
+          - name: ai
+            service_id: srv-dc0ihi6k1f9s7399c1m0
     concurrency:
-      group: deploy-api
+      group: deploy-render-${{ matrix.name }}
       cancel-in-progress: false
     env:
-      RENDER_SERVICE_ID: srv-dbt9gtgae00c73a31iag
+      RENDER_SERVICE_ID: ${{ matrix.service_id }}
       RENDER_CLI_VERSION: 2.36.0
       RENDER_CLI_SHA256: 97c83ceae5e99c8bc2d342a71c18c0af39841bc8af3429d01ca9a629aca66d0e
     steps:
@@ -167,7 +168,19 @@ jobs:
           fi
           # --wait: 배포가 실패하면 0이 아닌 값으로 끝난다.
           render deploys create "$RENDER_SERVICE_ID" --commit "$GITHUB_SHA" --wait --confirm -o text
+      - name: AI 서비스 응답 확인
+        if: matrix.name == 'ai'
+        run: |
+          for i in $(seq 1 20); do
+            code=$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 60 https://lexwatch-ai-xno4.onrender.com/health || true)
+            if [ "$code" = "200" ]; then echo "ok"; exit 0; fi
+            echo "대기 ${i}/20 (HTTP ${code})"
+            sleep 15
+          done
+          echo "::error::AI 서비스 /health가 200을 돌려주지 않는다."
+          exit 1
       - name: 공개 주소에서 새 커밋 확인
+        if: matrix.name == 'api'
         env:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
         run: |
