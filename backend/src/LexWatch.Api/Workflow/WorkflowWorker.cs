@@ -108,7 +108,7 @@ public class WorkflowWorker(IServiceScopeFactory scopes, TimeProvider time, ILog
         return true;
     }
 
-    private static readonly HashSet<string> ProviderKinds = ["nvidia", "cloudflare", "fallback", "replay", "none"];
+    private static readonly HashSet<string> ProviderKinds = ["nvidia", "cloudflare", "groq", "fallback", "replay", "none"];
 
     private async Task ApplyAsync(LexWatchDb db, StepRun step, WorkflowRun run, StepResult result,
         DateTimeOffset now, CancellationToken ct)

@@ -109,6 +109,7 @@ export function Showcase() {
           <div className="flex flex-wrap gap-2">
             <SourceLabel kind="nvidia" />
             <SourceLabel kind="cloudflare" />
+            <SourceLabel kind="groq" />
             <SourceLabel kind="fallback" />
             <SourceLabel kind="replay" />
           </div>

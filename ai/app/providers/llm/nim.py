@@ -240,33 +240,21 @@ class NvidiaNimProvider(LLMProvider):
 
 
 CLOUDFLARE_DEFAULT_MODEL = "@cf/openai/gpt-oss-120b"
+GROQ_DEFAULT_MODEL = "openai/gpt-oss-120b"
 
 
-class CloudflareWorkersAIProvider(NvidiaNimProvider):
-    """Cloudflare Workers AI. 같은 OpenAI 호환 Chat Completions라 재시도와 도구 호출 해석을 그대로 쓰고,
-    출처만 cloudflare로 남긴다. docs/features/cloudflare-ai/spec.md"""
+class GptOssProvider(NvidiaNimProvider):
+    """gpt-oss를 OpenAI 호환 Chat Completions로 부르는 공급자 공통(Cloudflare, Groq).
 
-    info = ProviderInfo(name="cloudflare-workers-ai", kind="cloudflare")
+    gpt-oss 응답은 운영에서 27~52초 걸렸다. 시도마다 30초로 끊으면 재시도도 같은 자리에서 끊겨
+    성공할 수 없으므로 한 번을 길게 기다린다. 생각 토큰 때문에 2,048 토큰에서 잘린 응답도 있었다(CF-07).
+    """
 
-    def __init__(
-        self,
-        api_token: str,
-        account_id: str,
-        model: str = CLOUDFLARE_DEFAULT_MODEL,
-        *,
-        reasoning_effort: str | None = None,
-        **kwargs: Any,
-    ) -> None:
-        if not api_token or not account_id:
-            raise LLMError("CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required", code="LLM_NO_KEY")
-        # gpt-oss 응답은 운영에서 27~52초 걸렸다. 시도마다 30초로 끊으면 재시도도 같은 자리에서 끊겨
-        # 성공할 수 없으므로 한 번을 길게 기다린다. 생각 토큰 때문에 2,048 토큰에서 잘린 응답도 있었다(CF-07).
+    def __init__(self, api_key: str, base_url: str, model: str, *, reasoning_effort: str | None = None, **kwargs: Any) -> None:
         kwargs.setdefault("attempt_timeout_s", 110.0)
         kwargs.setdefault("budget_s", 120.0)
         kwargs.setdefault("max_tokens", 4096)
-        super().__init__(
-            api_token, f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1", model, **kwargs
-        )
+        super().__init__(api_key, base_url, model, **kwargs)
         self.reasoning_effort = reasoning_effort
 
     def _prepare(self, messages: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -276,3 +264,28 @@ class CloudflareWorkersAIProvider(NvidiaNimProvider):
         if "gpt-oss" in self.model and self.reasoning_effort:
             extra["reasoning_effort"] = self.reasoning_effort
         return msgs, extra
+
+
+class CloudflareWorkersAIProvider(GptOssProvider):
+    """Cloudflare Workers AI. 출처는 cloudflare. docs/features/cloudflare-ai/spec.md"""
+
+    info = ProviderInfo(name="cloudflare-workers-ai", kind="cloudflare")
+
+    def __init__(self, api_token: str, account_id: str, model: str = CLOUDFLARE_DEFAULT_MODEL, **kwargs: Any) -> None:
+        if not api_token or not account_id:
+            raise LLMError("CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required", code="LLM_NO_KEY")
+        super().__init__(api_token, f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1", model, **kwargs)
+
+
+class GroqProvider(GptOssProvider):
+    """Groq. Cloudflare 한도가 끝났을 때 넘어가는 무료 예비 공급자(docs/features/llm-failover/spec.md)."""
+
+    info = ProviderInfo(name="groq", kind="groq")
+
+    def __init__(self, api_key: str, model: str = GROQ_DEFAULT_MODEL, **kwargs: Any) -> None:
+        if not api_key:
+            raise LLMError("GROQ_API_KEY is required", code="LLM_NO_KEY")
+        super().__init__(api_key, "https://api.groq.com/openai/v1", model, **kwargs)
+        # 무료 등급은 분당 8,000 토큰, 하루 1,000회(2026-11-22 응답 헤더 확인). 분당 한도는 1분 안에 풀리므로
+        # 429의 Retry-After를 30초까지 기다렸다가 다시 부른다(기본 8초면 큰 크리틱 요청이 매번 실패한다).
+        self.retry_max_delay = 30.0

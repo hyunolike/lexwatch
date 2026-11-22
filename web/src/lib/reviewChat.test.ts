@@ -14,6 +14,11 @@ describe("mapChatResult", () => {
     const m = mapChatResult({ waking: false, status: 200, data: { answer: "답", citations: [], refused: false, provider: { name: "cloudflare-workers-ai", kind: "cloudflare" } } }, ev);
     expect(m.providerKind).toBe("cloudflare");
   });
+
+  it("Groq가 답하면 출처를 groq로 남긴다", () => {
+    const m = mapChatResult({ waking: false, status: 200, data: { answer: "답", citations: [], refused: false, provider: { name: "groq", kind: "groq" } } }, ev);
+    expect(m.providerKind).toBe("groq");
+  });
   it("shows refusals plainly and never labels fallback as nvidia", () => {
     const m = mapChatResult({ waking: false, status: 200, data: { answer: "이 개정안의 근거 안에서만 답할 수 있어요.", citations: [], refused: true, provider: { name: "no-key", kind: "fallback" } } }, ev);
     expect(m.refused).toBe(true);
