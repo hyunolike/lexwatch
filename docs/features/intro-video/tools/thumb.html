@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:P;src:url(PretendardVariable.woff2) format("woff2");font-weight:100 900}
+*{box-sizing:border-box;margin:0}
+html,body{width:1920px;height:1080px;overflow:hidden;font-family:P,sans-serif;color:#fff;
+  background:radial-gradient(1300px 900px at 75% 40%,#2a3a66 0%,#1f2a44 45%,#121a2c 100%)}
+.l{position:absolute;left:120px;top:0;bottom:0;width:760px;display:flex;flex-direction:column;justify-content:center}
+.brand{display:flex;align-items:center;gap:18px;font-size:44px;font-weight:800;letter-spacing:-.01em}
+.brand img{width:84px;height:84px}
+h1{margin-top:56px;font-size:86px;line-height:1.18;font-weight:800;letter-spacing:-.03em}
+h1 em{font-style:normal;color:#a9c1ff}
+.sub{margin-top:36px;font-size:36px;line-height:1.5;font-weight:500;color:#c9d2e3}
+.tag{margin-top:44px;display:inline-flex;align-self:flex-start;align-items:center;gap:14px;padding:14px 26px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);font-size:30px;font-weight:600}
+.tag i{width:0;height:0;border-left:20px solid #fff;border-top:12px solid transparent;border-bottom:12px solid transparent}
+.shot{position:absolute;left:960px;top:150px;width:1180px;height:780px;border-radius:18px;overflow:hidden;background:#f6f7f9;
+  box-shadow:0 40px 100px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.1)}
+.shot img{position:absolute;width:1920px;height:1080px;left:0;top:0;transform-origin:0 0;transform:translate(-280px,-36px) scale(.98)}
+.hl{position:absolute;border:5px solid #f5b400;border-radius:12px;box-shadow:0 0 0 8px rgba(245,180,0,.22)}
+</style></head><body>
+<div class="l">
+  <div class="brand"><img src="lex-avatar.webp">LexWatch</div>
+  <h1>AI가 쓴 법령 검토 초안,<br><em>그대로 보내도 될까요?</em></h1>
+  <p class="sub">근거와 다른 수치는 자동 검사가 잡고,<br>변호사가 확인해 승인해야 팀에 나갑니다</p>
+  <div class="tag"><i></i>36초 소개 영상</div>
+</div>
+<div class="shot"><img src="shots/f02-review.png"><div id="h1" class="hl"></div><div id="h2" class="hl"></div></div>
+<script>
+// 캡처 좌표 → 썸네일 좌표: (x-280/.98... ) 간단히 같은 변환을 적용
+const T=(x,y)=>[x*.98-280,y*.98-36];
+function place(id,x,y,w,h){const[a,b]=T(x,y);Object.assign(document.getElementById(id).style,{left:(a-8)+'px',top:(b-8)+'px',width:(w*.98+16)+'px',height:(h*.98+16)+'px'});}
+place('h1',770,172,104,40);place('h2',1083,766,104,40);
+window.ready=Promise.all([document.fonts.load('800 86px P'),...[...document.images].map(i=>i.decode().catch(()=>{}))]);
+</script></body></html>
