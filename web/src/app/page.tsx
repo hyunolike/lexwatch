@@ -81,7 +81,7 @@ export default function Home() {
         <p className="max-w-reading text-caption text-ink-subtle">그룹 관련성은 법령과 실무그룹의 관련 정도예요. 초안의 정확도를 뜻하지 않아요.</p>
       </div>
       <FirstVisitGuide />
-      <WakeGate<ReviewSummary[]> key={role} load={() => apiFetch<ReviewSummary[]>("/api/reviews")}>
+      <WakeGate<ReviewSummary[]> key={role} label="승인 대기함" load={() => apiFetch<ReviewSummary[]>("/api/reviews")}>
         {(res) =>
           Array.isArray(res.data) ? (
             <Queue items={res.data} />

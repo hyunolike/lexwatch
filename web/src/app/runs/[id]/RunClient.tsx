@@ -54,7 +54,7 @@ export function RunClient({ id }: { id: string }) {
       <Link href="/runs" className="inline-flex items-center gap-1 rounded-md text-label text-ink-muted hover:text-ink">
         <ArrowLeft aria-hidden className="size-4" /> 실행 이력
       </Link>
-      <WakeGate<RunDetail> key={role} load={() => apiFetch<RunDetail>(`/api/runs/${id}`)}>
+      <WakeGate<RunDetail> key={role} label="자동 처리 상세" load={() => apiFetch<RunDetail>(`/api/runs/${id}`)}>
         {(res, reload) =>
           res.status === 401 || res.status === 403 ? (
             <Callout tone="warning">이 화면을 보려면 변호사 또는 관리자 역할이 필요해요. 위에서 역할을 골라 주세요.</Callout>

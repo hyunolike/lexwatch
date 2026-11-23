@@ -13,7 +13,7 @@ export default function InboxPage() {
     <div className="space-y-5">
       <PageHeader title="알림함" />
       <p className="text-ui text-ink-muted">승인된 검토의 데모 알림이에요. 실제 발송은 없어요.</p>
-      <WakeGate<InboxItem[]> key={role} load={() => apiFetch<InboxItem[]>("/api/inbox")}>
+      <WakeGate<InboxItem[]> key={role} label="알림함" load={() => apiFetch<InboxItem[]>("/api/inbox")}>
         {(res) =>
           !Array.isArray(res.data) ? (
             <Callout tone="danger">알림을 불러오지 못했어요.</Callout>

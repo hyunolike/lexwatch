@@ -251,7 +251,7 @@ DS-12(Enter 전송)는 검토 결과 이번 범위에서 뺐다(1.2절).
 | 실행 목록 (`runs/page.tsx`) | 실행 상태와 그룹 상태를 `StatusLozenge`로, 그룹 코드를 한국어로 |
 | 실행 타임라인 (`RunClient.tsx`, `Timeline.tsx`) | 단계 상태 `StatusLozenge`, 출처 `SourceLabel`, 시도 횟수와 시간 `tabular-nums`. 승인 기록의 `decision`과 `actorRole`을 한국어로, 그룹 코드 배지는 `groupLabel`로. (타임라인 알림 항목에는 `channel` 필드가 없어 해당 없음) 재실행 안내는 `Callout live` |
 | 알림함 (`inbox/page.tsx`) | 알림 상태 `StatusLozenge`, 본문 `text-reading`. 비어 있으면 `EmptyState`(empty-inbox) |
-| 서버 깨우기 (`WakeGate.tsx`) | 대기 중 `Mascot waking` + 시도 횟수, 실패와 포기는 `Mascot error` + 다시 시도 버튼 |
+| 서버 깨우기 (`WakeGate.tsx`, `WakeWait.tsx`) | 대기 중에는 경과 시간, 시간 막대, 실제 단계, 누를 수 있는 `Mascot waking`, 읽을거리 카드([wake-wait](../wake-wait/design.md)). 실패와 포기는 `Mascot error` + 다시 시도 버튼 |
 | 디자인 시스템 (`design-system/page.tsx`) | 정적으로 미리 그리는 서버 컴포넌트. `fs.readFileSync(path.join(process.cwd(), "src/styles/tokens.css"))`를 `design/tokens.ts`로 읽어 색 견본과 대비 값을 보여 줌. 글자 척도, 부품별 상태, 마스코트 사용 규칙과 금지 위치 |
 
 `ConfirmDialog` 문구:
