@@ -131,6 +131,8 @@ public class Approval
     public string? Comment { get; set; }
     public string? DiffJson { get; set; }
     public DateTimeOffset DecidedAt { get; set; }
+    /// <summary>승인 때 변호사가 확인한 적발 수(승인 직전 재검사 기준). 반려와 이 열 이전 기록은 null.</summary>
+    public int? AcknowledgedFindingCount { get; set; }
 }
 
 public class Notification

@@ -121,7 +121,7 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
     {
         var g = await SeedAsync();
         await using var f = Factory();
-        var resp = await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version, comment = "ok" });
+        var resp = await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version, comment = "ok", acknowledgedFindingCount = 1 });
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
 
         await using var db = pg.CreateDb();
@@ -175,7 +175,7 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
         var g = await SeedAsync();
         await using var f = Factory();
         var c = As(f, "lawyer");
-        Assert.Equal(HttpStatusCode.OK, (await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version, acknowledgedFindingCount = 1 })).StatusCode);
         await using (var db = pg.CreateDb())
         {
             var step = await db.StepRuns.SingleAsync(s => s.Step == "notify");
@@ -184,7 +184,7 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
         }
         uint version;
         await using (var db = pg.CreateDb()) version = (await db.GroupReviews.SingleAsync()).Version;
-        var again = await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version });
+        var again = await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version, acknowledgedFindingCount = 1 });
         Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
         await using var chk = pg.CreateDb();
         Assert.Equal(1, await chk.Approvals.CountAsync());
@@ -221,7 +221,7 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
     {
         var g = await SeedAsync();
         await using var f = Factory();
-        await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version });
+        await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version, acknowledgedFindingCount = 1 });
         await using var db = pg.CreateDb();
         Assert.NotEqual(RunStatus.Completed, (await db.WorkflowRuns.SingleAsync()).Status);
     }
@@ -243,7 +243,7 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
         var g = await SeedAsync();
         await using var f = Factory();
         var c = As(f, "lawyer");
-        var t1 = c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version });
+        var t1 = c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version, acknowledgedFindingCount = 1 });
         var t2 = c.PostAsJsonAsync($"/api/reviews/{g.Id}/reject", new { version = g.Version, comment = "반려" });
         var codes = (await Task.WhenAll(t1, t2)).Select(r => r.StatusCode).OrderBy(x => x).ToArray();
         Assert.Equal([HttpStatusCode.OK, HttpStatusCode.Conflict], codes);
@@ -267,7 +267,7 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
 
         var ok = await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new
         {
-            version = g.Version,
+            version = g.Version, acknowledgedFindingCount = 1, // 고친 0번 문장의 3단 적발이 "(수정 전 문장)"으로 남는다
             editedSentences = new[]
             {
                 new { sentence = "해고가 엄격히 제한된다.", citations = new[] { "law:L1:제23조" } },
@@ -283,6 +283,149 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal(1, diff.GetArrayLength());
         Assert.Equal(0, diff[0].GetProperty("index").GetInt32());
         Assert.Equal("해고가 제한된다.", diff[0].GetProperty("before").GetProperty("sentence").GetString());
+    }
+
+    private static async Task<JsonElement> UnresolvedAsync(HttpResponseMessage resp)
+    {
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, resp.StatusCode);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("UNRESOLVED_FINDINGS", body.GetProperty("code").GetString());
+        return body.GetProperty("findings");
+    }
+
+    private async Task AssertUndecidedAsync()
+    {
+        await using var db = pg.CreateDb();
+        Assert.Equal(ReviewStatus.WaitingApproval, (await db.GroupReviews.SingleAsync()).Status);
+        Assert.Equal(0, await db.Approvals.CountAsync());
+        Assert.Equal(0, await db.StepRuns.CountAsync(s => s.Step == "notify"));
+        Assert.Equal(1, await db.MemoDrafts.CountAsync());
+    }
+
+    [Fact]
+    public async Task Approve_with_stored_findings_requires_matching_acknowledgement()
+    {
+        var g = await SeedAsync();
+        await using var f = Factory();
+        var c = As(f, "lawyer");
+        var findings = await UnresolvedAsync(await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version }));
+        var x = Assert.Single(findings.EnumerateArray());
+        Assert.Equal((0, 3, "OC-01", "단정"), (x.GetProperty("sentenceIndex").GetInt32(), x.GetProperty("tier").GetInt32(),
+            x.GetProperty("ruleId").GetString(), x.GetProperty("message").GetString()));
+        await AssertUndecidedAsync();
+
+        await UnresolvedAsync(await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version, acknowledgedFindingCount = 2 }));
+        await AssertUndecidedAsync();
+
+        var ok = await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version, acknowledgedFindingCount = 1 });
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        await using var db = pg.CreateDb();
+        Assert.Equal(1, (await db.Approvals.SingleAsync()).AcknowledgedFindingCount);
+    }
+
+    [Fact]
+    public async Task Approve_without_findings_needs_no_acknowledgement()
+    {
+        var g = await SeedAsync();
+        await using (var db = pg.CreateDb()) await db.CriticFindings.ExecuteDeleteAsync();
+        await using var f = Factory();
+        var resp = await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version });
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        await using var chk = pg.CreateDb();
+        Assert.Equal(0, (await chk.Approvals.SingleAsync()).AcknowledgedFindingCount);
+    }
+
+    [Fact]
+    public async Task Unedited_approval_rechecks_tier_2_with_current_rules()
+    {
+        var g = await SeedAsync();
+        await using (var db = pg.CreateDb())
+        {
+            await db.CriticFindings.ExecuteDeleteAsync(); // 이전 규칙으로 판정돼 저장된 적발이 없다
+            var d = await db.MemoDrafts.SingleAsync();
+            d.SentencesJson = """[{"sentence":"제24조에 따라 해고가 제한된다.","citations":["law:L1:제23조"]}]""";
+            await db.SaveChangesAsync();
+        }
+        await using var f = Factory();
+        var x = Assert.Single((await UnresolvedAsync(
+            await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version }))).EnumerateArray());
+        Assert.Equal(("C2-MISMATCH", 2), (x.GetProperty("ruleId").GetString(), x.GetProperty("tier").GetInt32()));
+    }
+
+    [Fact]
+    public async Task Edited_sentences_are_rechecked_and_findings_saved_on_new_draft()
+    {
+        var g = await SeedAsync();
+        await using var f = Factory();
+        var c = As(f, "lawyer");
+        object Body(int? ack) => new
+        {
+            version = g.Version, acknowledgedFindingCount = ack,
+            editedSentences = new[]
+            {
+                new { sentence = "제24조에 따라 해고가 제한된다.", citations = new[] { "law:L1:제23조" } },
+                new { sentence = "신구조문이 있다.", citations = new[] { "oldnew:L1:제23조" } },
+            },
+        };
+        var findings = (await UnresolvedAsync(await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", Body(null)))).EnumerateArray()
+            .Select(x => (x.GetProperty("sentenceIndex").GetInt32(), x.GetProperty("tier").GetInt32(), x.GetProperty("message").GetString()))
+            .ToList();
+        Assert.Equal([(0, 2, "인용한 근거 본문에 없는 표기: 제24조"), (0, 3, "(수정 전 문장) 단정")], findings);
+        await AssertUndecidedAsync();
+
+        Assert.Equal(HttpStatusCode.OK, (await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", Body(2))).StatusCode);
+        await using var db = pg.CreateDb();
+        var v2 = await db.MemoDrafts.SingleAsync(d => d.Version == 2);
+        var stored = await db.CriticFindings.Where(cf => cf.MemoDraftId == v2.Id).OrderBy(cf => cf.Tier).ToListAsync();
+        Assert.Equal(["C2-MISMATCH", "OC-01"], stored.Select(cf => cf.RuleId).ToArray());
+        Assert.Equal(2, (await db.Approvals.SingleAsync()).AcknowledgedFindingCount);
+    }
+
+    [Fact]
+    public async Task Tier_3_finding_follows_its_sentence_when_another_is_inserted()
+    {
+        var g = await SeedAsync();
+        await using var f = Factory();
+        var resp = await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new
+        {
+            version = g.Version,
+            editedSentences = new[]
+            {
+                new { sentence = "새로 넣은 문장이다.", citations = new[] { "law:L1:제23조" } },
+                new { sentence = "해고가 제한된다.", citations = new[] { "law:L1:제23조" } },
+                new { sentence = "신구조문이 있다.", citations = new[] { "oldnew:L1:제23조" } },
+            },
+        });
+        var x = Assert.Single((await UnresolvedAsync(resp)).EnumerateArray());
+        Assert.Equal(("OC-01", 1, "단정"), (x.GetProperty("ruleId").GetString(), x.GetProperty("sentenceIndex").GetInt32(),
+            x.GetProperty("message").GetString()));
+    }
+
+    [Fact]
+    public async Task Deleted_sentence_drops_its_tier_3_finding()
+    {
+        var g = await SeedAsync();
+        await using var f = Factory();
+        var resp = await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new
+        {
+            version = g.Version,
+            editedSentences = new[] { new { sentence = "신구조문이 있다.", citations = new[] { "oldnew:L1:제23조" } } },
+        });
+        // 0번 위치에 다른 문장이 왔으므로 "(수정 전 문장)"으로 남는다. 삭제로 위치가 없어지는 경우는 아래에서 본다.
+        Assert.Equal("(수정 전 문장) 단정", Assert.Single((await UnresolvedAsync(resp)).EnumerateArray()).GetProperty("message").GetString());
+
+        await using (var db = pg.CreateDb())
+        {
+            var finding = await db.CriticFindings.SingleAsync();
+            finding.SentenceIndex = 1; // 1번 문장의 적발로 바꾼 뒤 1번 문장을 지운다
+            await db.SaveChangesAsync();
+        }
+        var ok = await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new
+        {
+            version = g.Version,
+            editedSentences = new[] { new { sentence = "해고가 제한된다.", citations = new[] { "law:L1:제23조" } } },
+        });
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
     }
 
     private static readonly object ChatOk = new

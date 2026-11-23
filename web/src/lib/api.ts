@@ -121,8 +121,17 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   return { waking: false, status: res.status, data: data as T };
 }
 
+/** 승인 직전 재검사가 찾은 적발(422 UNRESOLVED_FINDINGS). */
+export interface DecisionFinding {
+  sentenceIndex: number;
+  tier: number;
+  ruleId: string;
+  message: string;
+}
+
 export type DecisionOutcome =
   | { kind: "waking" }
+  | { kind: "findings"; findings: DecisionFinding[] }
   | { kind: "conflict" }
   | { kind: "error"; message: string }
   | { kind: "ok" };
@@ -132,13 +141,13 @@ export async function submitDecision(
   id: string,
   kind: "approve" | "reject",
   version: number,
-  opts: { editedSentences?: EditedSentence[]; comment?: string },
+  opts: { editedSentences?: EditedSentence[]; comment?: string; acknowledgedFindingCount?: number },
 ): Promise<DecisionOutcome> {
   const body =
     kind === "approve"
-      ? { version, editedSentences: opts.editedSentences }
+      ? { version, editedSentences: opts.editedSentences, acknowledgedFindingCount: opts.acknowledgedFindingCount }
       : { version, comment: opts.comment };
-  const res = await apiFetch<ApiError | { status: string }>(`/api/reviews/${id}/${kind}`, {
+  const res = await apiFetch<ApiError | { status: string } | (ApiError & { findings: DecisionFinding[] })>(`/api/reviews/${id}/${kind}`, {
     method: "POST",
     body: JSON.stringify(body),
   });
@@ -146,6 +155,8 @@ export async function submitDecision(
   if (res.status === 409 && (res.data as ApiError | null)?.code === "NO_DRAFT")
     return { kind: "error", message: "초안이 없어 승인할 수 없어요. 반려만 할 수 있어요." };
   if (res.status === 409) return { kind: "conflict" };
+  if (res.status === 422 && (res.data as ApiError | null)?.code === "UNRESOLVED_FINDINGS")
+    return { kind: "findings", findings: (res.data as { findings: DecisionFinding[] }).findings };
   if (res.status >= 400) return { kind: "error", message: (res.data as ApiError | null)?.message ?? "처리하지 못했어요." };
   return { kind: "ok" };
 }

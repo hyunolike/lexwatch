@@ -69,6 +69,22 @@ describe("submitDecision", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ version: 7 });
   });
 
+  it("approve_body_carries_acknowledged_finding_count", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({}));
+    vi.stubGlobal("fetch", fetchMock);
+    await submitDecision("r1", "approve", 7, { acknowledgedFindingCount: 2 });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ version: 7, acknowledgedFindingCount: 2 });
+  });
+
+  it("422_UNRESOLVED_FINDINGS_maps_to_findings", async () => {
+    const findings = [{ sentenceIndex: 0, tier: 2, ruleId: "C2-MISMATCH", message: "인용한 근거 본문에 없는 표기: 100분의 80" }];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(Response.json({ code: "UNRESOLVED_FINDINGS", message: "x", findings }, { status: 422 })),
+    );
+    expect(await submitDecision("r1", "approve", 7, {})).toEqual({ kind: "findings", findings });
+  });
+
   it("409_maps_to_conflict", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ code: "REVIEW_ALREADY_DECIDED", message: "x" }, { status: 409 })));
     expect(await submitDecision("r1", "reject", 7, { comment: "사유" })).toEqual({ kind: "conflict" });
