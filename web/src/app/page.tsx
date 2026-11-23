@@ -8,6 +8,7 @@ import { Callout } from "@/components/ds/Callout";
 import { CARD, EmptyState, PageHeader } from "@/components/ds/layout";
 import { useRole } from "@/components/RoleSwitch";
 import { WakeGate } from "@/components/WakeGate";
+import { FirstVisitGuide } from "@/components/FirstVisitGuide";
 
 /** 재현이면 replay 출처를 덧붙인다. */
 const kindsOf = (r: ReviewSummary) =>
@@ -79,6 +80,7 @@ export default function Home() {
         <p className="max-w-reading text-ui text-ink-muted">확인이 필요한 초안을 먼저 살펴보고, 근거를 대조한 뒤 승인해 주세요.</p>
         <p className="max-w-reading text-caption text-ink-subtle">그룹 관련성은 법령과 실무그룹의 관련 정도예요. 초안의 정확도를 뜻하지 않아요.</p>
       </div>
+      <FirstVisitGuide />
       <WakeGate<ReviewSummary[]> key={role} load={() => apiFetch<ReviewSummary[]>("/api/reviews")}>
         {(res) =>
           Array.isArray(res.data) ? (

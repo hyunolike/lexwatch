@@ -78,6 +78,8 @@ LexWatch는 사건을 처리하는 본업이 아니라 **법령 개정을 지켜
 
 ### 3분 사용 가이드
 
+처음 들어오면 승인 대기함 위에 **둘러보기 안내**가 뜹니다. 제품이 하는 일과 AI 초안의 한계를 한 문단으로 알리고, 확인 필요 초안 열기, 승인, 관리자 화면에서 작업 기록 보기의 세 단계를 해당 동작을 하면 완료로 표시합니다. 닫아도 머리의 "둘러보기" 버튼으로 다시 열 수 있습니다([명세](docs/features/first-visit-guide/spec.md), [외부 조사](docs/features/first-visit-guide/research.md)).
+
 로그인 없이 오른쪽 위에서 "변호사로 보기"와 "관리자로 보기"를 고릅니다. 데모 데이터는 매일 04:00에 초기화되며, 재현 예시와 채팅 할당량만 다시 만들고 실제 수집 결과는 그대로 둡니다.
 
 1. **승인 대기함**: `재현` 라벨이 붙은 항목은 녹화를 다시 재생한 예시이고 법령 이름 앞에 `[재현 예시]`가 붙습니다.
@@ -307,7 +309,7 @@ docker compose up --build          # 데이터 볼륨까지 지우려면 docker 
 
 ```bash
 cd ai && uv run pytest                      # AI 서비스 77건
-cd web && pnpm test                         # 화면 85건(토큰 대비, 라벨, 신구 대조 포함)
+cd web && pnpm test                         # 화면 128건(토큰 대비, 라벨, 신구 대조, 둘러보기 안내 포함)
 export DOTNET_ROOT=$HOME/.dotnet PATH=$HOME/.dotnet:$PATH
 make test-backend                           # .NET 143건, Testcontainers라 Docker 필요
 make eval-critic                            # 크리틱 평가, 결과를 eval/results에 저장
