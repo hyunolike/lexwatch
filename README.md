@@ -14,6 +14,10 @@
 
 > 무료 서버라 첫 접속은 1분쯤 걸릴 수 있습니다. 서버가 깨어나는 동안 마스코트 렉스가 기다려 줍니다.
 
+https://github.com/user-attachments/assets/b656d181-8d5b-4829-a8c5-12dff8b6b316
+
+<p align="center"><sub>▶ 36초 소개 영상 (소리 없이도 자막으로 볼 수 있어요) · 재생이 안 되면 <a href="https://lexwatch-web.netlify.app/intro.mp4">여기서 열기</a></sub></p>
+
 <br>
 
 ## 📝 기획 목적

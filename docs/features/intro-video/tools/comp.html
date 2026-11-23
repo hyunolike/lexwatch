@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:P;src:url(PretendardVariable.woff2) format("woff2");font-weight:100 900}
+*{box-sizing:border-box;margin:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#141c2f;font-family:P,sans-serif;color:#fff}
+#bg{position:absolute;inset:0;background:radial-gradient(1200px 700px at 50% 30%,#26335a 0%,#1f2a44 45%,#141c2f 100%)}
+#win{position:absolute;left:240px;top:44px;width:1440px;height:810px;border-radius:14px;overflow:hidden;background:#f6f7f9;
+  box-shadow:0 30px 80px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.08)}
+#win img{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0}
+#ov{position:absolute;inset:0;pointer-events:none;z-index:5}
+.hl{position:absolute;border:4px solid #f5b400;border-radius:10px;box-shadow:0 0 0 6px rgba(245,180,0,.22)}
+#cur{position:absolute;width:34px;height:34px;left:0;top:0}
+#rip{position:absolute;width:60px;height:60px;border-radius:50%;border:3px solid #1d4ed8;left:0;top:0}
+#cap{position:absolute;left:0;right:0;top:880px;text-align:center;font-size:40px;font-weight:600;line-height:1.45;letter-spacing:-.01em}
+.title{position:absolute;left:0;right:0;text-align:center;font-weight:750;letter-spacing:-.02em}
+#t1{top:380px;font-size:84px}#t2{top:500px;font-size:84px;color:#a9c1ff}
+#o{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+#o img{width:250px;height:250px}
+#o .n{font-size:96px;font-weight:800;letter-spacing:-.02em}
+#o .u{font-size:44px;font-weight:600;color:#a9c1ff;margin-top:6px}
+#o .s{font-size:32px;font-weight:500;color:#c9d2e3;margin-top:4px}
+</style></head><body>
+<div id="bg"></div>
+<div class="title" id="t1">AI가 쓴 법령 검토 초안,</div>
+<div class="title" id="t2">그대로 보내도 될까요?</div>
+<div id="win"><img id="A"><img id="B"><div id="ov"></div></div>
+<svg id="cur" viewBox="0 0 24 24"><path d="M4 2l15 11-6.5 1.2L16 21l-3 1.4-3.4-6.9L4 20z" fill="#111" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>
+<div id="rip"></div>
+<div id="cap"></div>
+<div id="o"><img src="lex-master.webp"><div class="n">LexWatch</div><div class="u">lexwatch-web.netlify.app</div><div class="s">로그인 없이 변호사와 관리자 화면을 둘러볼 수 있어요</div></div>
+<script>
+const WX=240,WY=44,WW=1440,WH=810,K=WW/1920;
+const cl=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const ease=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const ramp=(t,a,b)=>ease(cl((t-a)/(b-a)));
+const fade=(t,a,b,fi=.45,fo=.35)=>Math.min(ramp(t,a,a+fi),1-ramp(t,b-fo,b));
+// 화면 순서 [시작, 파일, 전환 길이]
+const RUN=[];for(let i=0;i<102;i++)RUN.push('shots/run-'+String(i).padStart(3,'0')+'.png');
+const SHOTS=[[0,'shots/f01-home.png',0],[8.4,'shots/f02-review.png',.45],[15.3,'shots/f03-dialog.png',-.3],
+ [18.6,'shots/f04a-select.png',.45],[19.7,'shots/f04b-type5.png',0],[20.0,'shots/f04c-type50.png',0],
+ [22.1,'shots/f05-confirm.png',-.3],[23.3,'shots/f06-approved.png',.45],[25.8,'shots/f07-inbox.png',.4],[28.0,'RUN',.4]];
+function srcAt(i,t){const s=SHOTS[i][1];if(s!=='RUN')return s;const p=ramp(t,28.7,31.9);return RUN[Math.round(p*101)];}
+// 카메라 [t, cx, cy, z] (화면 캡처 좌표)
+const CAM=[[0,960,540,1],[8.6,960,540,1],[9.6,960,500,1.38],[13.8,960,500,1.38],[14.4,960,540,1],[15.5,960,540,1],[16.2,960,540,1.28],[18.82,960,540,1.28],
+ [18.83,960,250,1.55],[20.8,960,250,1.55],[21.4,960,540,1],[23.4,960,540,1],[24.0,960,330,1.45],[26.02,960,330,1.45],[26.03,960,380,1.3],[28.2,960,380,1.3],[28.21,960,540,1.2],[40,960,540,1.2]];
+function cam(t){for(let i=0;i<CAM.length-1;i++){const a=CAM[i],b=CAM[i+1];if(t>=a[0]&&t<b[0]){const p=ease((t-a[0])/(b[0]-a[0]));return [0,1,2,3].map(k=>k?a[k]+(b[k]-a[k])*p:0).slice(1);}}return CAM[CAM.length-1].slice(1);}
+function clampCam([cx,cy,z]){const hw=960/z,hh=540/z;return [cl(cx,hw,1920-hw),cl(cy,hh,1080-hh),z];}
+function toScr(c,x,y){const[cx,cy,z]=c;return [WX+WW/2+(x-cx)*K*z, WY+WH/2+(y-cy)*K*z];}
+// 커서 [t,x,y] 캡처 좌표, 클릭 시각
+const CUR=[[5.6,1350,950],[7.0,960,736],[8.4,960,736],
+ [13.9,900,760],[14.9,361,978],[15.3,361,978],
+ [21.0,800,820],[21.8,387,1019],[22.3,387,1019],[22.9,1118,602],[23.3,1118,602]];
+const CUR_ON=[[5.6,8.45],[13.9,15.35],[21.0,23.35]];
+const CLICKS=[7.3,15.05,21.95,23.05];
+function curAt(t){for(let i=0;i<CUR.length-1;i++){const a=CUR[i],b=CUR[i+1];if(t>=a[0]&&t<=b[0]){const p=ease((t-a[0])/(b[0]-a[0]));return [a[1]+(b[1]-a[1])*p,a[2]+(b[2]-a[2])*p];}}return CUR[CUR.length-1].slice(1);}
+// 강조 [시작, 끝, x,y,w,h]
+const HL=[[10.0,13.8,770,172,104,40],[11.2,13.8,1083,766,104,40],[16.4,18.4,705,419,511,242],[24.1,25.7,320,325,1280,85],[26.4,28.0,310,250,1302,272]];
+// 자막
+const CAP=[[3.9,8.3,'LexWatch는 매일 공포되는 법령 개정을 모아<br>담당 팀별 영향 검토 초안을 AI로 씁니다'],
+ [8.7,13.9,'근거 조문은 100분의 50인데 초안에는 70이 적혔어요<br>자동 검사가 근거와 다른 수치를 표시합니다'],
+ [14.2,18.5,'확인하지 않은 적발이 남아 있으면<br>그대로 승인되지 않습니다'],
+ [18.8,23.2,'변호사가 근거를 보고 고치면<br>승인 직전에 자동 검사를 다시 돌립니다'],
+ [23.5,27.9,'다시 검사를 통과해 승인된 초안만<br>담당 팀 알림함으로 나갑니다'],
+ [28.2,32.5,'법령 수집부터 검사, 승인, 알림까지<br>AI가 한 일이 단계별로 기록됩니다']];
+const $=id=>document.getElementById(id);
+const preload=[...new Set([...SHOTS.map(s=>s[1]).filter(s=>s!=='RUN'),...RUN,'lex-master.webp'])];
+window.ready=Promise.all([document.fonts.load('600 40px P'),document.fonts.load('800 96px P'),...preload.map(s=>new Promise(r=>{const i=new Image();i.onload=r;i.onerror=r;i.src=s;}))]).then(()=>document.fonts.ready);
+let capKey='';
+window.render=function(t){
+ // 제목
+ $('t1').style.opacity=fade(t,.3,3.6,.6,.45);$('t1').style.transform=`translateY(${(1-ramp(t,.3,.9))*24}px)`;
+ $('t2').style.opacity=fade(t,1.2,3.6,.6,.45);$('t2').style.transform=`translateY(${(1-ramp(t,1.2,1.8))*24}px)`;
+ // 창
+ const wo=Math.min(ramp(t,3.4,4.0),1-ramp(t,32.4,32.9));
+ $('win').style.opacity=wo;$('win').style.transform=`translateY(${(1-ramp(t,3.4,4.1))*60}px)`;
+ // 화면
+ let i=0;while(i<SHOTS.length-1&&t>=SHOTS[i+1][0])i++;
+ const c=clampCam(cam(t));
+ const tf=`translate(${WW/2-c[0]*K*c[2]}px,${WH/2-c[1]*K*c[2]}px) scale(${K*c[2]})`;
+ const A=$('A'),B=$('B');const cur=srcAt(i,t);
+ const d=Math.abs(SHOTS[i][2]),cross=SHOTS[i][2]<0,p=d?cl((t-SHOTS[i][0])/d):1;
+ if(i>0&&p<1){B.src=srcAt(i-1,t);A.src=cur;A.style.zIndex=2;B.style.zIndex=1;
+  if(cross){B.style.opacity=1;A.style.opacity=p;}else{B.style.opacity=cl(1-2*p);A.style.opacity=cl(2*p-1);}}
+ else{A.src=cur;A.style.opacity=1;B.style.opacity=0;}
+ A.style.transform=tf;B.style.transform=tf;
+ // 강조
+ const ov=$('ov');ov.innerHTML='';
+ for(const [a,b,x,y,w,h] of HL){const o=fade(t,a,b,.35,.3);if(o<=0)continue;
+  const [sx,sy]=toScr(c,x,y);const s=K*c[2];const e=document.createElement('div');e.className='hl';
+  const grow=(1-ramp(t,a,a+.35))*10;
+  Object.assign(e.style,{left:(sx-WX-6-grow)+'px',top:(sy-WY-6-grow)+'px',width:(w*s+12+2*grow)+'px',height:(h*s+12+2*grow)+'px',opacity:o});ov.appendChild(e);}
+ // 커서
+ const on=CUR_ON.find(([a,b])=>t>=a&&t<=b);const cu=$('cur');
+ if(on&&wo>0){const[x,y]=curAt(t);const[sx,sy]=toScr(c,x,y);let o=fade(t,on[0],on[1],.25,.2);
+  const ck=CLICKS.find(k=>t>=k&&t<k+.18);const sc=ck?.86:1;
+  cu.style.opacity=o;cu.style.transform=`translate(${sx-6}px,${sy-3}px) scale(${sc})`;}else cu.style.opacity=0;
+ const ck=CLICKS.find(k=>t>=k&&t<k+.5);const r=$('rip');
+ if(ck){const q=(t-ck)/.5;const[x,y]=curAt(ck);const[sx,sy]=toScr(c,x,y);r.style.opacity=1-q;r.style.transform=`translate(${sx-30}px,${sy-30}px) scale(${.4+q*.9})`;}else r.style.opacity=0;
+ // 자막
+ const cp=CAP.find(([a,b])=>t>=a&&t<=b);const ce=$('cap');
+ if(cp){if(capKey!==cp[2]){ce.innerHTML=cp[2];capKey=cp[2];}const o=fade(t,cp[0],cp[1],.4,.3);ce.style.opacity=o;ce.style.transform=`translateY(${(1-ramp(t,cp[0],cp[0]+.4))*14}px)`;}else ce.style.opacity=0;
+ // 마무리
+ const oo=ramp(t,32.9,33.6);$('o').style.opacity=oo;$('o').style.transform=`translateY(${(1-oo)*20}px)`;
+ $('bg').style.opacity=1;
+};
+window.DUR=36.5;
+</script></body></html>
