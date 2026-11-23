@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useRole } from "@/components/RoleSwitch";
 import { WakeGate } from "@/components/WakeGate";
+import { guideStore } from "@/lib/guideStore";
 
 type Notice = { tone: "warning" | "danger"; text: string; conflict?: boolean } | null;
 
@@ -58,6 +59,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
     if (out.kind === "waking") return setNotice({ tone: "warning", text: "서버를 깨우는 중이에요. 잠시 뒤에 다시 눌러 주세요." });
     if (out.kind === "conflict") return setNotice({ tone: "danger", text: "다른 사람이 먼저 결정했어요.", conflict: true });
     if (out.kind === "error") return setNotice({ tone: "danger", text: out.message });
+    if (kind === "approve") guideStore.markStep("approve"); // 처음 방문 안내 2단계(FG-04)
     reload();
   }
 

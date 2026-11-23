@@ -13,6 +13,12 @@ export function useRole(): Role {
   return useSyncExternalStore(subscribe, getRole, () => "lawyer" as Role);
 }
 
+/** 역할을 바꾸고 구독자에게 알린다. 역할 전환 버튼과 처음 방문 안내 3단계가 같이 쓴다. */
+export function switchRole(r: Role) {
+  setRole(r);
+  listeners.forEach((l) => l());
+}
+
 const ROLES: [Role, string][] = [
   ["lawyer", "변호사로 보기"],
   ["admin", "관리자로 보기"],
@@ -21,10 +27,6 @@ const ROLES: [Role, string][] = [
 /** 역할 전환(로그인 없음). 두 칸짜리 선택 버튼. */
 export function RoleSwitch() {
   const role = useRole();
-  const pick = (r: Role) => {
-    setRole(r);
-    listeners.forEach((l) => l());
-  };
   return (
     <div role="group" aria-label="보기 역할" className="inline-flex rounded-md border border-line bg-surface-sunken p-0.5">
       {ROLES.map(([r, label]) => (
@@ -33,7 +35,7 @@ export function RoleSwitch() {
           type="button"
           aria-pressed={role === r}
           aria-label={label}
-          onClick={() => pick(r)}
+          onClick={() => switchRole(r)}
           className={cx(
             "h-7 rounded-[6px] px-3 text-label transition-colors duration-[120ms]",
             role === r ? "bg-surface text-ink shadow-card" : "text-ink-muted hover:text-ink",

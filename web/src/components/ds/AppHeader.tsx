@@ -1,7 +1,11 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { RoleSwitch } from "@/components/RoleSwitch";
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { CircleHelp } from "lucide-react";
+import { RoleSwitch, useRole } from "@/components/RoleSwitch";
+import { stepForVisit } from "@/lib/guide";
+import { guideStore } from "@/lib/guideStore";
 import { cx } from "@/lib/cx";
 import { Mascot } from "./layout";
 
@@ -12,11 +16,18 @@ const LINKS = [
 ];
 
 /**
- * 공통 머리: 데모 안내 띠, 로고, 내비게이션, 역할 전환.
+ * 공통 머리: 데모 안내 띠, 로고, 내비게이션, 둘러보기, 역할 전환.
+ * 경로와 역할이 바뀔 때 처음 방문 안내의 열람 단계를 완료로 기록한다(first-visit-guide FG-04).
  * 경로를 읽으므로 layout.tsx에서 <Suspense>로 감싼다(cacheComponents).
  */
 export function AppHeader() {
   const path = usePathname();
+  const role = useRole();
+  const router = useRouter();
+  useEffect(() => {
+    const step = stepForVisit(path, role);
+    if (step) guideStore.markStep(step);
+  }, [path, role]);
   const active = (href: string) => (href === "/" ? path === "/" || path.startsWith("/reviews") : path.startsWith(href));
   return (
     <header className="sticky top-0 z-30">
@@ -52,7 +63,19 @@ export function AppHeader() {
               </Link>
             ))}
           </nav>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              type="button"
+              aria-label="둘러보기 안내 열기"
+              onClick={() => {
+                guideStore.reopen();
+                if (path !== "/") router.push("/");
+              }}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-label text-ink-muted transition-colors duration-[120ms] hover:bg-surface-sunken hover:text-ink"
+            >
+              <CircleHelp aria-hidden className="size-4" />
+              <span aria-hidden className="hidden sm:inline">둘러보기</span>
+            </button>
             <RoleSwitch />
           </div>
         </div>
