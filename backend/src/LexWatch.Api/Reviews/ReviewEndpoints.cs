@@ -1,5 +1,6 @@
 using System.Text.Json;
 using LexWatch.Api.Ai;
+using LexWatch.Api.Critic;
 using LexWatch.Api.Data;
 using LexWatch.Api.Data.Entities;
 using LexWatch.Api.Workflow;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace LexWatch.Api.Reviews;
 
 public record EditedSentence(string Sentence, List<string>? Citations);
-public record ApproveRequest(uint Version, List<EditedSentence>? EditedSentences, string? Comment);
+public record ApproveRequest(uint Version, List<EditedSentence>? EditedSentences, string? Comment, int? AcknowledgedFindingCount = null);
 public record RejectRequest(uint Version, string? Comment);
 public record ChatTurnInput(string? Role, string? Content);
 public record ChatRequest(string? Question, List<ChatTurnInput>? History);
@@ -99,16 +100,17 @@ public static class ReviewEndpoints
             var current = await LatestDraftAsync(db, id, ct);
             if (current is null) return NoDraft();
 
+            var before = JsonSerializer.Deserialize<List<MemoSentenceDto>>(current.SentencesJson, J) ?? [];
+            var evidence = await db.Evidence.AsNoTracking().Where(e => e.RunId == review.RunId).ToListAsync(ct);
+            var after = before;
             string? diffJson = null;
             if (req.EditedSentences is { Count: > 0 } edited)
             {
-                var evidenceIds = (await db.Evidence.Where(e => e.RunId == review.RunId).Select(e => e.EvidenceId)
-                    .ToListAsync(ct)).ToHashSet();
+                var evidenceIds = evidence.Select(e => e.EvidenceId).ToHashSet();
                 if (edited.Any(e => string.IsNullOrWhiteSpace(e.Sentence) || e.Citations is not { Count: > 0 }
                         || e.Citations.Any(c => !evidenceIds.Contains(c))))
                     return Err(400, "INVALID_CITATION", "수정한 문장마다 근거 저장소에 있는 인용이 하나 이상 필요하다");
-                var before = JsonSerializer.Deserialize<List<MemoSentenceDto>>(current.SentencesJson, J) ?? [];
-                var after = edited.Select(e => new MemoSentenceDto(e.Sentence, e.Citations!)).ToList();
+                after = edited.Select(e => new MemoSentenceDto(e.Sentence, e.Citations!)).ToList();
                 var diff = new List<object>();
                 for (var i = 0; i < Math.Max(before.Count, after.Count); i++)
                 {
@@ -118,12 +120,36 @@ public static class ReviewEndpoints
                         diff.Add(new { index = i, before = b, after = a });
                 }
                 diffJson = JsonSerializer.Serialize(diff, J);
-                db.MemoDrafts.Add(new MemoDraft
+            }
+
+            // 승인 직전 재검사: 1·2단은 다시 돌리고 3단은 옮긴다. 적발이 있으면 변호사가 본 적발 수와 맞아야 승인한다.
+            var run = await db.WorkflowRuns.AsNoTracking().SingleAsync(r => r.Id == review.RunId, ct);
+            var change = await db.LawChanges.AsNoTracking().SingleAsync(l => l.Id == run.LawChangeId, ct);
+            var tier3 = await db.CriticFindings.AsNoTracking().Where(f => f.MemoDraftId == current.Id && f.Tier == 3).ToListAsync(ct);
+            var findings = DraftRecheck.Run(before, after, tier3, evidence, change);
+            if (findings.Count > 0 && req.AcknowledgedFindingCount != findings.Count)
+                return Results.Json(new
+                {
+                    code = "UNRESOLVED_FINDINGS",
+                    message = $"확인이 필요한 적발 {findings.Count}건이 있다. 확인한 적발 수를 함께 보내야 승인할 수 있다",
+                    findings = findings.Select(f => new { sentenceIndex = f.SentenceIndex, tier = f.Tier, ruleId = f.RuleId, message = f.Message }),
+                }, statusCode: StatusCodes.Status422UnprocessableEntity);
+
+            if (diffJson is not null)
+            {
+                var draft = new MemoDraft
                 {
                     Id = Guid.NewGuid(), GroupReviewId = id, Version = current.Version + 1, CreatedBy = "lawyer",
                     SentencesJson = JsonSerializer.Serialize(after, J),
                     OpenQuestionsJson = current.OpenQuestionsJson,
-                });
+                };
+                db.MemoDrafts.Add(draft);
+                foreach (var f in findings)
+                    db.CriticFindings.Add(new CriticFinding
+                    {
+                        Id = Guid.NewGuid(), MemoDraftId = draft.Id, Tier = f.Tier, SentenceIndex = f.SentenceIndex,
+                        RuleId = f.RuleId, Message = f.Message,
+                    });
             }
 
             var now = time.GetUtcNow();
@@ -131,7 +157,7 @@ public static class ReviewEndpoints
             db.Approvals.Add(new Approval
             {
                 Id = Guid.NewGuid(), GroupReviewId = id, Decision = "approve", ActorRole = "lawyer",
-                Comment = req.Comment, DiffJson = diffJson, DecidedAt = now,
+                Comment = req.Comment, DiffJson = diffJson, DecidedAt = now, AcknowledgedFindingCount = findings.Count,
             });
             db.StepRuns.Add(StepQueue.Create(review.RunId, new NextStep("notify", id, null), now));
             return await SaveDecisionAsync(db, review, req.Version, now, ct);

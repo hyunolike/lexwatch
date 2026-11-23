@@ -66,6 +66,9 @@ namespace LexWatch.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("AcknowledgedFindingCount")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ActorRole")
                         .IsRequired()
                         .HasColumnType("text");

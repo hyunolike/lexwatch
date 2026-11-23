@@ -14,6 +14,29 @@ public class DemoSeederTests(PostgresFixture pg) : IAsyncLifetime
     private static DemoSeeder Seeder(LexWatch.Api.Data.LexWatchDb db) => new(db, TimeProvider.System);
 
     [Fact]
+    public async Task Replay_tier_1_and_2_findings_match_what_the_approval_recheck_finds()
+    {
+        // 재현 fixture는 크리틱 적발을 미리 적어 둔다. 승인 재검사가 다른 결과를 내면 데모 승인이 엉뚱한 422를 받는다.
+        await using var db = pg.CreateDb();
+        await Seeder(db).ResetAsync();
+        var drafts = await db.MemoDrafts.AsNoTracking().ToListAsync();
+        Assert.NotEmpty(drafts);
+        foreach (var d in drafts)
+        {
+            var g = await db.GroupReviews.AsNoTracking().SingleAsync(x => x.Id == d.GroupReviewId);
+            var run = await db.WorkflowRuns.AsNoTracking().SingleAsync(r => r.Id == g.RunId);
+            var change = await db.LawChanges.AsNoTracking().SingleAsync(l => l.Id == run.LawChangeId);
+            var evidence = await db.Evidence.AsNoTracking().Where(e => e.RunId == run.Id).ToListAsync();
+            var memo = System.Text.Json.JsonSerializer.Deserialize<List<LexWatch.Api.Ai.MemoSentenceDto>>(d.SentencesJson, LexWatch.Api.Ai.AiMapping.Json)!;
+            var stored = await db.CriticFindings.AsNoTracking().Where(f => f.MemoDraftId == d.Id && f.Tier < 3)
+                .Select(f => new { f.SentenceIndex, f.Tier, f.RuleId, f.Message }).ToListAsync();
+            var recheck = LexWatch.Api.Critic.DraftRecheck.Run(memo, memo, [], evidence, change)
+                .Select(f => new { f.SentenceIndex, f.Tier, f.RuleId, f.Message }).ToList();
+            Assert.Equal(stored.OrderBy(x => x.SentenceIndex).ThenBy(x => x.Tier).ThenBy(x => x.RuleId), recheck);
+        }
+    }
+
+    [Fact]
     public async Task Reset_restores_waiting_reviews_and_replays_have_replay_kind()
     {
         await using var db = pg.CreateDb();

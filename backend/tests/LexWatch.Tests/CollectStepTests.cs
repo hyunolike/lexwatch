@@ -24,14 +24,15 @@ public class CollectStepTests(PostgresFixture pg) : IAsyncLifetime
     {
         await using var db1 = pg.CreateDb();
         var r1 = await Service(db1, LawFixtures.Recorded).CollectAsync(new(2026, 11, 3), new(2026, 11, 4), default);
-        Assert.Equal(new CollectResult(3, 0), r1);
+        Assert.Equal((3, 0, 3), (r1.Created, r1.Skipped, r1.RunIds.Count));
         await using var db2 = pg.CreateDb();
         var r2 = await Service(db2, LawFixtures.Recorded).CollectAsync(new(2026, 11, 3), new(2026, 11, 4), default);
-        Assert.Equal(new CollectResult(0, 3), r2);
+        Assert.Equal((0, 3, 0), (r2.Created, r2.Skipped, r2.RunIds.Count));
 
         await using var v = pg.CreateDb();
         Assert.Equal(3, await v.LawChanges.CountAsync());
         Assert.Equal(3, await v.WorkflowRuns.CountAsync());
+        Assert.Equal(r1.RunIds.Order(), (await v.WorkflowRuns.Select(r => r.Id).ToListAsync()).Order());
         var steps = await v.StepRuns.ToListAsync();
         Assert.Equal(3, steps.Count);
         Assert.All(steps, s => Assert.Equal("fetch_articles", s.Step));

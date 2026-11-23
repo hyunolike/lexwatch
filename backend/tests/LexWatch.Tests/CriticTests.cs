@@ -108,6 +108,46 @@ public class CriticTests
             Src("2026년 12월 1일 시행되며 유예는 2027년 6월 1일까지다.", "2026. 12. 1. 시행 2027. 6. 1."),
             x => x.RuleId == "C2-EFFECTIVE");
 
+    private const string Premium = "사용자는 연장근로에 대하여는 통상임금의 100분의 50 이상을 가산하여 지급하여야 한다.";
+
+    [Fact]
+    public void Wrong_ratio_is_flagged()
+    {
+        var f = Src("연장근로 가산임금은 통상임금의 100분의 70 이상으로 바뀐다.", Premium);
+        Assert.Equal(("C2-MISMATCH", "인용한 근거 본문에 없는 표기: 100분의 70"), (Assert.Single(f).RuleId, f[0].Message));
+    }
+
+    [Theory]
+    [InlineData("통상임금의 100분의 50 이상을 가산한다.")]
+    [InlineData("통상임금의 50% 이상을 가산한다.")]
+    [InlineData("통상임금의 50 퍼센트 이상을 가산한다.")]
+    [InlineData("통상임금의 2분의 1 이상을 가산한다.")]
+    public void Equivalent_ratio_notations_pass(string sentence) => Assert.Empty(Src(sentence, Premium));
+
+    [Theory]
+    [InlineData("통상임금의 80% 이상을 가산한다.", "80%")]
+    [InlineData("과징금은 매출액의 1천분의 40 이하다.", "1천분의 40")]
+    [InlineData("의결정족수는 3분의 2다.", "3분의 2")]
+    public void Ratio_not_in_evidence_is_flagged(string sentence, string display) =>
+        Assert.Contains(Src(sentence, Premium + " 매출액의 100분의 3 이하, 재적 과반수"),
+            x => x.RuleId == "C2-MISMATCH" && x.Message.EndsWith(display));
+
+    [Fact]
+    public void Thousandth_ratio_matches_equivalent_value() =>
+        Assert.Empty(Src("과징금은 매출액의 1천분의 30 이하다.", "매출액의 100분의 3 이하"));
+
+    [Fact]
+    public void Two_thirds_matches_rounded_percent() =>
+        Assert.Empty(Src("의결정족수는 66.67%다.", "재적 3분의 2 이상"));
+
+    [Fact]
+    public void Percent_point_is_not_a_ratio() =>
+        Assert.Empty(Src("가산율이 20%p 오른다.", Premium));
+
+    [Fact]
+    public void Ratio_digits_are_not_reused_as_periods_or_amounts() =>
+        Assert.DoesNotContain(Src("100분의 50 이상 가산한다.", "100분의 50 이상"), x => x.RuleId == "C2-MISMATCH");
+
     [Fact]
     public void Clean_memo_has_no_findings()
     {

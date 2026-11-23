@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LexWatch.Api.Workflow.Steps;
 
-public record CollectResult(int Created, int Skipped);
+public record CollectResult(int Created, int Skipped, IReadOnlyList<Guid> RunIds);
 
 public class LawApiException(string code, string message) : Exception(message)
 {
@@ -37,13 +37,14 @@ public class CollectService(
     public async Task<CollectResult> CollectAsync(DateOnly from, DateOnly to, CancellationToken ct)
     {
         var items = await ListWithRetryAsync(from, to, ct);
-        int created = 0, skipped = 0;
+        var runIds = new List<Guid>();
+        var skipped = 0;
         foreach (var item in items)
         {
-            if (await TryInsertAsync(item, ct)) created++; else skipped++;
+            if (await TryInsertAsync(item, ct) is { } runId) runIds.Add(runId); else skipped++;
         }
         await RecordAndAlertAsync(items.Count, ct);
-        return new CollectResult(created, skipped);
+        return new CollectResult(runIds.Count, skipped, runIds);
     }
 
     private async Task<IReadOnlyList<LawListItem>> ListWithRetryAsync(DateOnly from, DateOnly to, CancellationToken ct)
@@ -65,7 +66,8 @@ public class CollectService(
         throw new LawApiException(last!.Code, last.Message);
     }
 
-    private async Task<bool> TryInsertAsync(LawListItem item, CancellationToken ct)
+    /// <summary>새 법령이면 실행을 만들고 그 ID를, 이미 있으면 null을 돌려준다.</summary>
+    private async Task<Guid?> TryInsertAsync(LawListItem item, CancellationToken ct)
     {
         var raw = item.RawJson ?? "{}";
         var sha = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(raw))).ToLowerInvariant();
@@ -84,7 +86,7 @@ public class CollectService(
         if (inserted == 0)
         {
             await tx.RollbackAsync(ct);
-            return false;
+            return null;
         }
 
         var run = new WorkflowRun
@@ -97,7 +99,7 @@ public class CollectService(
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
         db.ChangeTracker.Clear();
-        return true;
+        return run.Id;
     }
 
     /// <summary>오늘 결과(항목 수)를 기록하고, 0건이 사흘 연속이면 관리자 알림을 한 번만 만든다.</summary>

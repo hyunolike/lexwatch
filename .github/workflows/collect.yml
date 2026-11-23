@@ -2,13 +2,14 @@ name: collect
 
 on:
   schedule:
-    - cron: "0 22 * * *"   # UTC 22:00 = KST 07:00
+    - cron: "0 22 * * *"   # UTC 22:00 = KST 07:00 (GitHub 예약 실행은 몇 시간 늦게 시작되기도 한다)
   workflow_dispatch:
 
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 깨우기(API 3분, AI 3분) + 수집(재시도 포함 약 6분) + 감시 15분 (collect-health CH-05)
+    timeout-minutes: 30
     env:
       API_BASE_URL: ${{ secrets.API_BASE_URL }}
       JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
@@ -19,17 +20,65 @@ jobs:
             --retry 12 --retry-delay 15 --retry-all-errors \
             "$API_BASE_URL/health"
 
+      - name: AI 서비스 깨우기 (끝내 응답이 없어도 수집은 진행한다. 실패는 감시 단계가 알린다)
+        run: |
+          for i in $(seq 1 12); do
+            if curl --silent --show-error --fail --max-time 20 -X POST \
+                 -H "X-Job-Token: $JOB_TOKEN" "$API_BASE_URL/jobs/wake-ai"; then
+              echo; echo "AI 서비스 응답 ($i번째 시도)"; exit 0
+            fi
+            echo; echo "AI 서비스 대기 중 ($i/12)"; sleep 15
+          done
+          echo "::warning::AI 서비스가 3분 안에 깨어나지 않았다"
+
       - name: 수집 호출
         run: |
           curl --silent --show-error --fail --max-time 300 -X POST \
             --retry 3 --retry-delay 20 --retry-all-errors \
             -H "X-Job-Token: $JOB_TOKEN" \
-            "$API_BASE_URL/jobs/collect"
+            "$API_BASE_URL/jobs/collect" | tee collect.json
+          echo
+          jq -r '.runIds[]' collect.json > run_ids.txt
+          echo "이번 수집이 만든 실행: $(wc -l < run_ids.txt)건"
 
-      - name: 처리하는 동안 잠들지 않게 10분간 1분마다 /health 호출
+      - name: 실행이 끝날 때까지 감시하고 실패를 잡 실패로 올린다 (최대 15분)
         run: |
-          for i in $(seq 1 10); do
+          # 조회가 실패하면 Unknown(진행 중으로 센다). 빈 값을 '끝남'으로 세지 않는다.
+          status_of() {
+            body=$(curl --silent --fail --max-time 30 --retry 2 --retry-delay 5 \
+              -H "X-Demo-Role: admin" "$API_BASE_URL/api/runs/$1") || body='{}'
+            echo "$body" | jq -r '.run.status // "Unknown"' 2>/dev/null || echo "Unknown"
+          }
+          if [ ! -s run_ids.txt ]; then echo "새 실행이 없다"; exit 0; fi
+          for i in $(seq 1 15); do
+            pending=0
+            while read -r id; do
+              s=$(status_of "$id")
+              case "$s" in Queued|Running|Unknown) pending=$((pending + 1));; esac
+            done < run_ids.txt
+            echo "$i분: 진행 중 $pending건"
+            [ "$pending" -eq 0 ] && break
+            # 처리하는 동안 API와 AI가 잠들지 않게 한다
+            curl --silent --max-time 20 -X POST -H "X-Job-Token: $JOB_TOKEN" "$API_BASE_URL/jobs/wake-ai" > /dev/null || true
             sleep 60
-            curl --silent --show-error --fail --max-time 30 --retry 2 --retry-delay 5 \
-              "$API_BASE_URL/health" || echo "health ping $i 실패"
           done
+
+          bad=0
+          while read -r id; do
+            detail=$(curl --silent --fail --max-time 30 --retry 2 --retry-delay 5 \
+              -H "X-Demo-Role: admin" "$API_BASE_URL/api/runs/$id" || echo '{}')
+            s=$(echo "$detail" | jq -r '.run.status // "Unknown"')
+            name=$(echo "$detail" | jq -r '.lawChange.lawName // "?"')
+            echo "$s  $name  ($id)"
+            case "$s" in
+              Failed)
+                bad=1
+                echo "$detail" | jq -r '.timeline[] | select(.kind == "step" and .status == "Failed")
+                  | "  실패 단계: \(.step) 시도 \(.attempt) \(.errorCode // "") \(.errorMessage // "")"'
+                echo "::error::실행 실패: $name ($id)";;
+              Queued|Running|Unknown)
+                bad=1
+                echo "::error::15분 안에 끝나지 않음: $name ($id)";;
+            esac
+          done < run_ids.txt
+          exit $bad

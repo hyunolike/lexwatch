@@ -49,10 +49,61 @@ public class JobEndpointTests(PostgresFixture pg) : IAsyncLifetime
             req.Headers.Add("X-Job-Token", "secret-token");
             var resp = await c.SendAsync(req);
             Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
-            var body = await resp.Content.ReadFromJsonAsync<Dictionary<string, int>>();
-            Assert.Equal(i == 0 ? 3 : 0, body!["created"]);
-            Assert.Equal(i == 0 ? 0 : 3, body["skipped"]);
+            var body = await resp.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            Assert.Equal(i == 0 ? 3 : 0, body.GetProperty("created").GetInt32());
+            Assert.Equal(i == 0 ? 0 : 3, body.GetProperty("skipped").GetInt32());
+            var runIds = body.GetProperty("runIds").EnumerateArray().Select(x => x.GetGuid()).ToList();
+            Assert.Equal(i == 0 ? 3 : 0, runIds.Count);
+            await using var db = pg.CreateDb();
+            foreach (var id in runIds)
+                Assert.True(await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.AnyAsync(db.WorkflowRuns, r => r.Id == id));
         }
+    }
+
+    private WebApplicationFactory<Program> WakeFactory(AiStub ai) =>
+        Factory().WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddScoped(_ => ai.Client())));
+
+    private static HttpRequestMessage Wake(string? token)
+    {
+        var req = new HttpRequestMessage(HttpMethod.Post, "/jobs/wake-ai");
+        if (token is not null) req.Headers.Add("X-Job-Token", token);
+        return req;
+    }
+
+    private static void Health(AiStub ai, int status) =>
+        ai.Server.Given(WireMock.RequestBuilders.Request.Create().WithPath("/health").UsingGet())
+            .RespondWith(WireMock.ResponseBuilders.Response.Create().WithStatusCode(status)
+                .WithHeader("Content-Type", "application/json").WithBody("""{"status":"ok"}"""));
+
+    [Fact]
+    public async Task WakeAi_requires_token_and_reports_ai_health()
+    {
+        using var ai = new AiStub();
+        Health(ai, 200);
+        await using var f = WakeFactory(ai);
+        var c = f.CreateClient();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await c.SendAsync(Wake(null))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await c.SendAsync(Wake("wrong"))).StatusCode);
+        var ok = await c.SendAsync(Wake("secret-token"));
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        Assert.Equal("ok", (await ok.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("ai").GetString());
+    }
+
+    [Fact]
+    public async Task WakeAi_returns_503_while_ai_is_asleep()
+    {
+        using var ai = new AiStub();
+        Health(ai, 502);
+        await using var f = WakeFactory(ai);
+        var resp = await f.CreateClient().SendAsync(Wake("secret-token"));
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, resp.StatusCode);
+        Assert.Equal("AI_ASLEEP", (await resp.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("code").GetString());
+
+        using var down = new AiStub();
+        var url = down.Server.Url!;
+        down.Server.Stop(); // 연결 자체가 안 되는 경우
+        await using var f2 = Factory().WithWebHostBuilder(b => b.ConfigureTestServices(s => s.AddScoped(_ => down.Client(url))));
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, (await f2.CreateClient().SendAsync(Wake("secret-token"))).StatusCode);
     }
 
     [Fact]

@@ -15,6 +15,9 @@ public static partial class SourceMatchCritic
     [GeneratedRegex(@"\d{4}년(?:\s?\d{1,2}월(?:\s?\d{1,2}일)?)?|\d{1,2}월\s?\d{1,2}일|\d{1,2}월")] private static partial Regex PartialDateRx();
     [GeneratedRegex(@"시행(?!령|규칙)")] private static partial Regex EnforceRx();
     [GeneratedRegex(@"\s+")] private static partial Regex WsRx();
+    // 비율: "100분의 50", "1천분의 30", "백분의 50", "50%", "50 퍼센트". 값을 소수 4자리로 비교한다. %p는 비율이 아니다.
+    [GeneratedRegex(@"(?<!\d)(?<den>\d[\d,]*\s?[천백만]?|[천백만])\s?분의\s?(?<num>\d+(?:\.\d+)?)")] private static partial Regex FractionRx();
+    [GeneratedRegex(@"(?<![\d.])(?<num>\d+(?:\.\d+)?)\s?(?:%(?!p)|퍼센트(?!\s?포인트))")] private static partial Regex PercentRx();
 
     public static IReadOnlyList<CriticFindingDto> Check(
         IReadOnlyList<MemoSentenceDto> memo, IReadOnlyDictionary<string, string> evidenceBodies, LawChange change)
@@ -61,6 +64,11 @@ public static partial class SourceMatchCritic
         foreach (Match m in ArticleRx().Matches(text)) set.Add(new Token("art", m.Value, m.Value));
         foreach (var d in Dates(text)) set.Add(new Token("date", d, d));
         var rest = DateKoRx().Replace(DateDotRx().Replace(text, " "), " ");
+        foreach (Match m in FractionRx().Matches(rest))
+            set.Add(new Token("rat", RatioKey(decimal.Parse(m.Groups["num"].Value) / Denominator(m.Groups["den"].Value)), m.Value));
+        foreach (Match m in PercentRx().Matches(rest))
+            set.Add(new Token("rat", RatioKey(decimal.Parse(m.Groups["num"].Value) / 100m), m.Value));
+        rest = PercentRx().Replace(FractionRx().Replace(rest, " "), " ");
         foreach (Match m in AmountRx().Matches(rest)) set.Add(new Token("amt", AmountValue(m.Value), m.Value));
         rest = PartialDateRx().Replace(AmountRx().Replace(rest, " "), " ");
         foreach (Match m in PeriodRx().Matches(rest)) set.Add(new Token("per", Compact(m.Value), m.Value));
@@ -94,6 +102,18 @@ public static partial class SourceMatchCritic
     }
 
     [GeneratedRegex(@"\d[\d,]*|[억만천백십]")] private static partial Regex AmountTokenRx();
+
+    /// <summary>"100", "1,000", "1천", "천", "10만" 같은 분모를 수로 바꾼다.</summary>
+    private static decimal Denominator(string text)
+    {
+        var t = text.Replace(",", "").Replace(" ", "");
+        var unit = t.Length > 0 && t[^1] is '천' or '백' or '만' ? t[^1] : '\0';
+        var digits = unit == '\0' ? t : t[..^1];
+        var n = digits.Length == 0 ? 1m : decimal.Parse(digits);
+        return n * unit switch { '천' => 1000m, '백' => 100m, '만' => 10_000m, _ => 1m };
+    }
+
+    private static string RatioKey(decimal value) => Math.Round(value, 4).ToString("0.####");
 
     private static string Compact(string s) => s.Replace(" ", "").Replace(",", "");
 
