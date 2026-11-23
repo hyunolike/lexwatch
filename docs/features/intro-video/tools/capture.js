@@ -1,0 +1,48 @@
+const {chromium}=require('playwright');const fs=require('fs');
+const S=1.2;const boxes={};
+async function box(p,name,loc){const b=await loc.boundingBox();boxes[name]=b&&{x:b.x*S,y:b.y*S,w:b.width*S,h:b.height*S};}
+async function shot(p,name){await p.waitForTimeout(600);await p.screenshot({path:`shots/${name}.png`});}
+(async()=>{
+ const b=await chromium.launch({executablePath:process.env.CHROME,args:['--host-resolver-rules=MAP localhost 127.0.0.1']});
+ const c=await b.newContext({viewport:{width:1600,height:900},deviceScaleFactor:S});
+ await c.addCookies([{name:'lw_role',value:'lawyer',url:'http://localhost:3000'}]);
+ const p=await c.newPage();
+ await p.goto('http://localhost:3000/');
+ const item=p.locator('a[href^="/reviews/"]',{hasText:'확인 필요 1'}).first();
+ await item.waitFor();await box(p,'home_item',item);await box(p,'home_guide',p.locator('section[aria-labelledby=guide-title]'));
+ await shot(p,'f01-home');
+ await item.click();await p.waitForSelector('text=영향 검토 초안');
+ await p.evaluate(()=>window.scrollTo(0,300));await p.waitForTimeout(400);
+ const s1=p.locator('p',{hasText:'100분의 70 이상으로'}).first();
+ await box(p,'rev_sentence',s1);await box(p,'rev_finding',p.locator('text=인용한 근거 본문에 없는 표기').first());
+ await box(p,'rev_new',p.locator('text=신조문').first().locator('xpath=..'));
+ await box(p,'rev_approve',p.getByRole('button',{name:'승인',exact:true}));
+ await shot(p,'f02-review');
+ await p.getByRole('button',{name:'승인',exact:true}).click();
+ const dlg=p.getByRole('alertdialog').or(p.getByRole('dialog')).first();await dlg.waitFor();
+ await box(p,'dlg',dlg);await shot(p,'f03-dialog');
+ await p.getByRole('button',{name:'취소'}).click();await p.waitForTimeout(400);
+ await p.getByRole('button',{name:'수정',exact:true}).click();
+ const ta=p.getByRole('textbox',{name:'1번째 문장'});await ta.waitFor();
+ await p.evaluate(()=>window.scrollTo(0,300));await p.waitForTimeout(300);
+ await box(p,'edit_ta',ta);
+ await ta.evaluate(el=>{const i=el.value.indexOf('70');el.focus();el.setSelectionRange(i,i+2);});
+ await shot(p,'f04a-select');
+ await p.keyboard.type('5');await shot(p,'f04b-type5');
+ await p.keyboard.type('0');await shot(p,'f04c-type50');
+ await box(p,'edit_submit',p.getByRole('button',{name:'수정 후 승인'}));
+ await p.getByRole('button',{name:'수정 후 승인'}).click();await p.waitForTimeout(1500);
+ await box(p,'confirm_dlg',p.getByRole('dialog').or(p.getByRole('alertdialog')).first());
+ await box(p,'confirm_btn',p.getByRole('button',{name:'수정 내용으로 승인'}));
+ await shot(p,'f05-confirm');
+ await p.getByRole('button',{name:'수정 내용으로 승인'}).click();await p.waitForTimeout(2500);
+ await p.evaluate(()=>window.scrollTo(0,0));await shot(p,'f06-approved');
+ await p.goto('http://localhost:3000/inbox');await p.waitForTimeout(2500);await shot(p,'f07-inbox');
+ await box(p,'nav_inbox',p.getByRole('link',{name:'알림함'}).first());
+ await c.addCookies([{name:'lw_role',value:'admin',url:'http://localhost:3000'}]);
+ await p.goto('http://localhost:3000/runs');await p.waitForTimeout(2500);await shot(p,'f08-runs');
+ const run=p.locator('a[href^="/runs/"]',{hasText:'근로기준법'}).first();await box(p,'runs_item',run);
+ await run.click();await p.waitForTimeout(3000);await shot(p,'f09-run');
+ await p.evaluate(()=>window.scrollTo(0,500));await shot(p,'f10-run-scroll');
+ fs.writeFileSync('boxes.json',JSON.stringify(boxes,null,1));
+ await b.close();})();

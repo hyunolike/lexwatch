@@ -8,3 +8,7 @@ supabase/
 .vercel
 .netlify/
 fixtures/retrieval/needed.jsonl
+
+# 소개 영상 작업 폴더(캡처, 합성 스크립트, 중간 파일)
+brag-output/
+.playwright-mcp/

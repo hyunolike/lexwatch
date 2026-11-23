@@ -14,6 +14,14 @@
 
 > 무료 서버라 첫 접속은 1분쯤 걸릴 수 있습니다. 서버가 깨어나는 동안 마스코트 렉스가 기다려 줍니다.
 
+<p align="center">
+  <a href="https://lexwatch-web.netlify.app/intro.mp4">
+    <img src="docs/images/intro-poster.jpg" alt="36초 소개 영상: 근거와 다른 수치를 자동 검사가 표시하고, 변호사가 고친 문장을 승인 직전에 다시 검사한 뒤 팀 알림함으로 보내는 흐름" width="80%">
+  </a>
+  <br>
+  <sub>▶ 36초 소개 영상 (소리 없이도 자막으로 볼 수 있어요)</sub>
+</p>
+
 <br>
 
 ## 📝 기획 목적

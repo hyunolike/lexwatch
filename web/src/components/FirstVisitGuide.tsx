@@ -116,7 +116,14 @@ export function FirstVisitGuide() {
         })}
       </ol>
 
-      <p className="mt-3 text-caption text-ink-subtle">첫 접속은 서버를 깨우느라 1분쯤 걸릴 수 있어요. 데모 데이터는 매일 새벽 처음 상태로 돌아가요.</p>
+      <p className="mt-3 text-caption text-ink-subtle">
+        첫 접속은 서버를 깨우느라 1분쯤 걸릴 수 있어요. 기다리는 동안{" "}
+        <a href="/intro.mp4" target="_blank" rel="noopener" className="rounded-sm font-semibold text-ink-muted underline underline-offset-2 hover:text-ink">
+          36초 소개 영상
+          <span className="sr-only"> (새 탭에서 열림)</span>
+        </a>
+        을 볼 수 있어요. 데모 데이터는 매일 새벽 처음 상태로 돌아가요.
+      </p>
     </section>
   );
 }
