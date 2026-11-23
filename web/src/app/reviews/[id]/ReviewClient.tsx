@@ -245,7 +245,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
 export function ReviewClient({ id }: { id: string }) {
   const role = useRole();
   return (
-    <WakeGate<ReviewDetail | ApiError> key={`${id}-${role}`} load={() => apiFetch<ReviewDetail | ApiError>(`/api/reviews/${id}`)}>
+    <WakeGate<ReviewDetail | ApiError> key={`${id}-${role}`} label="초안" load={() => apiFetch<ReviewDetail | ApiError>(`/api/reviews/${id}`)}>
       {(res, reload) =>
         res.status === 200 ? (
           <Detail

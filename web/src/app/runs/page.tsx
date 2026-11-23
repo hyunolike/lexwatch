@@ -14,7 +14,7 @@ export default function RunsPage() {
   return (
     <div className="space-y-5">
       <PageHeader title="실행 이력" />
-      <WakeGate<RunSummary[]> key={role} load={() => apiFetch<RunSummary[]>("/api/runs?limit=50")}>
+      <WakeGate<RunSummary[]> key={role} label="자동 처리 기록" load={() => apiFetch<RunSummary[]>("/api/runs?limit=50")}>
         {(res) =>
           !Array.isArray(res.data) ? (
             <Callout tone="danger">목록을 불러오지 못했어요.</Callout>

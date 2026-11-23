@@ -121,6 +121,22 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   return { waking: false, status: res.status, data: data as T };
 }
 
+/**
+ * 서버가 깨었는지 본다(wake-wait). 헤더 없는 GET이라 CORS 사전 요청이 없다.
+ * 200이면 "up", 네트워크 오류와 502, 503, 504는 "waking", 그 밖은 "other". 취소되면 예외를 그대로 던진다.
+ */
+export async function pingHealth(signal: AbortSignal): Promise<"up" | "waking" | "other"> {
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/health`, { signal, cache: "no-store" });
+  } catch (e) {
+    if (signal.aborted) throw e;
+    return "waking";
+  }
+  if (res.ok) return "up";
+  return WAKING_STATUSES.includes(res.status) ? "waking" : "other";
+}
+
 /** 승인 직전 재검사가 찾은 적발(422 UNRESOLVED_FINDINGS). */
 export interface DecisionFinding {
   sentenceIndex: number;
