@@ -577,4 +577,32 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
         Assert.Equal(1, stages[6].GetProperty("detail").GetProperty("findings").GetInt32());   // 단계 출력(5)이 아니라 초안의 3단 적발 1건
         Assert.Equal("human", stages[7].GetProperty("actor").GetString());
     }
+
+    [Fact]
+    public async Task Chat_while_ai_keeps_waking_returns_ai_waking_and_refunds_quota()
+    {
+        var g = await SeedAsync();
+        using var ai = new AiStub();
+        ai.Json("/review-chat", 502, new { detail = "Bad Gateway" });
+        await using var f = ChatFactory(ai);
+        var r = await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/chat", new { question = "제23조 해고 규정은?" });
+        Assert.Equal((HttpStatusCode)424, r.StatusCode);
+        Assert.Equal("AI_WAKING", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString());
+        // 8회에서 멈추지 않고 마감까지 다시 보낸다(2026-11-25 운영에서 30초 만에 포기했다).
+        Assert.True(ai.Requests("/review-chat").Count > 8);
+        await using var db = pg.CreateDb();
+        Assert.All(await db.ChatQuotas.ToListAsync(), q => Assert.Equal(0, q.Count));
+    }
+
+    [Fact]
+    public async Task Ai_status_reports_up_or_waking()
+    {
+        using var ai = new AiStub();
+        await using var f = ChatFactory(ai);
+        var c = As(f, "lawyer");
+        Assert.Equal("waking", (await c.GetFromJsonAsync<JsonElement>("/api/ai/status")).GetProperty("state").GetString());
+        ai.Server.Given(WireMock.RequestBuilders.Request.Create().WithPath("/health").UsingGet())
+            .RespondWith(WireMock.ResponseBuilders.Response.Create().WithStatusCode(200).WithHeader("Content-Type", "application/json").WithBody("{\"status\":\"ok\"}"));
+        Assert.Equal("up", (await c.GetFromJsonAsync<JsonElement>("/api/ai/status")).GetProperty("state").GetString());
+    }
 }
