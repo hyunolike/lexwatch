@@ -91,12 +91,20 @@ def _render(e: Evidence) -> str:
     return f"[{e.id}] {e.title}\n{clip(e.body)}"
 
 
+GROUP_NAMES = {"labor": "노동", "privacy": "개인정보", "finance": "금융"}
+
+
+def group_name(code: str) -> str:
+    """Korean name for the drafts; unknown codes pass through so nothing is hidden."""
+    return GROUP_NAMES.get(code, code)
+
+
 def _user_prompt(req: AnalyzeRequest) -> str:
     ev = "\n\n".join(_render(e) for e in req.evidence) or "(없음)"
     return (
         f"법령: {req.law.name} (공포 {req.law.promulgation_date}, 법령ID {req.law.law_id})\n"
         f"요약: {req.law.summary}\n"
-        f"실무그룹: {req.group_code} — 관심 분야: {req.interest_text}\n\n"
+        f"실무그룹: {group_name(req.group_code)} 실무그룹 — 관심 분야: {req.interest_text}\n\n"
         f"현재 확보한 근거:\n{ev}"
     )
 

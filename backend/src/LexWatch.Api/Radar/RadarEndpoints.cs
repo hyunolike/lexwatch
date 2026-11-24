@@ -8,12 +8,13 @@ namespace LexWatch.Api.Radar;
 public static class RadarEndpoints
 {
     public const int MaxBills = 200;
+    public const int MaxBillsLimit = 1000;
     public const int PromulgationWindowDays = 40;
     public static readonly TimeSpan StaleAfter = TimeSpan.FromHours(48);
 
     public static void MapRadarEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/radar", async (string? group, LexWatchDb db, TimeProvider time, CancellationToken ct) =>
+        app.MapGet("/api/radar", async (string? group, int? limit, LexWatchDb db, TimeProvider time, CancellationToken ct) =>
         {
             var groups = await db.PracticeGroups.AsNoTracking().OrderBy(g => g.Code)
                 .Select(g => new { g.Code, g.Name, g.WatchLawNames }).ToListAsync(ct);
@@ -28,10 +29,18 @@ public static class RadarEndpoints
                 ? groupsOf.Keys.ToList()
                 : groupsOf.Where(p => p.Value.Contains(group)).Select(p => p.Key).ToList();
 
+            if (limit is < 1 or > MaxBillsLimit)
+                return Results.Json(new { code = "INVALID_LIMIT", message = $"limit은 1~{MaxBillsLimit}이어야 한다" }, statusCode: 400);
+            var take = limit ?? MaxBills;
             var bills = await db.Bills.AsNoTracking()
                 .Where(b => laws.Contains(b.LawName))
                 .OrderByDescending(b => b.LastEventAt).ThenByDescending(b => b.BillNo)
-                .Take(MaxBills).ToListAsync(ct);
+                .Take(take).ToListAsync(ct);
+            // 화면의 탭 숫자는 잘린 목록이 아니라 전체 건수를 보여야 한다. 법률명별로 세고 그룹에 나눠 더한다.
+            var perLaw = await db.Bills.AsNoTracking().Where(b => laws.Contains(b.LawName))
+                .GroupBy(b => b.LawName).Select(x => new { Law = x.Key, N = x.Count() }).ToListAsync(ct);
+            var byGroup = groups.ToDictionary(g => g.Code,
+                g => perLaw.Where(p => groupsOf.GetValueOrDefault(p.Law, []).Contains(g.Code)).Sum(p => p.N));
             var billIds = bills.Select(b => b.Id).ToList();
             var lastEvents = (await db.BillEvents.AsNoTracking().Where(e => billIds.Contains(e.BillId)).ToListAsync(ct))
                 .GroupBy(e => e.BillId)
@@ -49,6 +58,7 @@ public static class RadarEndpoints
             return Results.Ok(new
             {
                 lastCollectedAt = lastOk,
+                totals = new { all = perLaw.Sum(p => p.N), shown = bills.Count, limit = take, byGroup },
                 sources = new { assembly, lawmaking = "not_connected" },
                 watch = groups.Select(g => new { groupCode = g.Code, groupName = g.Name, lawNames = g.WatchLawNames }),
                 bills = bills.Select(b => new

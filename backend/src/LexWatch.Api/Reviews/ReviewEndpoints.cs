@@ -313,11 +313,15 @@ public static class ReviewEndpoints
                             : h.Content!, 2000),
                     }).ToList();
                 started = time.GetTimestamp();
-                var outcome = await ai.CallAsync((c, t) => c.ReviewChatAsync(new ReviewChatRequest
+                var chatReq = new ReviewChatRequest
                 {
                     Run_id = review.RunId.ToString(), Question = maskedQuestion,
                     Evidence = AiMapping.Evidence(evidence), History = history,
-                }, t), 1, TimeSpan.FromSeconds(40), ct);
+                };
+                // AI 서비스가 잠들어 있으면 깨는 동안 5xx나 연결 실패가 몇 초 만에 돌아온다. 마감 안에서 다시 시도한다.
+                var outcome = await ChatRetry.RunAsync(
+                    (attempt, timeout) => ai.CallAsync((c, t) => c.ReviewChatAsync(chatReq, t), attempt, timeout, ct),
+                    ChatRetry.Options.From(cfg), time, ct);
                 if (outcome.Failure is not null)
                     return Err(424, "AI_UNAVAILABLE", "검토 보조를 지금 쓸 수 없다");
                 answered = true;

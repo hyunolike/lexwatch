@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reviewAttention } from "./reviewPresentation";
+import { reviewAttention, splitForRole } from "./reviewPresentation";
 import type { Draft } from "./api";
 
 const draft = (findings: number[]): Draft => ({
@@ -24,5 +24,14 @@ describe("검토할 문장 요약", () => {
   it("첫 문장의 지적과 지적 없는 초안을 구분한다", () => {
     expect(reviewAttention(draft([1, 0])).firstFlaggedIndex).toBe(0);
     expect(reviewAttention(draft([0, 0])).firstFlaggedIndex).toBeNull();
+  });
+});
+
+describe("splitForRole", () => {
+  const items = [{ status: "AwaitingPartner" }, { status: "AwaitingApproval" }];
+  it("pulls partner-stage reviews up for partners only", () => {
+    expect(splitForRole(items, "partner").mine).toHaveLength(1);
+    expect(splitForRole(items, "partner").rest).toHaveLength(1);
+    expect(splitForRole(items, "lawyer")).toEqual({ mine: [], rest: items });
   });
 });

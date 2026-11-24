@@ -334,6 +334,15 @@ public class BillRadarTests(PostgresFixture pg) : IAsyncLifetime
 
         var all = await c.GetFromJsonAsync<JsonElement>("/api/radar");
         Assert.Equal(3, all.GetProperty("bills").GetArrayLength());
+        var totals = all.GetProperty("totals");
+        Assert.Equal((3, 3, 200), (totals.GetProperty("all").GetInt32(), totals.GetProperty("shown").GetInt32(), totals.GetProperty("limit").GetInt32()));
+        Assert.Equal(2, totals.GetProperty("byGroup").GetProperty("labor").GetInt32());
+
+        // 잘린 목록에서도 탭 숫자는 전체 건수다
+        var cut = await c.GetFromJsonAsync<JsonElement>("/api/radar?limit=1");
+        Assert.Equal(1, cut.GetProperty("bills").GetArrayLength());
+        Assert.Equal((3, 1), (cut.GetProperty("totals").GetProperty("all").GetInt32(), cut.GetProperty("totals").GetProperty("shown").GetInt32()));
+        Assert.Equal(HttpStatusCode.BadRequest, (await c.GetAsync("/api/radar?limit=1001")).StatusCode);
 
         // 마지막 성공이 48시간보다 오래되면 failing
         now.Now = T0.AddHours(49);

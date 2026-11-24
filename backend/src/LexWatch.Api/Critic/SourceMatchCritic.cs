@@ -4,14 +4,15 @@ using LexWatch.Api.Data.Entities;
 
 namespace LexWatch.Api.Critic;
 
-/// <summary>크리틱 2단: 문장 속 조문·날짜·금액·기간이 인용한 근거 본문에 실제로 있는지, 시행일이 법령 변경과 맞는지 대조한다.</summary>
+/// <summary>크리틱 2단: 문장 속 조문·날짜·금액·기간(시간, 주 포함)이 인용한 근거 본문에 실제로 있는지, 시행일이 법령 변경과 맞는지 대조한다.</summary>
 public static partial class SourceMatchCritic
 {
     [GeneratedRegex(@"제\d+조(?:의\d+)?")] private static partial Regex ArticleRx();
     [GeneratedRegex(@"(\d{4})\.\s?(\d{1,2})\.\s?(\d{1,2})\.?")] private static partial Regex DateDotRx();
     [GeneratedRegex(@"(\d{4})년\s?(\d{1,2})월\s?(\d{1,2})일")] private static partial Regex DateKoRx();
     [GeneratedRegex(@"\d[\d,]*(?:\s?(?:\d[\d,]*|[억만천백십]))*\s?원")] private static partial Regex AmountRx();
-    [GeneratedRegex(@"(?<!\d)\d{1,3}\s?(?:일|개월|년)")] private static partial Regex PeriodRx();
+    // 시간과 주는 노동 법령의 핵심 수치다(근로시간 한도, 단위기간). "3주택"은 주가 아니다.
+    [GeneratedRegex(@"(?<!\d)\d{1,3}\s?(?:시간|주일|주(?!택)|일|개월|년)")] private static partial Regex PeriodRx();
     [GeneratedRegex(@"\d{4}년(?:\s?\d{1,2}월(?:\s?\d{1,2}일)?)?|\d{1,2}월\s?\d{1,2}일|\d{1,2}월")] private static partial Regex PartialDateRx();
     [GeneratedRegex(@"시행(?!령|규칙)")] private static partial Regex EnforceRx();
     [GeneratedRegex(@"\s+")] private static partial Regex WsRx();

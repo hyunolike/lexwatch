@@ -401,6 +401,8 @@ export interface Radar {
   sources: { assembly: "ok" | "failing" | "never"; lawmaking: "not_connected" | string };
   watch: { groupCode: string; groupName: string; lawNames: string[] }[];
   bills: RadarBill[];
+  /** 목록은 최근 순으로 limit건까지만 온다. 탭 숫자는 전체 건수를 쓴다. 옛 응답에는 없다. */
+  totals?: { all: number; shown: number; limit: number; byGroup: Record<string, number> };
 }
 
 /** ops-visibility OV-10~16. 백엔드 Ops/OpsSummary.cs */
