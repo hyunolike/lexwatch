@@ -21,7 +21,9 @@ import { aiExplain, findStage, isAiProvider } from "@/lib/aiTrail";
 import { ReviewChat } from "@/components/ReviewChat";
 import { SourceLabel, StatusLozenge } from "@/components/ds/badges";
 import { Callout } from "@/components/ds/Callout";
-import { RedlineDiff } from "@/components/ds/RedlineDiff";
+import { SplitPane } from "@/components/ds/SplitPane";
+import { EvidencePanel } from "./EvidencePanel";
+import { SPLIT_QUERY, useMediaQuery } from "@/lib/useMediaQuery";
 import { CARD, SummaryList } from "@/components/ds/layout";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -55,6 +57,15 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
     review.isReplay && !review.providerKinds.includes("replay") ? [...review.providerKinds, "replay" as const] : review.providerKinds;
 
   const [returning, setReturning] = useState(false);
+  // 분할 화면(DS2-07): 고른 문장과 근거. 1280px 미만에서는 고르지 않고 칩이 팝오버로 열린다.
+  const split = useMediaQuery(SPLIT_QUERY);
+  const [sentence, setSentence] = useState<number | null>(null);
+  const [evidenceId, setEvidenceId] = useState<string | null>(null);
+  const allCited = [...new Set(draft?.sentences.flatMap((s) => s.citations) ?? [])];
+  const selectSentence = (i: number, id?: string) => {
+    setSentence(i);
+    setEvidenceId(id ?? null);
+  };
 
   async function decide(kind: DecisionKind, acknowledgedFindingCount?: number) {
     setBusy(true);
@@ -74,7 +85,8 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
   }
 
   return (
-    <div className="space-y-5">
+    // 1280px 이상에서는 작업 폭(70rem)을 벗어나 두 칸을 넉넉히 둔다(design.md 3.4).
+    <div className="space-y-5 xl:relative xl:left-1/2 xl:w-[min(96rem,calc(100vw-3rem))] xl:-translate-x-1/2">
       <Link href="/" className="inline-flex items-center gap-1 rounded-md text-label text-ink-muted hover:text-ink">
         <ArrowLeft aria-hidden className="size-4" /> 승인 대기함
       </Link>
@@ -127,8 +139,10 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
         </Callout>
       )}
 
-      <div className="space-y-8">
-        <section aria-labelledby="draft" className="mx-auto max-w-reading space-y-3">
+      <SplitPane
+        label="초안과 근거 폭"
+        left={
+        <section aria-labelledby="draft" className="mx-auto max-w-reading space-y-3 xl:mx-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 id="draft" className="text-title-md text-ink">영향 검토 초안</h2>
             {draft && isAiProvider(analyze?.providerKind) && (
@@ -153,6 +167,8 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
               draft={draft}
               stages={review.aiTrail?.stages}
               evidence={review.evidence}
+              selected={split ? sentence : null}
+              onSelect={split ? selectSentence : undefined}
               editing={editing}
               edited={edited}
               onChange={(next) => {
@@ -164,11 +180,19 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
             <Callout tone="warning">아직 초안이 없어요. 근거가 부족하면 사유를 적어 반려할 수 있어요.</Callout>
           )}
         </section>
-        <section aria-labelledby="oldnew" className="space-y-3">
-          <h2 id="oldnew" className="text-title-md text-ink">신구조문 비교</h2>
-          <RedlineDiff items={review.oldNew} />
-        </section>
-      </div>
+        }
+        right={
+          <EvidencePanel
+            sentence={split ? sentence : null}
+            cited={sentence !== null && draft ? draft.sentences[sentence]?.citations ?? [] : []}
+            allCited={allCited}
+            selected={split ? evidenceId : null}
+            onSelect={(id) => setEvidenceId(id)}
+            evidence={review.evidence}
+            oldNew={review.oldNew}
+          />
+        }
+      />
 
       <details className={`${CARD} p-4`}>
         <summary className="w-fit cursor-pointer rounded-sm text-label font-medium text-ink-muted">법령과 초안 정보</summary>
