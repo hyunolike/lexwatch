@@ -24,6 +24,8 @@ import { Callout } from "@/components/ds/Callout";
 import { SplitPane } from "@/components/ds/SplitPane";
 import { EvidencePanel } from "./EvidencePanel";
 import { SPLIT_QUERY, useMediaQuery } from "@/lib/useMediaQuery";
+import { useShortcuts } from "@/components/Shortcuts";
+import { cycle } from "@/lib/shortcuts";
 import { CARD, SummaryList } from "@/components/ds/layout";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -66,6 +68,29 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
     setSentence(i);
     setEvidenceId(id ?? null);
   };
+
+  // 단축키(DS2-09): 보이는 버튼을 그대로 누른다. 버튼이 없거나 비활성이면(역할, 상태, 처리 중) 아무 일도 하지 않는다.
+  // 재검사 적발이 남아 확인이 필요하면 a는 동작하지 않는다(확인 버튼을 직접 눌러야 한다).
+  const press = (name: string) => () =>
+    document.querySelector<HTMLButtonElement>(`[data-shortcut="${name}"]:not(:disabled)`)?.click();
+  const flagged = draft?.sentences.flatMap((s, i) => (s.findings.length > 0 ? [i] : [])) ?? [];
+  const moveFlag = (dir: 1 | -1) => () => {
+    const pool = flagged.length > 0 ? flagged : (draft?.sentences.map((_, i) => i) ?? []);
+    const next = cycle(pool, sentence, dir);
+    if (next === null) return;
+    setSentence(next);
+    setEvidenceId(null);
+    const el = document.getElementById(`draft-sentence-${next + 1}`);
+    el?.focus({ preventScroll: true });
+    el?.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
+  useShortcuts({
+    approve: pending ? undefined : press("approve"),
+    edit: press("edit"),
+    reject: press("reject"),
+    nextFlag: moveFlag(1),
+    prevFlag: moveFlag(-1),
+  });
 
   async function decide(kind: DecisionKind, acknowledgedFindingCount?: number) {
     setBusy(true);
@@ -167,7 +192,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
               draft={draft}
               stages={review.aiTrail?.stages}
               evidence={review.evidence}
-              selected={split ? sentence : null}
+              selected={sentence}
               onSelect={split ? selectSentence : undefined}
               editing={editing}
               edited={edited}
@@ -239,7 +264,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
           <div className="flex flex-wrap items-center gap-2">
             {actions.approve && !editing && (
               <ConfirmDialog
-                trigger={<Button variant="primary" disabled={busy}>승인</Button>}
+                trigger={<Button data-shortcut="approve" variant="primary" disabled={busy}>승인</Button>}
                 title={shownFindings > 0 ? `확인이 필요한 문장 ${attention.flaggedSentences}개가 남아 있어요` : "승인할까요?"}
                 description={
                   shownFindings > 0
@@ -252,7 +277,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
             )}
             {actions.edit && editing && (
               <ConfirmDialog
-                trigger={<Button variant="primary" disabled={busy}>수정 후 승인</Button>}
+                trigger={<Button data-shortcut="approve" variant="primary" disabled={busy}>수정 후 승인</Button>}
                 title="수정한 내용으로 승인할까요?"
                 description={`수정 전과 후가 함께 기록되고, ${review.groupName} 그룹 알림함으로 안내문이 발송돼요.`}
                 confirmLabel="수정 내용으로 승인"
@@ -261,6 +286,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
             )}
             {actions.edit && (
               <Button
+                data-shortcut="edit"
                 disabled={busy}
                 onClick={() => {
                   setPending(null);
@@ -271,7 +297,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
                 {editing ? "수정 취소" : "수정"}
               </Button>
             )}
-            <Button variant="danger-ghost" disabled={busy} aria-expanded={rejecting} onClick={() => setRejecting((r) => !r)}>
+            <Button data-shortcut="reject" variant="danger-ghost" disabled={busy} aria-expanded={rejecting} onClick={() => setRejecting((r) => !r)}>
               반려
             </Button>
           </div>
@@ -282,6 +308,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
               </label>
               <textarea
                 id="reject-reason"
+                autoFocus
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 rows={2}
@@ -298,13 +325,13 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
         <section aria-label="파트너 결정" className={`${CARD} sticky bottom-4 z-20 space-y-3 p-4 shadow-pop`}>
           <div className="flex flex-wrap items-center gap-2">
             <ConfirmDialog
-              trigger={<Button variant="primary" disabled={busy}>최종 승인</Button>}
+              trigger={<Button data-shortcut="approve" variant="primary" disabled={busy}>최종 승인</Button>}
               title="최종 승인할까요?"
               description={`변호사가 확인한 적발을 검토했다면 최종 승인해 주세요. ${review.groupName} 그룹 알림함으로 안내문이 발송되고, 발송 뒤에는 되돌릴 수 없어요.`}
               confirmLabel="최종 승인하고 알림 보내기"
               onConfirm={() => decide("confirm")}
             />
-            <Button variant="danger-ghost" disabled={busy} aria-expanded={returning} onClick={() => setReturning((r) => !r)}>
+            <Button data-shortcut="reject" variant="danger-ghost" disabled={busy} aria-expanded={returning} onClick={() => setReturning((r) => !r)}>
               돌려보내기
             </Button>
           </div>
@@ -315,6 +342,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
               </label>
               <textarea
                 id="return-reason"
+                autoFocus
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 rows={2}

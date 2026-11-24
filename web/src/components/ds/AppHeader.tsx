@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { CircleHelp } from "lucide-react";
+import { CircleHelp, Search } from "lucide-react";
+import { openCommandPalette } from "@/components/CommandPalette";
 import { RoleSwitch, useRole } from "@/components/RoleSwitch";
 import { stepForVisit } from "@/lib/guide";
 import { guideStore } from "@/lib/guideStore";
@@ -83,6 +84,16 @@ export function AppHeader() {
             >
               <CircleHelp aria-hidden className="size-4" />
               <span aria-hidden className="hidden sm:inline">둘러보기</span>
+            </button>
+            <button
+              type="button"
+              onClick={openCommandPalette}
+              aria-label="명령 팔레트 열기, 단축키 Command K"
+              className="hidden h-8 items-center gap-2 rounded-md border border-line px-2 text-label text-ink-subtle transition-colors duration-[120ms] hover:border-line-strong hover:text-ink lg:inline-flex"
+            >
+              <Search aria-hidden className="size-3.5" />
+              <span aria-hidden>찾기</span>
+              <kbd aria-hidden className="rounded-sm bg-surface-sunken px-1 font-mono text-micro">⌘K</kbd>
             </button>
             <ThemeMenu />
             <RoleSwitch />
