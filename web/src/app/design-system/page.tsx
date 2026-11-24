@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { Metadata } from "next";
-import { CONTRAST_PAIRS, contrastRatio, parseColorTokens } from "@/design/tokens";
+import { CONTRAST_PAIRS, contrastRatio, parseThemes } from "@/design/tokens";
 import { CARD, Mascot, PageHeader } from "@/components/ds/layout";
 import { Showcase } from "./Showcase";
 
@@ -9,22 +9,23 @@ export const metadata: Metadata = { title: "디자인 시스템 · LexWatch" };
 
 /** 빌드 때 tokens.css를 읽어 그린다(정적 미리 그리기). 값의 원본은 그 파일 하나다. */
 function readTokens() {
-  return parseColorTokens(readFileSync(path.join(process.cwd(), "src/styles/tokens.css"), "utf8"));
+  return parseThemes(readFileSync(path.join(process.cwd(), "src/styles/tokens.css"), "utf8"));
 }
 
 const GROUPS: { title: string; prefix: RegExp }[] = [
   { title: "바탕과 글자", prefix: /^(canvas|surface|ink|line)/ },
   { title: "브랜드와 포커스", prefix: /^(brand|on-brand|focus)/ },
-  { title: "상태", prefix: /^(success|danger|warning|info|neutral)/ },
-  { title: "출처 (상태 색과 다른 계열)", prefix: /^source-/ },
+  { title: "상태", prefix: /^(success|danger|on-danger|warning|info|neutral)/ },
+  { title: "출처: 누가 만들었나 (상태 색과 다른 계열)", prefix: /^prov-/ },
   { title: "신구 대조", prefix: /^diff-/ },
 ];
 
 const TYPE = [
-  ["text-title-lg", "페이지 제목 24/32"],
-  ["text-title-md", "법령명 20/28"],
+  ["text-display", "표지 32/40 세리프"],
+  ["text-title-lg", "페이지 제목 26/36 세리프"],
+  ["text-title-md", "법령명 21/30 세리프"],
   ["text-title-sm", "구역 제목 16/24"],
-  ["text-reading", "읽는 글 16/28 — 근로자의 1주 근로시간은 휴게시간을 제외하고 40시간을 초과할 수 없다."],
+  ["text-reading", "읽는 글 17/30 — 근로자의 1주 근로시간은 휴게시간을 제외하고 40시간을 초과할 수 없다."],
   ["text-ui", "일반 UI 15/24"],
   ["text-label", "버튼과 라벨 14/20"],
   ["text-caption", "캡션과 시간 13/18 · 2026-11-19 07:00"],
@@ -40,8 +41,8 @@ const POSES = [
 ] as const;
 
 export default function DesignSystemPage() {
-  const tokens = readTokens();
-  const names = Object.keys(tokens);
+  const themes = readTokens();
+  const names = Object.keys(themes.light);
   return (
     <div className="space-y-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -65,10 +66,15 @@ export default function DesignSystemPage() {
                 .filter((n) => g.prefix.test(n))
                 .map((n) => (
                   <li key={n} className={`${CARD} overflow-hidden`}>
-                    <div className="h-12 border-b border-line" style={{ background: tokens[n] }} />
+                    <div className="grid h-12 grid-cols-2 border-b border-line">
+                      <span title="밝은 테마" style={{ background: themes.light[n] }} />
+                      <span title="어두운 테마" style={{ background: themes.dark[n] }} />
+                    </div>
                     <div className="p-2">
                       <p className="truncate font-mono text-caption text-ink">{n}</p>
-                      <p className="font-mono text-micro text-ink-subtle">{tokens[n]}</p>
+                      <p className="font-mono text-micro text-ink-subtle">
+                        {themes.light[n]} / {themes.dark[n]}
+                      </p>
                     </div>
                   </li>
                 ))}
@@ -87,25 +93,32 @@ export default function DesignSystemPage() {
                 <th className="px-3 py-2">견본</th>
                 <th className="px-3 py-2">앞</th>
                 <th className="px-3 py-2">뒤</th>
-                <th className="px-3 py-2 text-right">대비</th>
+                <th className="px-3 py-2 text-right">밝은 테마</th>
+                <th className="px-3 py-2 text-right">어두운 테마</th>
                 <th className="px-3 py-2 text-right">기준</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
               {CONTRAST_PAIRS.map(({ fg, bg, min }) => {
-                const ratio = contrastRatio(tokens[fg], tokens[bg]);
+                const light = contrastRatio(themes.light[fg], themes.light[bg]);
+                const dark = contrastRatio(themes.dark[fg], themes.dark[bg]);
+                const ok = light >= min && dark >= min;
                 return (
                   <tr key={`${fg}/${bg}`}>
-                    <td className="px-3 py-1.5">
-                      <span className="rounded-sm px-2 py-0.5 text-label" style={{ color: tokens[fg], background: tokens[bg] }}>
-                        가나다 Aa
+                    <td className="space-x-1 px-3 py-1.5 whitespace-nowrap">
+                      <span className="rounded-sm px-2 py-0.5 text-label" style={{ color: themes.light[fg], background: themes.light[bg] }}>
+                        가나다
+                      </span>
+                      <span className="rounded-sm px-2 py-0.5 text-label" style={{ color: themes.dark[fg], background: themes.dark[bg] }}>
+                        가나다
                       </span>
                     </td>
                     <td className="px-3 py-1.5 font-mono text-caption">{fg}</td>
                     <td className="px-3 py-1.5 font-mono text-caption">{bg}</td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{ratio.toFixed(2)}</td>
-                    <td className={`px-3 py-1.5 text-right tabular-nums ${ratio >= min ? "text-success" : "text-danger"}`}>
-                      {ratio >= min ? "통과" : "미달"} {min}
+                    <td className="px-3 py-1.5 text-right tabular-nums">{light.toFixed(2)}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums">{dark.toFixed(2)}</td>
+                    <td className={`px-3 py-1.5 text-right tabular-nums ${ok ? "text-success" : "text-danger"}`}>
+                      {ok ? "통과" : "미달"} {min}
                     </td>
                   </tr>
                 );
@@ -122,7 +135,7 @@ export default function DesignSystemPage() {
           {TYPE.map(([cls, sample]) => (
             <li key={cls} className="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-4 py-3">
               <code className="w-32 shrink-0 font-mono text-caption text-ink-subtle">{cls}</code>
-              <span className={`${cls} text-ink`}>{sample}</span>
+              <span className={`${cls} ${/display|title-(lg|md)/.test(cls) ? "font-serif" : ""} text-ink`}>{sample}</span>
             </li>
           ))}
         </ul>

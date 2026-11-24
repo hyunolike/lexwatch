@@ -13,7 +13,7 @@ export function useGuide(): GuideView | null {
   return useSyncExternalStore(guideStore.subscribe, guideStore.getSnapshot, () => null);
 }
 
-const LINK = "rounded-sm font-semibold text-ink underline underline-offset-4 hover:text-brand";
+const LINK = "rounded-sm font-semibold text-ink underline underline-offset-4 hover:text-brand-fg";
 
 const STEPS: { id: StepId; title: ReactNode; body: ReactNode }[] = [
   {

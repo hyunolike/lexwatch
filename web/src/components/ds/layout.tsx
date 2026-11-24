@@ -22,7 +22,7 @@ export function Mascot({ pose, size, className }: { pose: MascotPose; size: numb
   );
 }
 
-/** 빈 화면: 마스코트 위, 제목과 설명 아래. */
+/** 빈 화면: 마스코트 위, 제목과 설명 아래. 렉스는 여유 있는 순간에만 작게(DS2-14, 최대 120px). */
 export function EmptyState({
   pose,
   title,
@@ -36,8 +36,8 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center px-4 py-10 text-center">
-      <Mascot pose={pose} size={180} />
-      <p className="mt-4 text-title-sm text-ink">{title}</p>
+      <Mascot pose={pose} size={120} />
+      <p className="mt-4 font-serif text-title-md text-ink">{title}</p>
       {description && <div className="mt-1 max-w-md text-ui text-ink-muted">{description}</div>}
       {action && <div className="mt-4">{action}</div>}
     </div>
@@ -65,7 +65,7 @@ export const CARD = "rounded-lg border border-line bg-surface shadow-card";
 export function PageHeader({ title, children }: { title: ReactNode; children?: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <h1 className="text-title-lg text-ink">{title}</h1>
+      <h1 className="font-serif text-title-lg text-ink">{title}</h1>
       {children}
     </div>
   );

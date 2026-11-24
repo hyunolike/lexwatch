@@ -15,7 +15,7 @@ export function AiLabel({ explain, text = "AI", context }: { explain: Explain; t
         <button
           type="button"
           aria-label={`${text}${context ? `, ${context}` : ""}, 설명 보기`}
-          className="inline-flex h-[22px] items-center gap-1 rounded-sm border border-info/40 bg-info-bg px-1.5 text-micro font-semibold text-info hover:border-info"
+          className="inline-flex h-[22px] items-center gap-1 rounded-sm border border-prov-ai/40 bg-prov-ai-bg px-1.5 text-micro font-semibold text-prov-ai hover:border-prov-ai"
         >
           <Sparkles aria-hidden className="size-3" />
           {text}
@@ -24,7 +24,7 @@ export function AiLabel({ explain, text = "AI", context }: { explain: Explain; t
     >
       <div className="space-y-2 text-label">
         <p className="flex items-center gap-1.5 text-ui font-semibold text-ink">
-          <Sparkles aria-hidden className="size-4 text-info" />
+          <Sparkles aria-hidden className="size-4 text-prov-ai" />
           {explain.title}
         </p>
         <p className="text-ink">{explain.what}</p>

@@ -13,7 +13,7 @@ export const STAGE_NAMES: Record<string, string> = {
   decision: "변호사 검토",
 };
 
-export const ACTOR_LABEL: Record<TrailActor, string> = { ai: "AI", rule: "규칙", human: "사람" };
+export const ACTOR_LABEL: Record<TrailActor, string> = { ai: "AI", rule: "규칙", human: "사람", replay: "재현" };
 
 const STATUS: Record<TrailStatus, [string, Tone]> = {
   done: ["완료", "success"],

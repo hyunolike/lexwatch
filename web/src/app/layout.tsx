@@ -2,8 +2,10 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+import "@fontsource-variable/noto-serif-kr/wght.css";
 import "./globals.css";
 import { AppHeader } from "@/components/ds/AppHeader";
+import { THEME_SCRIPT } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title: "LexWatch",
@@ -12,9 +14,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className="h-full">
+    // 테마 스크립트가 첫 그림 전에 data-theme을 고친다(Next.js "Preventing flash before hydration", Themes 절).
+    <html lang="ko" data-theme="light" className="h-full" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="min-h-full">
-        <Suspense fallback={<div className="h-[77px]" />}>
+        <Suspense fallback={<div className="h-(--lw-header-h)" />}>
           <AppHeader />
         </Suspense>
         <main id="main" tabIndex={-1} className="mx-auto max-w-workspace px-4 py-6 outline-none sm:py-8">

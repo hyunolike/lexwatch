@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { groupLabel, REPLAY_NOTE, statusLabel, stepLabel, type Domain } from "./labels";
+import { groupLabel, provenanceOf, REPLAY_NOTE, statusLabel, stepLabel, type Domain } from "./labels";
 
 const ENUMS = path.resolve(__dirname, "../../../backend/src/LexWatch.Api/Data/Entities/Enums.cs");
 
@@ -83,5 +83,35 @@ describe("governance labels", () => {
     expect(statusLabel("decision", "return").label).toBe("파트너가 돌려보냄");
     expect(statusLabel("role", "partner").label).toBe("파트너");
     expect(statusLabel("usage", "unavailable").label).toBe("모델 없음");
+  });
+});
+
+describe("provenanceOf (design-system-v2 3.2)", () => {
+  it.each([
+    [{ providerKind: "cloudflare" }, "ai", "AI Cloudflare"],
+    [{ providerKind: "nvidia" }, "ai", "AI NVIDIA"],
+    [{ providerKind: "groq" }, "ai", "AI Groq"],
+    [{ providerKind: "fallback" }, "rule", "규칙"],
+    [{ providerKind: "fallback", providerName: "guardrail" }, "rule", "규칙"],
+    [{ providerKind: "replay" }, "replay", "재현"],
+    [{ actor: "human", role: "lawyer" }, "human", "변호사"],
+    [{ actor: "human", role: "partner" }, "human", "파트너"],
+    [{ actor: "human" }, "human", "사람"],
+    [{ actor: "ai" }, "ai", "AI"],
+    [{ actor: "rule" }, "rule", "규칙"],
+    [{ actor: "replay" }, "replay", "재현"],
+    [{ providerKind: "mystery" }, "neutral", "mystery"],
+  ])("%o → %s %s", (input, kind, label) => {
+    const p = provenanceOf(input);
+    expect([p?.kind, p?.label]).toEqual([kind, label]);
+  });
+
+  it("none과 빈 값은 그리지 않는다", () => {
+    expect(provenanceOf({ providerKind: "none" })).toBeNull();
+    expect(provenanceOf({})).toBeNull();
+  });
+
+  it("가드레일 거절은 모델 설명을 달지 않는다", () => {
+    expect(provenanceOf({ providerKind: "fallback", providerName: "guardrail" })?.help).toContain("입력 규칙");
   });
 });
