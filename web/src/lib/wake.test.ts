@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EXPECTED_MS, SNORES, TIPS, elapsedText, isSlow, nextTip, snoreFor, steps, timeFraction, waitHint } from "./wake";
+import { EXPECTED_MS, SNORES, TIPS, elapsedText, gateView, isSlow, nextTip, snoreFor, steps, timeFraction, waitHint } from "./wake";
 
 describe("steps", () => {
   it("실제 응답으로만 완료", () => {
@@ -50,5 +50,17 @@ describe("렉스와 이야기 카드", () => {
   it("카드는 양쪽으로 돈다", () => {
     expect(nextTip(TIPS.length - 1)).toBe(0);
     expect(nextTip(0, -1)).toBe(TIPS.length - 1);
+  });
+});
+
+describe("gateView (M9)", () => {
+  it("스켈레톤이 있으면 서버가 잠들었을 때만 렉스", () => {
+    expect(gateView({ hasFallback: true, health: "unknown", waitShown: true })).toBe("skeleton");
+    expect(gateView({ hasFallback: true, health: "up", waitShown: true })).toBe("skeleton");
+    expect(gateView({ hasFallback: true, health: "waking", waitShown: false })).toBe("wake");
+  });
+  it("스켈레톤이 없으면 지금처럼 0.4초 뒤 대기 화면", () => {
+    expect(gateView({ hasFallback: false, health: "unknown", waitShown: false })).toBe("blank");
+    expect(gateView({ hasFallback: false, health: "up", waitShown: true })).toBe("wake");
   });
 });

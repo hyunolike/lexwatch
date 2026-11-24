@@ -9,6 +9,7 @@ import { Sparkline } from "@/components/ds/Sparkline";
 import { useRole } from "@/components/RoleSwitch";
 import { WakeGate } from "@/components/WakeGate";
 import { cx } from "@/lib/cx";
+import { OpsSkeleton } from "@/components/ds/Skeleton";
 
 const DAYS = [7, 14, 30] as const;
 /** 공급자는 모두 AI라 색으로 나누지 않고 이름과 건수로 구분한다(design.md 1.1). */
@@ -185,7 +186,7 @@ export default function OpsPage() {
       {role !== "admin" ? (
         <Callout tone="info">관리자로 보기에서 볼 수 있어요.</Callout>
       ) : (
-        <WakeGate<OpsSummary | ApiError> key={`${role}-${days}`} label="운영 현황" load={() => apiFetch<OpsSummary | ApiError>(`/api/ops/summary?days=${days}`)}>
+        <WakeGate<OpsSummary | ApiError> key={`${role}-${days}`} label="운영 현황" fallback={<OpsSkeleton />} load={() => apiFetch<OpsSummary | ApiError>(`/api/ops/summary?days=${days}`)}>
           {(res) => (res.status === 200 ? <Summary s={res.data as OpsSummary} /> : <Callout tone="danger">운영 현황을 불러오지 못했어요.</Callout>)}
         </WakeGate>
       )}
