@@ -38,6 +38,7 @@ public class DemoSeeder(LexWatchDb db, TimeProvider time)
         await db.ChatQuotas.ExecuteDeleteAsync(ct);
         var cutoff = time.GetUtcNow().AddDays(-Governance.AiUsage.RetentionDays);
         await db.AiUsageLogs.Where(l => l.At < cutoff).ExecuteDeleteAsync(ct);
+        await db.BillCollectLogs.Where(l => l.StartedAt < cutoff).ExecuteDeleteAsync(ct);
 
         await EnsureGroupsAsync(ct);
         await InsertReplaysAsync(ct);
@@ -90,6 +91,9 @@ public class DemoSeeder(LexWatchDb db, TimeProvider time)
             else if (string.IsNullOrWhiteSpace(g.InterestText))
                 g.InterestText = interest;
         }
+        foreach (var g in db.PracticeGroups.Local)
+            if (g.WatchLawNames.Length == 0 && Radar.BillWatch.Defaults.TryGetValue(g.Code, out var names))
+                g.WatchLawNames = names;
         await db.SaveChangesAsync(ct);
     }
 

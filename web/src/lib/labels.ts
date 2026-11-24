@@ -1,10 +1,10 @@
 /**
  * 백엔드 값 → 한국어 라벨과 의미 색. 설계: docs/features/design-system/design.md 5.2절
- * 값 출처: backend/src/LexWatch.Api/Data/Entities/Enums.cs, NotifyStep.cs, ReviewEndpoints.cs, LexWatchDb.cs
+ * 값 출처: backend/src/LexWatch.Api/Data/Entities/Enums.cs, Radar/BillRules.cs, NotifyStep.cs, ReviewEndpoints.cs, LexWatchDb.cs
  */
 
 export type Tone = "success" | "danger" | "warning" | "info" | "neutral";
-export type Domain = "run" | "review" | "step" | "notification" | "decision" | "role" | "channel" | "usage";
+export type Domain = "run" | "review" | "step" | "notification" | "decision" | "role" | "channel" | "usage" | "billStage";
 export type StatusLabel = { label: string; tone: Tone; known: boolean };
 
 const TABLE: Record<Domain, Record<string, [string, Tone]>> = {
@@ -58,6 +58,15 @@ const TABLE: Record<Domain, Record<string, [string, Tone]>> = {
     refused: ["거절", "warning"],
     unavailable: ["모델 없음", "neutral"],
     failed: ["실패", "danger"],
+  },
+  billStage: {
+    Received: ["접수", "neutral"],
+    Committee: ["위원회 심사", "info"],
+    Judiciary: ["법사위 심사", "info"],
+    Plenary: ["본회의 대기", "warning"],
+    Passed: ["본회의 의결", "success"],
+    Merged: ["대안에 반영", "success"],
+    Closed: ["종료", "neutral"],
   },
 };
 

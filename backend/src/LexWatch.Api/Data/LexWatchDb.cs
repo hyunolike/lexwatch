@@ -25,6 +25,9 @@ public class LexWatchDb(DbContextOptions<LexWatchDb> options) : DbContext(option
     public DbSet<ChatQuota> ChatQuotas => Set<ChatQuota>();
     public DbSet<CollectLog> CollectLogs => Set<CollectLog>();
     public DbSet<AiUsageLog> AiUsageLogs => Set<AiUsageLog>();
+    public DbSet<Bill> Bills => Set<Bill>();
+    public DbSet<BillEvent> BillEvents => Set<BillEvent>();
+    public DbSet<BillCollectLog> BillCollectLogs => Set<BillCollectLog>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -110,9 +113,9 @@ public class LexWatchDb(DbContextOptions<LexWatchDb> options) : DbContext(option
             e.Property(x => x.Embedding).HasColumnType($"vector({EmbedDim})");
             // 임베딩은 시드하지 않는다 (이후 작업에서 지연 채움).
             e.HasData(
-                new PracticeGroup { Code = "labor", Name = "노동", InterestText = "근로기준·임금·근로시간·산업안전 관련 법령 개정에 관심이 있다." },
-                new PracticeGroup { Code = "privacy", Name = "개인정보", InterestText = "개인정보 처리·정보통신망·위치정보 관련 법령 개정에 관심이 있다." },
-                new PracticeGroup { Code = "finance", Name = "금융", InterestText = "금융소비자 보호·자본시장·전자금융 관련 법령 개정에 관심이 있다." });
+                new PracticeGroup { Code = "labor", Name = "노동", InterestText = "근로기준·임금·근로시간·산업안전 관련 법령 개정에 관심이 있다.", WatchLawNames = Radar.BillWatch.Defaults["labor"] },
+                new PracticeGroup { Code = "privacy", Name = "개인정보", InterestText = "개인정보 처리·정보통신망·위치정보 관련 법령 개정에 관심이 있다.", WatchLawNames = Radar.BillWatch.Defaults["privacy"] },
+                new PracticeGroup { Code = "finance", Name = "금융", InterestText = "금융소비자 보호·자본시장·전자금융 관련 법령 개정에 관심이 있다.", WatchLawNames = Radar.BillWatch.Defaults["finance"] });
         });
 
         b.Entity<ChatQuota>(e => e.HasKey(x => new { x.Day, x.IpHash }));
@@ -128,6 +131,33 @@ public class LexWatchDb(DbContextOptions<LexWatchDb> options) : DbContext(option
             e.Property(x => x.ProviderName).HasMaxLength(64);
             e.Property(x => x.MaskedJson).HasColumnType("jsonb");
             e.HasIndex(x => x.At);
+        });
+
+        b.Entity<Bill>(e =>
+        {
+            e.Property(x => x.Source).HasMaxLength(16);
+            e.Property(x => x.ExternalId).HasMaxLength(64);
+            e.Property(x => x.BillNo).HasMaxLength(16);
+            e.Property(x => x.Stage).HasMaxLength(16);
+            e.Property(x => x.RawJson).HasColumnType("jsonb");
+            e.HasIndex(x => new { x.Source, x.ExternalId }).IsUnique();
+            e.HasIndex(x => x.LastEventAt);
+            e.HasIndex(x => x.LawName);
+        });
+
+        b.Entity<BillEvent>(e =>
+        {
+            e.Property(x => x.Kind).HasMaxLength(16);
+            e.Property(x => x.FromStage).HasMaxLength(16);
+            e.Property(x => x.ToStage).HasMaxLength(16);
+            e.HasOne<Bill>().WithMany().HasForeignKey(x => x.BillId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.BillId, x.At });
+        });
+
+        b.Entity<BillCollectLog>(e =>
+        {
+            e.Property(x => x.FailuresJson).HasColumnType("jsonb");
+            e.HasIndex(x => x.StartedAt);
         });
     }
 }

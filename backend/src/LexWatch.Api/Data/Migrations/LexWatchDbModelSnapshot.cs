@@ -184,6 +184,159 @@ namespace LexWatch.Api.Data.Migrations
                     b.ToTable("ArticleChunks");
                 });
 
+            modelBuilder.Entity("LexWatch.Api.Data.Entities.Bill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BillName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("BillNo")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Committee")
+                        .HasColumnType("text");
+
+                    b.Property<string>("DetailUrl")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LastCheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LastEventAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LawName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("LeadProposer")
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly?>("ProcOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ProcResult")
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly>("ProposedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Proposer")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("RawJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Stage")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastEventAt");
+
+                    b.HasIndex("LawName");
+
+                    b.HasIndex("Source", "ExternalId")
+                        .IsUnique();
+
+                    b.ToTable("Bills");
+                });
+
+            modelBuilder.Entity("LexWatch.Api.Data.Entities.BillCollectLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("FailureCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("FailuresJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("NewBills")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Ok")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Refreshed")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StageChanges")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartedAt");
+
+                    b.ToTable("BillCollectLogs");
+                });
+
+            modelBuilder.Entity("LexWatch.Api.Data.Entities.BillEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("BillId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FromStage")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("ToStage")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BillId", "At");
+
+                    b.ToTable("BillEvents");
+                });
+
             modelBuilder.Entity("LexWatch.Api.Data.Entities.ChatQuota", b =>
                 {
                     b.Property<DateOnly>("Day")
@@ -453,6 +606,10 @@ namespace LexWatch.Api.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.PrimitiveCollection<string[]>("WatchLawNames")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
                     b.HasKey("Code");
 
                     b.ToTable("PracticeGroups");
@@ -463,21 +620,24 @@ namespace LexWatch.Api.Data.Migrations
                             Code = "labor",
                             InterestText = "근로기준·임금·근로시간·산업안전 관련 법령 개정에 관심이 있다.",
                             LawIds = new string[0],
-                            Name = "노동"
+                            Name = "노동",
+                            WatchLawNames = new[] { "근로기준법", "최저임금법", "산업안전보건법", "중대재해 처벌 등에 관한 법률", "근로자퇴직급여 보장법", "노동조합 및 노동관계조정법" }
                         },
                         new
                         {
                             Code = "privacy",
                             InterestText = "개인정보 처리·정보통신망·위치정보 관련 법령 개정에 관심이 있다.",
                             LawIds = new string[0],
-                            Name = "개인정보"
+                            Name = "개인정보",
+                            WatchLawNames = new[] { "개인정보 보호법", "정보통신망 이용촉진 및 정보보호 등에 관한 법률", "위치정보의 보호 및 이용 등에 관한 법률", "신용정보의 이용 및 보호에 관한 법률" }
                         },
                         new
                         {
                             Code = "finance",
                             InterestText = "금융소비자 보호·자본시장·전자금융 관련 법령 개정에 관심이 있다.",
                             LawIds = new string[0],
-                            Name = "금융"
+                            Name = "금융",
+                            WatchLawNames = new[] { "금융소비자 보호에 관한 법률", "자본시장과 금융투자업에 관한 법률", "전자금융거래법", "은행법", "보험업법" }
                         });
                 });
 
@@ -605,6 +765,15 @@ namespace LexWatch.Api.Data.Migrations
                     b.HasOne("LexWatch.Api.Data.Entities.Evidence", null)
                         .WithMany()
                         .HasForeignKey("RunId", "EvidenceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("LexWatch.Api.Data.Entities.BillEvent", b =>
+                {
+                    b.HasOne("LexWatch.Api.Data.Entities.Bill", null)
+                        .WithMany()
+                        .HasForeignKey("BillId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

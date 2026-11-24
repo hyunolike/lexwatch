@@ -335,3 +335,31 @@ export function hasRetryableStep(timeline: TimelineItem[], groups: { groupCode: 
     return !["Rejected", "Notified", "ClosedIrrelevant"].includes(g);
   });
 }
+
+/** bill-radar BR-03. 백엔드 Radar/BillRules.cs BillStages와 같은 값. */
+export type BillStage = "Received" | "Committee" | "Judiciary" | "Plenary" | "Passed" | "Merged" | "Closed";
+
+export interface RadarBill {
+  id: string;
+  billNo: string;
+  billName: string;
+  lawName: string;
+  stage: BillStage;
+  proposedOn: string;
+  proposer: string;
+  leadProposer: string | null;
+  committee: string | null;
+  procResult: string | null;
+  procOn: string | null;
+  groupCodes: string[];
+  detailUrl: string;
+  lastEvent: { kind: "proposed" | "stage_changed"; at: string; fromStage: BillStage | null; toStage: BillStage } | null;
+  promulgated: { lawChangeId: string; promulgationDate: string; reviewId: string | null } | null;
+}
+
+export interface Radar {
+  lastCollectedAt: string | null;
+  sources: { assembly: "ok" | "failing" | "never"; lawmaking: "not_connected" | string };
+  watch: { groupCode: string; groupName: string; lawNames: string[] }[];
+  bills: RadarBill[];
+}
