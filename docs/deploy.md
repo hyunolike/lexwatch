@@ -115,6 +115,7 @@ Render  --Postgres(세션 풀러)-->  Supabase (pgvector)
 | `AI_REQUIRE_TOKEN` | Vercel ai | `true`면 `AI_TOKEN`이 비었을 때 ai가 503으로 닫힌다 | 배포에서는 `true` 권장. 로컬·테스트는 비워 둔다 |
 | `CLIENT_IP_HEADER` | Render | 채팅 할당량이 클라이언트 IP를 읽을 헤더 하나(예: `True-Client-IP`) | 기본 비움. 아래 "클라이언트 IP" 절 먼저 읽을 것 |
 | `LAW_OC` | Render, Vercel ai | 법제처 OPEN API 인증값 | 비밀. 없으면 수집이 실패하고 재현 실행만 동작. ai의 에이전트 도구(`ai/app/lawapi.py`)도 법제처를 직접 부르므로 두 곳 모두 넣는다. 2026-11-19 설정 |
+| `ASSEMBLY_API_KEY` | Render (api) | 열린국회정보 OPEN API 인증키. 법안 레이더 수집(`/jobs/collect-bills`) | 비밀. 없으면 법률마다 최신 5건만 받고 실패로 표시되지 않는다. 있으면 100건. open.assembly.go.kr 마이페이지에서 즉시 발급. 블루프린트에는 두지 않고 `PUT /v1/services/<id>/env-vars/ASSEMBLY_API_KEY`로 넣은 뒤 재배포한다. 2026-11-24 설정, 첫 수집에서 신규 652건 |
 | `Web__Origins` | Render | CORS 허용 오리진(쉼표 구분) | Vercel web 주소. 기본값은 `http://localhost:3000` |
 | `MIGRATE_ON_STARTUP` | Render | 시작 시 EF 마이그레이션 적용 | `true` (render.yaml이 설정) |
 | `DEMO_SEED_ON_STARTUP` | Render | 재현 실행이 하나도 없으면 시작 시 시드 | `true` (render.yaml이 설정) |
