@@ -19,6 +19,7 @@ import { AiTrail } from "@/components/AiTrail";
 import { AiLabel } from "@/components/ds/AiLabel";
 import { aiExplain, findStage, isAiProvider } from "@/lib/aiTrail";
 import { ReviewChat } from "@/components/ReviewChat";
+import { suggestQuestions } from "@/lib/reviewChat";
 import { SourceLabel, StatusLozenge } from "@/components/ds/badges";
 import { Callout } from "@/components/ds/Callout";
 import { SplitPane } from "@/components/ds/SplitPane";
@@ -364,7 +365,28 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
         <Callout tone="info">파트너는 변호사가 적발을 확인하고 승인한 초안만 최종 승인해요. 이 초안은 변호사 결정을 기다리고 있어요.</Callout>
       )}
 
-      {role === "lawyer" && <ReviewChat reviewId={review.id} evidence={review.evidence} />}
+      {role === "lawyer" && (
+        <ReviewChat
+          reviewId={review.id}
+          evidence={review.evidence}
+          suggestions={suggestQuestions({
+            flaggedSentences: attention.flaggedSentences,
+            firstArticle: review.oldNew[0]?.articleNo ?? null,
+            hasDraft: draft != null,
+          })}
+          // 분할 화면에서는 답의 인용이 근거 패널을 바꾼다(review-chat-ux RC-04). 좁은 화면은 칩 팝오버.
+          onCitation={
+            split
+              ? (id) => {
+                  setSentence(null);
+                  setEvidenceId(id);
+                  document.getElementById("evidence-panel")?.scrollIntoView({ block: "start", behavior: "smooth" });
+                }
+              : undefined
+          }
+          selectedEvidence={split ? evidenceId : null}
+        />
+      )}
     </div>
   );
 }

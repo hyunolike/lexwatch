@@ -27,6 +27,10 @@ _LEGAL_ADVICE = re.compile(
 )
 # Only words that are specific to law amendments; generic words (근거, 규정, 변경 ...) do not open the scope.
 _DOMAIN = re.compile(r"법령|법률|개정|조문|조항|신구|시행|공포|제\s*\d+\s*조")
+# Questions about this review's own draft ("영향 검토 초안 문제점 요약해줘") are the assistant's job.
+# A draft word alone is not enough ("초안 말고 시 써줘"): it must come with a review action.
+_DRAFT = re.compile(r"초안|검토|확인\s*필요|인용|적발|문장")
+_REVIEW_ACTION = re.compile(r"요약|정리|문제|쟁점|오류|틀린|맞는지|다른지|빠진|누락|근거|확인|설명|비교")
 _STOP = {
     "무엇", "어떻", "어떤", "알려", "설명", "대해", "해줘", "주세", "있나", "있는", "이란", "어때", "무슨", "이거", "저거",
     "그럼", "그리고", "그런데", "하는", "되는", "에서", "으로", "까요", "인가", "인지", "에게", "대한", "관련", "경우",
@@ -57,7 +61,7 @@ def check_input(question: str, evidence: Sequence[Evidence], prior_user_turns: S
             return "injection"
         if _LEGAL_ADVICE.search(text):
             return "legal_advice"
-    if _DOMAIN.search(question):
+    if _DOMAIN.search(question) or (_DRAFT.search(question) and _REVIEW_ACTION.search(question)):
         return None
     ev = _tokens(" ".join(f"{e.title} {e.body}" for e in evidence))
     return None if len(_tokens(question) & ev) >= MIN_OVERLAP else "out_of_scope"
