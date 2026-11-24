@@ -73,19 +73,22 @@ LexWatch는 사건을 처리하는 본업이 아니라 **법령 개정을 지켜
 | 승인 대기함 | 초안 상세 |
 | :---: | :---: |
 | ![승인 대기함](docs/screenshots/01-approval-queue.png) | ![초안 상세](docs/screenshots/02-draft-detail.png) |
-| 실무그룹별 초안을 모아 크리틱 적발이 있는 초안을 먼저 보여 줍니다. 그룹 관련성은 숫자와 막대로 봅니다. | 맨 위에 "이 초안이 만들어진 과정"을 AI, 규칙, 사람으로 나눠 보이고, 문장마다 근거와 크리틱 사유가 붙습니다. |
+| 실무그룹별 초안을 모아 크리틱 적발이 있는 초안을 먼저 보여 줍니다. `j`/`k`로 행을 옮기고 `⌘K`로 검토를 찾습니다. | 넓은 화면에서는 초안과 근거 패널을 나란히 봅니다. 문장이나 인용을 고르면 오른쪽에 근거 원문과 이어지는 신구조문이 나오고, 문장마다 "검사 통과, 확인 필요, 검사 전"이 붙습니다. |
 | **근거 바로 보기** | **AI 라벨** |
 | ![인용 근거 팝오버](docs/screenshots/05-citation-popover.png) | ![AI 라벨 설명](docs/screenshots/08-ai-label.png) |
-| 인용 칩을 누르면 근거 제목과 본문 앞부분, 원문 링크가 뜹니다. 근거가 없는 인용은 경고 모양이 됩니다. | AI가 만든 초안, 판정, 답변에 붙은 라벨을 누르면 쓴 모델, AI에 보낸 근거 수, 한계가 뜹니다. |
+| 인용 칩에 마우스를 올리면 근거 제목과 본문 앞부분, 원문 링크를 미리 봅니다. 근거가 없는 인용은 경고 모양이 됩니다. | AI가 만든 초안, 판정, 답변에 붙은 라벨을 누르면 쓴 모델, AI에 보낸 근거 수, 한계가 뜹니다. |
 | **승인 확인** | **알림함** |
 | ![승인 확인 대화상자](docs/screenshots/06-approve-dialog.png) | ![알림함](docs/screenshots/04-demo-inbox.png) |
-| 승인과 수정 후 승인은 어느 그룹 알림함으로 발송되는지 확인한 뒤에 진행됩니다. | 승인된 그룹의 안내문이 도착합니다. 외부로 나가는 실제 발송은 없습니다. |
+| 승인과 수정 후 승인은 어느 그룹 알림함으로 발송되는지 확인한 뒤에 진행됩니다. 단축키 `a`도 바로 승인하지 않고 이 창을 엽니다. | 승인된 그룹의 안내문이 도착합니다. 외부로 나가는 실제 발송은 없습니다. |
 | **실행 타임라인** | **운영 현황** |
 | ![실행 타임라인](docs/screenshots/03-run-timeline.png) | ![운영 현황](docs/screenshots/10-ops.png) |
 | 단계마다 시작 시각과 소요 시간을 막대로 그립니다. 실패와 오류 코드, 다시 시도한 기록, 가장 오래 걸린 단계가 보이고, 몇 시간 쉰 구간은 접습니다. | 관리자는 실행 수, 다시 시도한 끝의 단계 실패율, AI 공급자 비율, 적발 있는 초안 비율, 결정 대기를 한 화면에서 봅니다. |
 | **법안 레이더** | **AI 사용 기록** |
 | ![법안 레이더](docs/screenshots/09-bill-radar.png) | ![AI 사용 기록](docs/screenshots/11-ai-usage.png) |
 | 실무그룹이 지켜보는 법률의 국회 발의 개정안이 접수부터 의결까지 어디에 있는지 보입니다. | 검토 보조 요청마다 결과, 모델, 소요 시간, 가린 민감정보 종류와 건수만 남깁니다. 질문과 답변은 남기지 않습니다. |
+| **다크 모드** | |
+| ![다크 모드](docs/screenshots/12-dark-mode.png) | |
+| 시스템 설정을 따르고 머리의 메뉴에서 밝게, 어둡게를 고릅니다. 두 테마 모두 색 대비를 테스트가 검사합니다. | |
 
 ### 3분 사용 가이드
 
@@ -307,7 +310,7 @@ LexWatch는 사건을 처리하는 본업이 아니라 **법령 개정을 지켜
 - **녹화 테스트**: 재구성한 응답이나 가짜 전송 계층으로 우리 코드의 처리를 확인함.
 - **문서만**: 절차나 설정을 적기만 했음.
 
-AI 서비스는 값이 있는 NVIDIA NIM, Cloudflare Workers AI(무료 하루 10,000 Neurons), Groq(무료 등급)를 이 순서로 묶어, 앞 공급자가 한도 초과나 장애로 실패하면 같은 요청을 다음으로 넘깁니다. Cloudflare와 Groq는 같은 `gpt-oss-120b`라 넘어가도 판정 성향이 비슷합니다. 모두 없으면 대체 구현을 씁니다([교체 명세](docs/features/llm-failover/spec.md)). 화면의 출처 라벨은 NVIDIA(보라), Cloudflare(자주), Groq(청록), 대체 구현(남회색), 재현(점선)으로 처리한 주체를 그대로 보여 주며, 다른 공급자를 NVIDIA라고 표시하지 않습니다. Cloudflare Workers AI는 처리한 고객 데이터를 학습에 쓰지 않는다고 공식 문서에 밝히고 있습니다([명세](docs/features/cloudflare-ai/spec.md)). 근거와 한계는 [docs/nvidia-integration.md](docs/nvidia-integration.md), 사내 배포 절차는 [docs/on-prem-nim.md](docs/on-prem-nim.md)(실행 검증하지 않음)에 있습니다.
+AI 서비스는 값이 있는 NVIDIA NIM, Cloudflare Workers AI(무료 하루 10,000 Neurons), Groq(무료 등급)를 이 순서로 묶어, 앞 공급자가 한도 초과나 장애로 실패하면 같은 요청을 다음으로 넘깁니다. Cloudflare와 Groq는 같은 `gpt-oss-120b`라 넘어가도 판정 성향이 비슷합니다. 모두 없으면 대체 구현을 씁니다([교체 명세](docs/features/llm-failover/spec.md)). 화면의 출처 라벨은 "누가 만들었나"를 AI(보라), 규칙(청록), 사람(자주), 재현(점선) 네 종류로 보이고, AI 라벨 글자에 처리한 공급자(`AI NVIDIA`, `AI Cloudflare`, `AI Groq`)를 적어 다른 공급자를 NVIDIA라고 표시하지 않습니다. Cloudflare Workers AI는 처리한 고객 데이터를 학습에 쓰지 않는다고 공식 문서에 밝히고 있습니다([명세](docs/features/cloudflare-ai/spec.md)). 근거와 한계는 [docs/nvidia-integration.md](docs/nvidia-integration.md), 사내 배포 절차는 [docs/on-prem-nim.md](docs/on-prem-nim.md)(실행 검증하지 않음)에 있습니다.
 
 <br>
 
@@ -315,19 +318,19 @@ AI 서비스는 값이 있는 NVIDIA NIM, Cloudflare Workers AI(무료 하루 10
 
 ![디자인 시스템](docs/screenshots/07-design-system.png)
 
-로펌 직원이 긴 법령 문장을 오래 읽고, 근거를 확인한 뒤 승인하는 흐름에 맞춘 디자인 시스템입니다. 앱의 [`/design-system`](https://lexwatch-web.netlify.app/design-system) 화면에서 토큰과 부품을 직접 눌러 볼 수 있습니다.
+로펌 직원이 긴 법령 문장을 오래 읽고, 근거를 확인한 뒤 승인하는 흐름에 맞춘 디자인 시스템입니다. v2(2026-11-25)에서 Harvey, Legora 같은 법률 AI 도구의 절제된 편집 디자인으로 바꾸고 다크 모드를 넣었습니다. 앱의 [`/design-system`](https://lexwatch-web.netlify.app/design-system) 화면에서 두 테마의 토큰과 부품을 나란히 볼 수 있습니다.
 
-- **출처는 판정이 아니다**: NVIDIA(보라), 대체 구현(남회색), 재현(점선 테두리) 라벨은 성공과 실패를 뜻하는 초록과 빨강을 쓰지 않습니다. IBM Carbon과 Atlassian이 분류 색과 상태 색을 나누는 원칙을 따랐습니다.
-- **대비는 테스트가 지킨다**: 색 토큰의 원본은 `web/src/styles/tokens.css` 하나이고, 테스트가 32개 색 쌍을 WCAG 2.2 AA로 검사합니다. Tailwind 기본 팔레트를 비워 토큰 밖의 색은 쓸 수 없습니다.
-- **읽는 글은 크게**: Pretendard, 읽는 글 16px과 줄높이 1.75. KRDS(한국 정부 디자인 시스템)의 본문 기준을 따랐습니다.
+- **누가 썼나와 맞나를 나눈다**: 출처 라벨(AI, 규칙, 사람, 재현)은 상태 색을 쓰지 않는 분류이고, 문장별 검증 상태(검사 통과, 확인 필요, 검사 전)는 다른 부품입니다. "검사 통과는 맞다는 뜻이 아니에요"를 화면에 적습니다.
+- **대비는 테스트가 지킨다**: 색 값은 `web/src/styles/tokens.css`의 밝은 블록과 어두운 블록에만 있고, 화면 코드는 테마를 모릅니다. 테스트가 두 테마의 색 쌍을 WCAG 2.2 AA로 검사하고, 빌드 뒤 최종 CSS도 다시 확인합니다.
+- **문서처럼 읽힌다**: 제목은 Noto Serif KR, 본문은 Pretendard 17px과 줄높이 30px, 한 줄 최대 40em.
+- **키보드로 반복 작업**: `j`/`k`, `]`/`[`, `a`, `e`, `r`, `?`, `⌘K` 명령 팔레트. 글자 키는 물리 키로 판정해 한글 입력기가 켜져 있어도 동작하고, 입력창과 한글 조합 중에는 무시합니다.
 - **영어 상태값을 내보내지 않는다**: 백엔드 열거형을 한국어 라벨로 바꾸고, 테스트가 `Enums.cs`를 읽어 빠진 라벨을 잡습니다.
-- **키보드만으로 승인까지**: 모든 버튼에 보이는 포커스 링이 있고, 대화상자와 팝오버는 Esc로 닫히며 포커스가 돌아옵니다.
 
 | <img src="web/public/mascot/lex-empty-queue.webp" width="120" alt=""> | <img src="web/public/mascot/lex-empty-inbox.webp" width="120" alt=""> | <img src="web/public/mascot/lex-waking.webp" width="120" alt=""> | <img src="web/public/mascot/lex-error.webp" width="120" alt=""> |
 | :---: | :---: | :---: | :---: |
 | 승인 대기 없음 | 알림 없음 | 서버 깨우는 중 | 불러오기 실패 |
 
-마스코트 **렉스**는 매일 아침 개정을 지켜보는 부엉이입니다. 빈 화면, 대기, 오류, 헤더 로고처럼 여유 있는 순간에만 나오고, 승인 버튼과 초안 본문, 신구조문 옆에는 나오지 않습니다. 명세, 설계, 외부 조사, 설계 검토 기록은 [docs/features/design-system/](docs/features/design-system/)에 있습니다.
+마스코트 **렉스**는 매일 아침 개정을 지켜보는 부엉이입니다. v2부터 헤더는 평면 로고를 쓰고, 렉스는 빈 화면과 잠든 서버를 깨우는 대기 화면, 오류 화면에서만 120px 이하로 나옵니다. 서버가 깨어 있는데 응답이 늦으면 렉스 대신 스켈레톤을 보입니다. v2의 명세, 설계, 외부 조사, EGM 검토 기록은 [docs/features/design-system-v2/](docs/features/design-system-v2/)에, v1은 [docs/features/design-system/](docs/features/design-system/)에 있습니다.
 
 <br>
 
@@ -357,10 +360,10 @@ docker compose up --build          # 데이터 볼륨까지 지우려면 docker 
 ### 테스트
 
 ```bash
-cd ai && uv run pytest                      # AI 서비스 122건
-cd web && pnpm test                         # 화면 192건(토큰 대비, 라벨, 신구 대조, 과정 띠, 타임라인 배치, 운영 현황 포함)
+cd ai && uv run pytest                      # AI 서비스 124건
+cd web && pnpm test                         # 화면 348건(두 테마 대비, 라벨, 출처, 신구 대조, 근거 연결, 단축키, 테마 스크립트 포함)
 export DOTNET_ROOT=$HOME/.dotnet PATH=$HOME/.dotnet:$PATH
-make test-backend                           # .NET 305건, Testcontainers라 Docker 필요
+make test-backend                           # .NET 317건, Testcontainers라 Docker 필요
 make eval-critic                            # 크리틱 평가, 결과를 eval/results에 저장
 ```
 
