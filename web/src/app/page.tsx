@@ -9,6 +9,7 @@ import { CARD, EmptyState, PageHeader } from "@/components/ds/layout";
 import { useRole } from "@/components/RoleSwitch";
 import { WakeGate } from "@/components/WakeGate";
 import { FirstVisitGuide } from "@/components/FirstVisitGuide";
+import { splitForRole } from "@/lib/reviewPresentation";
 
 /** 재현이면 replay 출처를 덧붙인다. */
 const kindsOf = (r: ReviewSummary) =>
@@ -39,7 +40,7 @@ function Row({ r }: { r: ReviewSummary }) {
   );
 }
 
-function Queue({ items }: { items: ReviewSummary[] }) {
+function Queue({ items, role }: { items: ReviewSummary[]; role: string }) {
   if (items.length === 0)
     return (
       <EmptyState
@@ -48,8 +49,10 @@ function Queue({ items }: { items: ReviewSummary[] }) {
         description="새 개정이 수집되면 실무그룹별 초안이 이곳에 모여요."
       />
     );
+  const { mine, rest } = splitForRole(items, role);
   const groups = new Map<string, ReviewSummary[]>();
-  for (const r of items) groups.set(r.groupName, [...(groups.get(r.groupName) ?? []), r]);
+  if (mine.length > 0) groups.set("파트너 결정 대기", mine);
+  for (const r of rest) groups.set(r.groupName, [...(groups.get(r.groupName) ?? []), r]);
   // 크리틱 적발이 있는 행을 먼저 보여 준다(DS-11).
   const ordered = (rows: ReviewSummary[]) => [...rows].sort((a, b) => b.findingCount - a.findingCount);
   return (
@@ -84,7 +87,7 @@ export default function Home() {
       <WakeGate<ReviewSummary[]> key={role} label="승인 대기함" load={() => apiFetch<ReviewSummary[]>("/api/reviews")}>
         {(res) =>
           Array.isArray(res.data) ? (
-            <Queue items={res.data} />
+            <Queue items={res.data} role={role} />
           ) : (
             <Callout tone="danger">목록을 불러오지 못했어요.</Callout>
           )

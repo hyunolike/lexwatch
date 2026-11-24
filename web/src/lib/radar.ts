@@ -49,3 +49,21 @@ export function formatDay(date: string | null): string {
   const [y, m, d] = date.split("-").map(Number);
   return `${y}. ${m}. ${d}.`;
 }
+
+export const RADAR_FULL_LIMIT = 1000;
+
+/** 탭 숫자. 서버가 센 전체 건수가 있으면 그것을, 없으면(옛 응답) 받은 목록의 건수를 쓴다. */
+export function tabCount(
+  totals: { all: number; byGroup: Record<string, number> } | undefined,
+  group: string,
+  received: number,
+): number {
+  if (!totals) return received;
+  return group === "all" ? totals.all : (totals.byGroup[group] ?? received);
+}
+
+/** 목록이 잘렸으면 안내할 문장. 잘리지 않았으면 null. */
+export function truncationNote(totals: { all: number; shown: number } | undefined): string | null {
+  if (!totals || totals.shown >= totals.all) return null;
+  return `최근 움직임 순으로 ${totals.shown}건만 보여요. 전체는 ${totals.all}건이에요.`;
+}

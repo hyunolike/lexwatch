@@ -148,6 +148,24 @@ public class CriticTests
     public void Ratio_digits_are_not_reused_as_periods_or_amounts() =>
         Assert.DoesNotContain(Src("100분의 50 이상 가산한다.", "100분의 50 이상"), x => x.RuleId == "C2-MISMATCH");
 
+    private const string Hours = "제50조(근로시간) ① 1주 간의 근로시간은 휴게시간을 제외하고 40시간을 초과할 수 없다. 제53조 ① 1주 간에 12시간을 한도로 근로시간을 연장할 수 있다.";
+
+    [Theory]
+    [InlineData("연장근로 한도는 주 16시간으로 늘어난다.", "16시간")]
+    [InlineData("1주 근로시간 한도는 48시간이다.", "48시간")]
+    [InlineData("2주 단위로 평균한다.", "2주")]
+    public void Hours_and_weeks_not_in_evidence_are_flagged(string sentence, string display) =>
+        Assert.Contains(Src(sentence, Hours), x => x.RuleId == "C2-MISMATCH" && x.Message.EndsWith(display));
+
+    [Theory]
+    [InlineData("1주 근로시간은 40시간을 넘을 수 없고 연장은 12시간까지다.")]
+    [InlineData("1주 40 시간 한도다.")]
+    public void Hours_and_weeks_in_evidence_pass(string sentence) => Assert.Empty(Src(sentence, Hours));
+
+    [Fact]
+    public void Housing_count_is_not_a_week() =>
+        Assert.Empty(Src("3주택 이상 보유자가 대상이다.", "다주택자"));
+
     [Fact]
     public void Clean_memo_has_no_findings()
     {

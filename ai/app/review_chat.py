@@ -27,6 +27,8 @@ DEADLINE_S = 30.0
 CHAT_TOOLS = {"get_article", "compare_old_new"}
 KEYLESS_ANSWER = "이 환경에서는 검토 보조가 NVIDIA 키가 있어야 동작해요. 키가 없어 답하지 않았어요."
 KEYLESS_PROVIDER = ProviderInfo(name="no-key", kind="fallback")
+# Input rails refuse before any model call, so the answer must not carry the model's label.
+RAIL_PROVIDER = ProviderInfo(name="guardrail", kind="fallback")
 _now = time.monotonic
 
 SYSTEM = """당신은 법령 개정 검토를 돕는 보조자입니다. 변호사가 초안 메모를 검토할 때 근거를 설명합니다.
@@ -34,6 +36,8 @@ SYSTEM = """당신은 법령 개정 검토를 돕는 보조자입니다. 변호�
 - 아래 '근거 목록'에 있는 내용만으로 답한다. 목록 밖의 지식, 법률 자문, 적용 여부 단정은 하지 않는다.
 - 필요하면 get_article, compare_old_new로 조문을 더 확인할 수 있다(합쳐 4회까지).
 - citations에는 '근거 목록'에 있는 ID만 담는다. 모든 답은 최소 하나를 인용한다.
+- 근거 조문 하나만 보고 위반 여부나 위반 조문을 단정하지 않는다. 질문에 걸린 다른 조문(예: 연장근로, 경과규정)이 근거 목록에 없으면 "근거 목록에 없어 확인할 수 없어요"라고 밝힌다.
+- 질문에 물음이 여럿이면 하나씩 답한다. 근거 목록에서 답할 수 있는 것(시행일 등)은 빠뜨리지 않고, 답할 수 없는 것은 없다고 말한다.
 - 한국어로, 해요체로 짧게 답한다.
 - JSON만 출력한다: {"answer":"...","citations":["law:..."]}"""
 
@@ -90,7 +94,7 @@ async def review_chat(req: ReviewChatRequest, llm: LLMProvider | None = None) ->
     rail = check_input(req.question, req.evidence, prior_user)
     if rail:
         log.info("review_chat refused rail=%s engine=%s", rail, ENGINE)  # never log the question
-        return _refuse(llm.info)
+        return _refuse(RAIL_PROVIDER)
 
     known = {e.id for e in req.evidence}
     # Tool results may be cited only when they belong to a law already present in the request evidence.

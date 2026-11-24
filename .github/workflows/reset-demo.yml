@@ -3,20 +3,24 @@ name: reset-demo
 on:
   schedule:
     - cron: "0 19 * * *"   # UTC 19:00 = KST 04:00
+    # GitHub 예약 실행은 몇 시간씩 늦거나 건너뛸 때가 있다(2026-11-23은 실행 자체가 없었다).
+    # 초기화는 여러 번 해도 결과가 같으므로 두 시간 뒤에 한 번 더 건다.
+    - cron: "0 21 * * *"   # UTC 21:00 = KST 06:00
   workflow_dispatch:
 
 jobs:
   reset:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     env:
       API_BASE_URL: ${{ secrets.API_BASE_URL }}
       JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
     steps:
       - name: 서버 깨우기 (무료 플랜은 잠들어 있고 첫 요청이 1분쯤 실패할 수 있다)
         run: |
-          curl --silent --show-error --fail --max-time 30 \
-            --retry 12 --retry-delay 15 --retry-all-errors \
+          # 깨는 데 30초를 넘길 때가 있다. 30초에 끊으면 매번 처음부터 기다리게 되어 2026-11-24에는 9분 내내 실패했다.
+          curl --silent --show-error --fail --max-time 90 \
+            --retry 10 --retry-delay 20 --retry-all-errors \
             "$API_BASE_URL/health"
 
       - name: 데모 초기화

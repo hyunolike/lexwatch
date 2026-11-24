@@ -42,3 +42,15 @@ export function markDone(state: GuideState, step: StepId): GuideState {
 export function progress(state: GuideState): { done: number; total: number } {
   return { done: state.done.length, total: STEP_IDS.length };
 }
+
+/** 안내 문단 끝에 붙는 현재 역할 설명. 역할마다 할 수 있는 일이 달라 문장도 다르다. */
+export function roleSentence(role: Role): string {
+  switch (role) {
+    case "admin":
+      return "지금은 실패한 작업을 확인하는 관리자 역할로 보고 있어요. 승인은 변호사 역할에서 해요.";
+    case "partner":
+      return "지금은 파트너 역할로 보고 있어요. 변호사가 적발을 확인하고 승인한 초안을 최종 승인하거나 돌려보내요.";
+    default:
+      return "지금은 초안을 승인하는 변호사 역할로 보고 있어요.";
+  }
+}

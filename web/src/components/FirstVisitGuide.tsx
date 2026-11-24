@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { Circle, CircleCheck, X } from "lucide-react";
-import { progress, type StepId } from "@/lib/guide";
+import { progress, roleSentence, type StepId } from "@/lib/guide";
 import { guideStore, type GuideView } from "@/lib/guideStore";
 import { CARD } from "@/components/ds/layout";
 import { switchRole, useRole } from "@/components/RoleSwitch";
@@ -92,9 +92,7 @@ export function FirstVisitGuide() {
         매일 공포되는 법령 개정을 모아, AI가 각 담당 팀(실무그룹)에 미칠 영향을 정리한 초안을 써요. 자동 검사가 근거와 맞지
         않는 문장을 표시하고, 변호사가 근거를 대조해 승인해야 팀에 알림이 가요.{" "}
         <strong className="font-semibold text-ink">AI 초안은 틀릴 수 있고, 자동 검사도 모든 오류를 잡지는 못해요.</strong>{" "}
-        {role === "admin"
-          ? "지금은 실패한 작업을 확인하는 관리자 역할로 보고 있어요. 승인은 변호사 역할에서 해요."
-          : "지금은 초안을 승인하는 변호사 역할로 보고 있어요."}
+        {roleSentence(role)}
       </p>
 
       <ol className="mt-4 grid gap-3 md:grid-cols-3">

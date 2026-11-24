@@ -439,7 +439,7 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
     private WebApplicationFactory<Program> ChatFactory(AiStub ai)
     {
         Environment.SetEnvironmentVariable("AI_BASE_URL", ai.Server.Url);
-        return Factory().WithWebHostBuilder(b => b.UseSetting("JOB_TOKEN", "secret-token"));
+        return Factory().WithWebHostBuilder(b => b.UseSetting("JOB_TOKEN", "secret-token").UseSetting("Chat:RetryDelayMs", "0"));
     }
 
     [Fact]

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { billBadges, billsOfGroup, formatDay, stageStep } from "./radar";
+import { billBadges, billsOfGroup, formatDay, stageStep, tabCount, truncationNote } from "./radar";
 import { statusLabel } from "./labels";
 
 const RULES = path.resolve(__dirname, "../../../backend/src/LexWatch.Api/Radar/BillRules.cs");
@@ -50,4 +50,19 @@ describe("billsOfGroup", () => {
 it("formatDay", () => {
   expect(formatDay("2026-11-03")).toBe("2026. 11. 3.");
   expect(formatDay(null)).toBe("");
+});
+
+describe("tabCount, truncationNote", () => {
+  const totals = { all: 652, shown: 200, limit: 200, byGroup: { labor: 240, privacy: 200 } };
+  it("uses server totals instead of the truncated list", () => {
+    expect(tabCount(totals, "all", 200)).toBe(652);
+    expect(tabCount(totals, "labor", 75)).toBe(240);
+    expect(tabCount(totals, "finance", 63)).toBe(63);
+    expect(tabCount(undefined, "all", 200)).toBe(200);
+  });
+  it("explains truncation only when the list is cut", () => {
+    expect(truncationNote(totals)).toBe("최근 움직임 순으로 200건만 보여요. 전체는 652건이에요.");
+    expect(truncationNote({ all: 3, shown: 3 })).toBeNull();
+    expect(truncationNote(undefined)).toBeNull();
+  });
 });

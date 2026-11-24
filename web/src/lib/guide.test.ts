@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { INITIAL_GUIDE, markDone, parseGuide, progress, stepForVisit } from "./guide";
+import { INITIAL_GUIDE, markDone, parseGuide, progress, roleSentence, stepForVisit } from "./guide";
 
 describe("parseGuide", () => {
   it.each([null, "", "{", "null", "[]", '"x"', '{"v":2,"dismissed":true,"done":[]}', '{"v":1,"dismissed":"yes","done":[]}', '{"v":1,"dismissed":true}'])(
@@ -43,5 +43,13 @@ describe("markDone, progress", () => {
   it("이미 완료면 같은 객체", () => {
     const s = markDone(INITIAL_GUIDE, "approve");
     expect(markDone(s, "approve")).toBe(s);
+  });
+});
+
+describe("roleSentence", () => {
+  it("describes the role actually selected", () => {
+    expect(roleSentence("partner")).toContain("파트너 역할");
+    expect(roleSentence("lawyer")).toContain("변호사 역할");
+    expect(roleSentence("admin")).toContain("관리자 역할");
   });
 });

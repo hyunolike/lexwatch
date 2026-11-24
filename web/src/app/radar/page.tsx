@@ -4,7 +4,8 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { apiFetch, safeHttpUrl, type ApiError, type Radar, type RadarBill } from "@/lib/api";
 import { groupLabel, statusLabel } from "@/lib/labels";
-import { billBadges, billsOfGroup, formatDay, stageStep } from "@/lib/radar";
+import { RADAR_FULL_LIMIT, billBadges, billsOfGroup, formatDay, stageStep, tabCount, truncationNote } from "@/lib/radar";
+import { Button } from "@/components/ui/Button";
 import { StatusLozenge } from "@/components/ds/badges";
 import { Callout } from "@/components/ds/Callout";
 import { CARD, PageHeader } from "@/components/ds/layout";
@@ -99,7 +100,7 @@ function BillList({ bills, watch, now }: { bills: RadarBill[]; watch: string[]; 
   );
 }
 
-function RadarView({ data }: { data: Radar }) {
+function RadarView({ data, onShowAll }: { data: Radar; onShowAll: (() => void) | null }) {
   // 렌더마다 시계를 읽지 않도록 처음 그릴 때 한 번만 읽는다.
   const [now] = useState(() => Date.now());
   const tabs = [
@@ -120,6 +121,16 @@ function RadarView({ data }: { data: Radar }) {
       {data.sources.assembly === "failing" && (
         <Callout tone="warning">최근 수집이 실패했거나 이틀 넘게 성공하지 못했어요. 목록이 최신이 아닐 수 있어요.</Callout>
       )}
+      {truncationNote(data.totals) && (
+        <Callout tone="info">
+          <span>{truncationNote(data.totals)} </span>
+          {onShowAll && data.totals && data.totals.limit < RADAR_FULL_LIMIT && (
+            <Button variant="secondary" size="sm" onClick={onShowAll}>
+              전부 보기
+            </Button>
+          )}
+        </Callout>
+      )}
       <Tabs
         label="실무 그룹"
         tabs={tabs.map((t) => {
@@ -128,7 +139,7 @@ function RadarView({ data }: { data: Radar }) {
             value: t.value,
             title: (
               <span>
-                {t.title} <span className="tabular-nums text-ink-subtle">{list.length}</span>
+                {t.title} <span className="tabular-nums text-ink-subtle">{tabCount(data.totals, t.value, list.length)}</span>
               </span>
             ),
             panel: <BillList bills={list} watch={t.laws} now={now} />,
@@ -142,6 +153,7 @@ function RadarView({ data }: { data: Radar }) {
 /** 공포 전 법안 레이더(bill-radar). AI 분석 없이 진행 단계만 모아 보고, 공포되면 기존 검토 흐름이 이어받는다. */
 export default function RadarPage() {
   const role = useRole();
+  const [limit, setLimit] = useState<number | null>(null);
   return (
     <div className="space-y-5">
       <PageHeader title="법안 레이더" />
@@ -149,9 +161,17 @@ export default function RadarPage() {
         실무 그룹이 지켜보는 법률의 개정안이 국회에서 어디까지 왔는지 모아 봐요. 아직 확정되지 않은 내용이라 AI 분석과 승인 없이 참고용으로만
         보여 주고, 공포되면 승인 대기함의 검토로 이어져요.
       </p>
-      <WakeGate<Radar | ApiError> key={role} label="법안 레이더" load={() => apiFetch<Radar | ApiError>("/api/radar")}>
+      <WakeGate<Radar | ApiError>
+        key={`${role}-${limit ?? "default"}`}
+        label="법안 레이더"
+        load={() => apiFetch<Radar | ApiError>(limit ? `/api/radar?limit=${limit}` : "/api/radar")}
+      >
         {(res) =>
-          res.status === 200 ? <RadarView data={res.data as Radar} /> : <Callout tone="danger">레이더를 불러오지 못했어요.</Callout>
+          res.status === 200 ? (
+            <RadarView data={res.data as Radar} onShowAll={limit ? null : () => setLimit(RADAR_FULL_LIMIT)} />
+          ) : (
+            <Callout tone="danger">레이더를 불러오지 못했어요.</Callout>
+          )
         }
       </WakeGate>
     </div>

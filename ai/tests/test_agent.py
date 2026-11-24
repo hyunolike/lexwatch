@@ -330,3 +330,9 @@ def test_korean_check_allows_law_names_and_numbers():
     assert loop.is_korean("개인정보 보호법 제29조(안전조치의무)에 따라 접속기록을 보관해야 할 수 있다.")
     assert loop.is_korean("GDPR Article 32와 비교하면 개인정보 보호법 제29조가 더 구체적이다.")
     assert not loop.is_korean("The amendment introduces a mandatory student residence survey (제4조의11).")
+
+
+def test_analyze_prompt_names_group_in_korean():
+    from app.agent.loop import group_name
+    assert group_name("privacy") == "개인정보" and group_name("labor") == "노동"
+    assert group_name("tax") == "tax"  # unknown codes are shown as-is
