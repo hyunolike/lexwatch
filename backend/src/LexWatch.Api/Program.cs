@@ -7,6 +7,7 @@ using LexWatch.Api.Observability;
 using LexWatch.Api.Runs;
 using LexWatch.Api.LawApi;
 using LexWatch.Api.Radar;
+using LexWatch.Api.Ops;
 using LexWatch.Api.Reviews;
 using LexWatch.Api.Retrieval;
 using LexWatch.Api.Workflow.Steps;
@@ -78,6 +79,7 @@ app.MapReviewEndpoints();
 app.MapRunEndpoints();
 app.MapGovernanceEndpoints();
 app.MapRadarEndpoints();
+app.MapOpsEndpoints();
 app.Run();
 
 public partial class Program;
