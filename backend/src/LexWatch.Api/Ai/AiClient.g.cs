@@ -1075,6 +1075,36 @@ namespace LexWatch.Api.Ai
 
     }
 
+    /// <summary>
+    /// One sentence of the draft under review, with its citations and the automatic check findings.
+    /// </summary>
+    [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.8.0.0 (NJsonSchema v11.6.2.0 (Newtonsoft.Json v13.0.0.0))")]
+    public partial class DraftLine
+    {
+
+        [System.Text.Json.Serialization.JsonPropertyName("sentence")]
+        [System.ComponentModel.DataAnnotations.Required(AllowEmptyStrings = true)]
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string Sentence { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("citations")]
+        public System.Collections.Generic.ICollection<string> Citations { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("findings")]
+        [System.ComponentModel.DataAnnotations.MaxLength(10)]
+        public System.Collections.Generic.ICollection<string> Findings { get; set; } = default!;
+
+        private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
+
+        [System.Text.Json.Serialization.JsonExtensionData]
+        public System.Collections.Generic.IDictionary<string, object> AdditionalProperties
+        {
+            get { return _additionalProperties ?? (_additionalProperties = new System.Collections.Generic.Dictionary<string, object>()); }
+            set { _additionalProperties = value; }
+        }
+
+    }
+
     [System.CodeDom.Compiler.GeneratedCode("NJsonSchema", "14.8.0.0 (NJsonSchema v11.6.2.0 (Newtonsoft.Json v13.0.0.0))")]
     public partial class EmbedRequest
     {
@@ -1363,6 +1393,10 @@ namespace LexWatch.Api.Ai
         [System.Text.Json.Serialization.JsonPropertyName("history")]
         [System.ComponentModel.DataAnnotations.MaxLength(6)]
         public System.Collections.Generic.ICollection<ChatTurn> History { get; set; } = default!;
+
+        [System.Text.Json.Serialization.JsonPropertyName("draft")]
+        [System.ComponentModel.DataAnnotations.MaxLength(40)]
+        public System.Collections.Generic.ICollection<DraftLine> Draft { get; set; } = default!;
 
         private System.Collections.Generic.IDictionary<string, object>? _additionalProperties;
 

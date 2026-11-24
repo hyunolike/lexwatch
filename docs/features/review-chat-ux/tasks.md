@@ -7,6 +7,7 @@
 | RC-01 | `ReviewChat` 머리와 카드 띠 | 화면 확인(밝게, 어둡게) | 완료 |
 | RC-02 | `reviewChat.suggestQuestions()`, 추천 칩 | `reviewChat.test.ts` | 완료 |
 | RC-03 | `TypingDots`, 답 나타남 | 화면 확인, 움직임 줄이기 | 완료 |
+| RC-05 | AI `ReviewChatRequest.draft`(`DraftLine`), `draft_block`, 프롬프트 규칙 두 줄. 백엔드가 최신 초안과 적발을 가려 보낸다. `gen-ai-client.sh`로 클라이언트 재생성 | `test_draft_and_findings_reach_the_model_as_labelled_data`, `test_missing_draft_is_stated_to_the_model`, `Chat_sends_the_draft_and_its_findings_to_the_ai` | 완료 |
 | RC-04 | 답 인용을 `CitationChip`으로, `ReviewClient`가 분할 화면 선택 함수를 넘김 | 화면 확인 | 완료 |
 
 ## 검증 기록 (2026-11-25)

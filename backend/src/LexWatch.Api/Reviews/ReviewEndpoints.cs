@@ -312,11 +312,26 @@ public static class ReviewEndpoints
                             ? SensitiveDataMasker.Mask(h.Content![..Math.Min(h.Content!.Length, 8000)], gov.ClientNames).Masked
                             : h.Content!, 2000),
                     }).ToList();
+                // 검토 중인 초안과 자동 검사 결과를 함께 보낸다. 없으면 "초안 문제점 요약" 같은 질문에 답할 수 없다(review-chat-ux RC-05).
+                // 변호사가 고친 문장에 고객사 이름이 들어갈 수 있으므로 질문과 같이 가린다.
+                var draftLines = new List<DraftLine>();
+                var latest = await LatestDraftAsync(db, id, ct);
+                if (latest is not null)
+                {
+                    var sentences = JsonSerializer.Deserialize<List<MemoSentenceDto>>(latest.SentencesJson, J) ?? [];
+                    var found = await db.CriticFindings.AsNoTracking().Where(f => f.MemoDraftId == latest.Id).ToListAsync(ct);
+                    draftLines = sentences.Take(40).Select((s, i) => new DraftLine
+                    {
+                        Sentence = SensitiveDataMasker.Clip(SensitiveDataMasker.Mask(s.Sentence, gov.ClientNames).Masked, 1000),
+                        Citations = s.Citations.ToList(),
+                        Findings = found.Where(f => f.SentenceIndex == i).Take(10).Select(f => SensitiveDataMasker.Clip(f.Message, 200)).ToList(),
+                    }).ToList();
+                }
                 started = time.GetTimestamp();
                 var chatReq = new ReviewChatRequest
                 {
                     Run_id = review.RunId.ToString(), Question = maskedQuestion,
-                    Evidence = AiMapping.Evidence(evidence), History = history,
+                    Evidence = AiMapping.Evidence(evidence), History = history, Draft = draftLines,
                 };
                 // AI 서비스가 잠들어 있으면 깨는 동안 5xx나 연결 실패가 몇 초 만에 돌아온다. 마감 안에서 다시 시도한다.
                 var outcome = await ChatRetry.RunAsync(
