@@ -24,6 +24,7 @@ public class LexWatchDb(DbContextOptions<LexWatchDb> options) : DbContext(option
     public DbSet<PracticeGroup> PracticeGroups => Set<PracticeGroup>();
     public DbSet<ChatQuota> ChatQuotas => Set<ChatQuota>();
     public DbSet<CollectLog> CollectLogs => Set<CollectLog>();
+    public DbSet<AiUsageLog> AiUsageLogs => Set<AiUsageLog>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -94,6 +95,7 @@ public class LexWatchDb(DbContextOptions<LexWatchDb> options) : DbContext(option
         b.Entity<Approval>(e =>
         {
             e.Property(x => x.DiffJson).HasColumnType("jsonb");
+            e.Property(x => x.FindingsJson).HasColumnType("jsonb");
             e.HasOne<GroupReview>().WithMany().HasForeignKey(x => x.GroupReviewId);
         });
 
@@ -116,5 +118,16 @@ public class LexWatchDb(DbContextOptions<LexWatchDb> options) : DbContext(option
         b.Entity<ChatQuota>(e => e.HasKey(x => new { x.Day, x.IpHash }));
 
         b.Entity<CollectLog>(e => e.HasKey(x => x.Day));
+
+        b.Entity<AiUsageLog>(e =>
+        {
+            e.Property(x => x.Purpose).HasMaxLength(32);
+            e.Property(x => x.ActorRole).HasMaxLength(16);
+            e.Property(x => x.Outcome).HasMaxLength(16);
+            e.Property(x => x.ProviderKind).HasMaxLength(16);
+            e.Property(x => x.ProviderName).HasMaxLength(64);
+            e.Property(x => x.MaskedJson).HasColumnType("jsonb");
+            e.HasIndex(x => x.At);
+        });
     }
 }

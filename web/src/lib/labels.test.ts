@@ -75,3 +75,13 @@ describe("groupLabel, stepLabel", () => {
     expect(REPLAY_NOTE).toContain("재현 예시");
   });
 });
+
+describe("governance labels", () => {
+  it("labels_partner_flow_and_usage_outcomes", () => {
+    expect(statusLabel("review", "AwaitingPartner")).toEqual({ label: "파트너 승인 대기", tone: "warning", known: true });
+    expect(statusLabel("decision", "confirm").label).toBe("파트너 최종 승인");
+    expect(statusLabel("decision", "return").label).toBe("파트너가 돌려보냄");
+    expect(statusLabel("role", "partner").label).toBe("파트너");
+    expect(statusLabel("usage", "unavailable").label).toBe("모델 없음");
+  });
+});

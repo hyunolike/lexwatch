@@ -16,7 +16,7 @@
 | 신뢰도 | 분류 단계가 그룹 관련성을 판단한 확신 정도, 0~1 실수 | `confidence` (없으면 `null`) |
 | 검토 보조 | 검토 상세 화면 아래의 채팅. 그 개정안의 근거 안에서만 답한다 | `ReviewChat.tsx` |
 | 서버 깨우기 | API가 무료 호스팅(Render)에 있어 잠들었다가 첫 요청에 1분쯤 걸려 깨어난다. 그동안 보여 주는 대기 화면 | `WakeGate.tsx` |
-| 역할 | 로그인 없이 "변호사로 보기"(승인 가능)와 "관리자로 보기"(재실행 가능)를 고른다 | `X-Demo-Role` 헤더 |
+| 역할 | 로그인 없이 "변호사로 보기"(승인 가능), "파트너로 보기"(적발이 남은 승인의 최종 승인, [ai-governance](../ai-governance/spec.md)), "관리자로 보기"(재실행, AI 사용 기록)를 고른다 | `X-Demo-Role` 헤더 |
 
 ### 0.2 요구사항 요약 (자세한 수용 기준은 spec.md)
 
@@ -299,11 +299,12 @@ function stepLabel(step: string): string;    // api.ts에서 옮김
 | 영역 | 원래 값 → 라벨 (의미) |
 |---|---|
 | run | Queued 대기(neutral), Running 진행 중(info), InReview 검토 중(info), Completed 완료(success), Failed 실패(danger), ClosedIrrelevant 관련 없음(neutral) |
-| review | Analyzing 분석 중(info), NeedsReview 검토 필요(warning), WaitingApproval 승인 대기(info), Approved 승인(success), Rejected 반려(danger), Notified 알림 발송(success), ClosedIrrelevant 관련 없음(neutral) |
+| review | Analyzing 분석 중(info), NeedsReview 검토 필요(warning), WaitingApproval 승인 대기(info), Approved 승인(success), Rejected 반려(danger), Notified 알림 발송(success), ClosedIrrelevant 관련 없음(neutral), AwaitingPartner 파트너 승인 대기(warning) |
 | step | Pending 대기(neutral), Running 진행 중(info), Succeeded 성공(success), RetryScheduled 재시도 예정(warning), Failed 실패(danger), NeedsReview 검토 필요(warning) |
 | notification | pending 발송 대기(neutral), sent 발송 완료(success) |
-| decision | approve 승인(success), reject 반려(danger) |
-| role | lawyer 변호사(neutral), admin 관리자(neutral) |
+| decision | approve 승인(success), reject 반려(danger), confirm 파트너 최종 승인(success), return 파트너가 돌려보냄(warning) |
+| role | lawyer 변호사(neutral), partner 파트너(neutral), admin 관리자(neutral) |
+| usage | answered 답변(success), refused 거절(warning), unavailable 모델 없음(neutral), failed 실패(danger) |
 | channel | demo_inbox 그룹 알림함(neutral), admin 관리자 알림(neutral) |
 | 실무그룹 | labor 노동, privacy 개인정보, finance 금융 |
 

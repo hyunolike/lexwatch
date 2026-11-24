@@ -30,7 +30,7 @@ const STEPS: { id: StepId; title: ReactNode; body: ReactNode }[] = [
         <Link href="/inbox" className={LINK}>
           알림함
         </Link>
-        에 팀 알림으로 쌓여요.
+        에 팀 알림으로 쌓여요. 적발을 확인하고 승인한 초안은 파트너로 보기에서 최종 승인해야 나가요.
       </>
     ),
   },

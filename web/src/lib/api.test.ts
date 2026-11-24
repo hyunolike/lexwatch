@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiFetch, decisionActions } from "./api";
+import { apiFetch, decisionActions, getRole, maskedSummary } from "./api";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -51,12 +51,69 @@ describe("safeHttpUrl", () => {
   });
 });
 
+describe("decisionActions_partner", () => {
+  const none = { approve: false, edit: false, reject: false, confirm: false, return: false };
+  it("only_partner_decides_awaiting_partner", () => {
+    expect(decisionActions("partner", "AwaitingPartner", true)).toEqual({ ...none, confirm: true, return: true });
+    expect(decisionActions("lawyer", "AwaitingPartner", true)).toEqual(none);
+    expect(decisionActions("admin", "AwaitingPartner", true)).toEqual(none);
+  });
+  it("partner_cannot_decide_lawyer_stage", () => {
+    expect(decisionActions("partner", "WaitingApproval", true)).toEqual(none);
+    expect(decisionActions("partner", "NeedsReview", true)).toEqual(none);
+  });
+});
+
+describe("getRole", () => {
+  it("reads_partner_cookie_and_falls_back_to_lawyer", () => {
+    const doc = { cookie: "" };
+    vi.stubGlobal("document", doc);
+    doc.cookie = "a=1; lw_role=partner";
+    expect(getRole()).toBe("partner");
+    doc.cookie = "lw_role=admin";
+    expect(getRole()).toBe("admin");
+    doc.cookie = "lw_role=intern";
+    expect(getRole()).toBe("lawyer");
+  });
+});
+
+describe("maskedSummary", () => {
+  it("joins_labels_and_skips_zero", () => {
+    expect(maskedSummary({ rrn: 1, client: 2, phone: 0 }, { rrn: "주민등록번호", client: "고객사" })).toBe("주민등록번호 1, 고객사 2");
+    expect(maskedSummary({}, {})).toBe("없음");
+    expect(maskedSummary({ x: 1 }, {})).toBe("x 1");
+  });
+});
+
+describe("submitDecision_governance", () => {
+  it("returns_new_status_and_maps_analysis_in_progress", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "r", status: "AwaitingPartner" }), { status: 200 })));
+    expect(await submitDecision("r", "approve", 1, { acknowledgedFindingCount: 1 })).toEqual({ kind: "ok", status: "AwaitingPartner" });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: "ANALYSIS_IN_PROGRESS", message: "x" }), { status: 409 })),
+    );
+    const out = await submitDecision("r", "confirm", 1, {});
+    expect(out.kind).toBe("error");
+  });
+  it("sends_confirm_and_return_to_their_paths", async () => {
+    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "r", status: "Approved" }), { status: 200 }));
+    vi.stubGlobal("fetch", f);
+    await submitDecision("r", "confirm", 3, {});
+    await submitDecision("r", "return", 4, { comment: "고쳐 주세요" });
+    expect(f.mock.calls[0][0]).toMatch(/\/api\/reviews\/r\/confirm$/);
+    expect(JSON.parse(f.mock.calls[0][1].body)).toEqual({ version: 3 });
+    expect(f.mock.calls[1][0]).toMatch(/\/api\/reviews\/r\/return$/);
+    expect(JSON.parse(f.mock.calls[1][1].body)).toEqual({ version: 4, comment: "고쳐 주세요" });
+  });
+});
+
 describe("submitDecision", () => {
   it("approve_body_carries_editedSentences_when_edited", async () => {
     const fetchMock = vi.fn().mockResolvedValue(Response.json({ id: "1", status: "Approved" }));
     vi.stubGlobal("fetch", fetchMock);
     const edited = [{ sentence: "수정", citations: ["law:L1:제1조"] }];
-    expect(await submitDecision("r1", "approve", 7, { editedSentences: edited })).toEqual({ kind: "ok" });
+    expect(await submitDecision("r1", "approve", 7, { editedSentences: edited })).toEqual({ kind: "ok", status: "Approved" });
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toMatch(/\/api\/reviews\/r1\/approve$/);
     expect(JSON.parse(init.body)).toEqual({ version: 7, editedSentences: edited });
@@ -168,16 +225,73 @@ describe("stepLabel", () => {
 
 describe("decisionActions", () => {
   it("draftless_group_can_only_be_rejected", () => {
-    expect(decisionActions("lawyer", "NeedsReview", false)).toEqual({ approve: false, edit: false, reject: true });
+    expect(decisionActions("lawyer", "NeedsReview", false)).toEqual({ approve: false, edit: false, reject: true, confirm: false, return: false });
   });
   it("group_with_draft_allows_all_three", () => {
-    expect(decisionActions("lawyer", "WaitingApproval", true)).toEqual({ approve: true, edit: true, reject: true });
+    expect(decisionActions("lawyer", "WaitingApproval", true)).toEqual({ approve: true, edit: true, reject: true, confirm: false, return: false });
   });
   it("admin_or_decided_group_gets_nothing", () => {
-    const none = { approve: false, edit: false, reject: false };
+    const none = { approve: false, edit: false, reject: false, confirm: false, return: false };
     expect(decisionActions("admin", "NeedsReview", true)).toEqual(none);
     expect(decisionActions("lawyer", "Approved", true)).toEqual(none);
     expect(decisionActions("lawyer", "Rejected", false)).toEqual(none);
+  });
+});
+
+describe("decisionActions_partner", () => {
+  const none = { approve: false, edit: false, reject: false, confirm: false, return: false };
+  it("only_partner_decides_awaiting_partner", () => {
+    expect(decisionActions("partner", "AwaitingPartner", true)).toEqual({ ...none, confirm: true, return: true });
+    expect(decisionActions("lawyer", "AwaitingPartner", true)).toEqual(none);
+    expect(decisionActions("admin", "AwaitingPartner", true)).toEqual(none);
+  });
+  it("partner_cannot_decide_lawyer_stage", () => {
+    expect(decisionActions("partner", "WaitingApproval", true)).toEqual(none);
+    expect(decisionActions("partner", "NeedsReview", true)).toEqual(none);
+  });
+});
+
+describe("getRole", () => {
+  it("reads_partner_cookie_and_falls_back_to_lawyer", () => {
+    const doc = { cookie: "" };
+    vi.stubGlobal("document", doc);
+    doc.cookie = "a=1; lw_role=partner";
+    expect(getRole()).toBe("partner");
+    doc.cookie = "lw_role=admin";
+    expect(getRole()).toBe("admin");
+    doc.cookie = "lw_role=intern";
+    expect(getRole()).toBe("lawyer");
+  });
+});
+
+describe("maskedSummary", () => {
+  it("joins_labels_and_skips_zero", () => {
+    expect(maskedSummary({ rrn: 1, client: 2, phone: 0 }, { rrn: "주민등록번호", client: "고객사" })).toBe("주민등록번호 1, 고객사 2");
+    expect(maskedSummary({}, {})).toBe("없음");
+    expect(maskedSummary({ x: 1 }, {})).toBe("x 1");
+  });
+});
+
+describe("submitDecision_governance", () => {
+  it("returns_new_status_and_maps_analysis_in_progress", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "r", status: "AwaitingPartner" }), { status: 200 })));
+    expect(await submitDecision("r", "approve", 1, { acknowledgedFindingCount: 1 })).toEqual({ kind: "ok", status: "AwaitingPartner" });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: "ANALYSIS_IN_PROGRESS", message: "x" }), { status: 409 })),
+    );
+    const out = await submitDecision("r", "confirm", 1, {});
+    expect(out.kind).toBe("error");
+  });
+  it("sends_confirm_and_return_to_their_paths", async () => {
+    const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "r", status: "Approved" }), { status: 200 }));
+    vi.stubGlobal("fetch", f);
+    await submitDecision("r", "confirm", 3, {});
+    await submitDecision("r", "return", 4, { comment: "고쳐 주세요" });
+    expect(f.mock.calls[0][0]).toMatch(/\/api\/reviews\/r\/confirm$/);
+    expect(JSON.parse(f.mock.calls[0][1].body)).toEqual({ version: 3 });
+    expect(f.mock.calls[1][0]).toMatch(/\/api\/reviews\/r\/return$/);
+    expect(JSON.parse(f.mock.calls[1][1].body)).toEqual({ version: 4, comment: "고쳐 주세요" });
   });
 });
 

@@ -8,6 +8,7 @@ import {
   submitDecision,
   type ApiError,
   type DecisionFinding,
+  type DecisionKind,
   type EditedSentence,
   type ReviewDetail,
 } from "@/lib/api";
@@ -46,7 +47,9 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
   const kinds =
     review.isReplay && !review.providerKinds.includes("replay") ? [...review.providerKinds, "replay" as const] : review.providerKinds;
 
-  async function decide(kind: "approve" | "reject", acknowledgedFindingCount?: number) {
+  const [returning, setReturning] = useState(false);
+
+  async function decide(kind: DecisionKind, acknowledgedFindingCount?: number) {
     setBusy(true);
     setNotice(null);
     const out = await submitDecision(review.id, kind, review.version, {
@@ -97,6 +100,8 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
           </div>
         </Callout>
       )}
+
+      {review.status === "AwaitingPartner" && <PartnerPanel review={review} />}
 
       {notice && (
         <Callout tone={notice.tone} live>
@@ -170,7 +175,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
                 <ConfirmDialog
                   trigger={<Button variant="danger" disabled={busy}>적발 {pending.length}건을 확인했고 그대로 승인</Button>}
                   title="적발이 남은 채로 승인할까요?"
-                  description={`확인한 적발 ${pending.length}건이 승인 기록에 남고, ${review.groupName} 그룹 알림함으로 안내문이 발송돼요. 발송 뒤에는 되돌릴 수 없어요.`}
+                  description={`확인한 적발 ${pending.length}건이 승인 기록에 남아요. 적발이 남은 초안이라 파트너가 최종 승인해야 ${review.groupName} 그룹 알림함으로 발송돼요.`}
                   confirmLabel="확인했고 승인"
                   onConfirm={() => decide("approve", pending.length)}
                 />
@@ -184,7 +189,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
                 title={shownFindings > 0 ? `확인이 필요한 문장 ${attention.flaggedSentences}개가 남아 있어요` : "승인할까요?"}
                 description={
                   shownFindings > 0
-                    ? `자동 검사 적발 ${shownFindings}건을 확인했다면 승인해 주세요. 확인한 적발 수가 승인 기록에 남고, ${review.groupName} 그룹 알림함으로 안내문이 발송돼요. 발송 뒤에는 되돌릴 수 없어요.`
+                    ? `자동 검사 적발 ${shownFindings}건을 확인했다면 승인해 주세요. 확인한 적발 수가 승인 기록에 남고, 파트너가 최종 승인하면 ${review.groupName} 그룹 알림함으로 발송돼요.`
                     : `${review.groupName} 그룹 알림함으로 안내문이 발송돼요. 발송 뒤에는 되돌릴 수 없어요.`
                 }
                 confirmLabel={shownFindings > 0 ? `적발 ${shownFindings}건 확인하고 승인` : "승인하고 알림 보내기"}
@@ -235,10 +240,84 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
           )}
         </section>
       )}
-      {role === "admin" && <Callout tone="info">관리자는 결과를 볼 수만 있어요. 승인은 변호사로 보기에서 할 수 있어요.</Callout>}
+      {(actions.confirm || actions.return) && (
+        <section aria-label="파트너 결정" className={`${CARD} sticky bottom-4 z-20 space-y-3 p-4 shadow-pop`}>
+          <div className="flex flex-wrap items-center gap-2">
+            <ConfirmDialog
+              trigger={<Button variant="primary" disabled={busy}>최종 승인</Button>}
+              title="최종 승인할까요?"
+              description={`변호사가 확인한 적발을 검토했다면 최종 승인해 주세요. ${review.groupName} 그룹 알림함으로 안내문이 발송되고, 발송 뒤에는 되돌릴 수 없어요.`}
+              confirmLabel="최종 승인하고 알림 보내기"
+              onConfirm={() => decide("confirm")}
+            />
+            <Button variant="danger-ghost" disabled={busy} aria-expanded={returning} onClick={() => setReturning((r) => !r)}>
+              돌려보내기
+            </Button>
+          </div>
+          {returning && (
+            <div className="space-y-2">
+              <label htmlFor="return-reason" className="text-label text-ink">
+                돌려보내는 사유 <span className="text-danger">(필수)</span>
+              </label>
+              <textarea
+                id="return-reason"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={2}
+                className="w-full rounded-md border border-line-strong bg-surface p-2 text-ui text-ink"
+              />
+              <p className="text-caption text-ink-subtle">변호사가 다시 고치거나 반려해요. 다시 승인해도 파트너를 한 번 더 거쳐요.</p>
+              <Button variant="danger" loading={busy} disabled={!comment.trim()} onClick={() => decide("return")}>
+                돌려보내기 확정
+              </Button>
+            </div>
+          )}
+        </section>
+      )}
+      {role === "admin" && (
+        <Callout tone="info">관리자는 결과를 볼 수만 있어요. 승인은 변호사로 보기, 최종 승인은 파트너로 보기에서 할 수 있어요.</Callout>
+      )}
+      {role === "partner" && (review.status === "WaitingApproval" || review.status === "NeedsReview") && (
+        <Callout tone="info">파트너는 변호사가 적발을 확인하고 승인한 초안만 최종 승인해요. 이 초안은 변호사 결정을 기다리고 있어요.</Callout>
+      )}
 
       {role === "lawyer" && <ReviewChat reviewId={review.id} evidence={review.evidence} />}
     </div>
+  );
+}
+
+const KST = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: "Asia/Seoul",
+  month: "long",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/** 파트너 최종 승인 대기 안내(GV-11). 변호사가 승인 때 확인한 적발을 그대로 보여 준다. */
+function PartnerPanel({ review }: { review: ReviewDetail }) {
+  const a = review.lawyerApproval;
+  return (
+    <Callout tone="warning" title="파트너 최종 승인을 기다려요">
+      <div className="mt-1 space-y-2 text-label text-ink-muted">
+        <p>
+          {a ? `변호사가 ${KST.format(new Date(a.decidedAt))}에 자동 검사 적발 ${a.acknowledgedFindingCount}건을 확인하고 승인했어요. ` : ""}
+          적발이 남은 초안은 두 번째 사람이 한 번 더 봐야 알림이 나가요.
+        </p>
+        {a && a.findings.length > 0 && (
+          <ul className="space-y-1 text-ink">
+            {a.findings.map((f, i) => (
+              <li key={i}>
+                <a href={`#draft-sentence-${f.sentenceIndex + 1}`} className="font-semibold underline underline-offset-4">
+                  문장 {f.sentenceIndex + 1}
+                </a>{" "}
+                · 검사 {f.tier}단 · {f.message}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Callout>
   );
 }
 

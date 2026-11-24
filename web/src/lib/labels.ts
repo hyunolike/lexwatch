@@ -4,7 +4,7 @@
  */
 
 export type Tone = "success" | "danger" | "warning" | "info" | "neutral";
-export type Domain = "run" | "review" | "step" | "notification" | "decision" | "role" | "channel";
+export type Domain = "run" | "review" | "step" | "notification" | "decision" | "role" | "channel" | "usage";
 export type StatusLabel = { label: string; tone: Tone; known: boolean };
 
 const TABLE: Record<Domain, Record<string, [string, Tone]>> = {
@@ -24,6 +24,7 @@ const TABLE: Record<Domain, Record<string, [string, Tone]>> = {
     Rejected: ["반려", "danger"],
     Notified: ["알림 발송", "success"],
     ClosedIrrelevant: ["관련 없음", "neutral"],
+    AwaitingPartner: ["파트너 승인 대기", "warning"],
   },
   step: {
     Pending: ["대기", "neutral"],
@@ -40,14 +41,23 @@ const TABLE: Record<Domain, Record<string, [string, Tone]>> = {
   decision: {
     approve: ["승인", "success"],
     reject: ["반려", "danger"],
+    confirm: ["파트너 최종 승인", "success"],
+    return: ["파트너가 돌려보냄", "warning"],
   },
   role: {
     lawyer: ["변호사", "neutral"],
+    partner: ["파트너", "neutral"],
     admin: ["관리자", "neutral"],
   },
   channel: {
     demo_inbox: ["그룹 알림함", "neutral"],
     admin: ["관리자 알림", "neutral"],
+  },
+  usage: {
+    answered: ["답변", "success"],
+    refused: ["거절", "warning"],
+    unavailable: ["모델 없음", "neutral"],
+    failed: ["실패", "danger"],
   },
 };
 

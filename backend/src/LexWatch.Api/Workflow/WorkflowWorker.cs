@@ -219,9 +219,10 @@ public class WorkflowWorker(IServiceScopeFactory scopes, TimeProvider time, ILog
         var openGroup = await db.GroupReviews.AnyAsync(g => g.RunId == run.Id && !TerminalReviews.Contains(g.Status), ct);
         if (openGroup)
         {
-            // 남은 단계가 없고 열린 그룹이 전부 결정 대기면 변호사를 기다리는 중이다(재실행 뒤 Running으로 남지 않게).
+            // 남은 단계가 없고 열린 그룹이 전부 사람 결정 대기(파트너 최종 승인 포함, GV-12)면 변호사를 기다리는 중이다(재실행 뒤 Running으로 남지 않게).
             var allDecidable = !await db.GroupReviews.AnyAsync(g => g.RunId == run.Id && !TerminalReviews.Contains(g.Status)
-                && g.Status != ReviewStatus.WaitingApproval && g.Status != ReviewStatus.NeedsReview, ct);
+                && g.Status != ReviewStatus.WaitingApproval && g.Status != ReviewStatus.NeedsReview
+                && g.Status != ReviewStatus.AwaitingPartner, ct);
             if (allDecidable && run.Status == RunStatus.Running) run.Status = RunStatus.InReview;
             return;
         }

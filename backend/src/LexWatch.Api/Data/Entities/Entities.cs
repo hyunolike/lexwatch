@@ -133,6 +133,8 @@ public class Approval
     public DateTimeOffset DecidedAt { get; set; }
     /// <summary>승인 때 변호사가 확인한 적발 수(승인 직전 재검사 기준). 반려와 이 열 이전 기록은 null.</summary>
     public int? AcknowledgedFindingCount { get; set; }
+    /// <summary>승인 때 재검사가 찾은 적발 목록([{sentenceIndex,tier,ruleId,message}]). 파트너가 무엇을 확인할지 고정한다. 적발 0이면 null.</summary>
+    public string? FindingsJson { get; set; }
 }
 
 public class Notification
@@ -168,4 +170,23 @@ public class CollectLog
     public DateOnly Day { get; set; }
     public int ItemCount { get; set; }
     public DateTimeOffset At { get; set; }
+}
+
+/// <summary>
+/// AI 사용 기록(ai-governance GV-05). 질문, 답변, IP는 두지 않는다. 검토가 지워져도 남도록 외래키는 없다.
+/// </summary>
+public class AiUsageLog
+{
+    public Guid Id { get; set; }
+    public DateTimeOffset At { get; set; }
+    public string Purpose { get; set; } = "";
+    public Guid? GroupReviewId { get; set; }
+    public string ActorRole { get; set; } = "";
+    /// <summary>answered, refused, unavailable, failed</summary>
+    public string Outcome { get; set; } = "";
+    public string? ProviderKind { get; set; }
+    public string? ProviderName { get; set; }
+    public int DurationMs { get; set; }
+    /// <summary>질문에서 가린 종류별 건수. {"rrn":1}</summary>
+    public string MaskedJson { get; set; } = "{}";
 }

@@ -1,7 +1,16 @@
 "use client";
 import { useState } from "react";
 import { apiFetch, type ApiError, type EvidenceItem } from "@/lib/api";
-import { MAX_QUESTION_CHARS, mapChatResult, toHistory, type ChatMessage, type ChatResponse } from "@/lib/reviewChat";
+import { ShieldCheck } from "lucide-react";
+import {
+  MAX_QUESTION_CHARS,
+  mapChatResult,
+  maskNotice,
+  maskedUserTurn,
+  toHistory,
+  type ChatMessage,
+  type ChatResponse,
+} from "@/lib/reviewChat";
 import { SourceLabel } from "@/components/ds/badges";
 import { CARD } from "@/components/ds/layout";
 import { Button } from "@/components/ui/Button";
@@ -17,7 +26,8 @@ export function ReviewChat({ reviewId, evidence }: { reviewId: string; evidence:
     const q = question.trim();
     if (!q || busy) return;
     const history = toHistory(messages);
-    setMessages((m) => [...m, { role: "user", text: q, citations: [], refused: false, providerKind: null, error: false }]);
+    const mine: ChatMessage = { role: "user", text: q, citations: [], refused: false, providerKind: null, error: false };
+    setMessages((m) => [...m, mine]);
     setQuestion("");
     setBusy(true);
     const res = await apiFetch<ChatResponse | ApiError>(`/api/reviews/${reviewId}/chat`, {
@@ -25,13 +35,17 @@ export function ReviewChat({ reviewId, evidence }: { reviewId: string; evidence:
       body: JSON.stringify({ question: q, history }),
     });
     setBusy(false);
-    setMessages((m) => [...m, mapChatResult(res, evidence)]);
+    // 서버가 가린 질문으로 내 말풍선을 바꾼다. 화면과 다음 대화 기록에 원문이 남지 않는다(GV-04).
+    setMessages((m) => [...m.map((x) => (x === mine ? maskedUserTurn(mine, res) : x)), mapChatResult(res, evidence)]);
   }
 
   return (
     <section className={`${CARD} space-y-3 p-4`} aria-label="검토 보조">
       <h2 className="text-title-sm text-ink">검토 보조</h2>
-      <p className="text-caption text-ink-subtle">이 개정안의 근거 안에서만 답해요. 법률 자문이 아니고, 대화는 저장되지 않아요.</p>
+      <p className="text-caption text-ink-subtle">
+        이 개정안의 근거 안에서만 답해요. 법률 자문이 아니고, 대화는 저장되지 않아요. 주민등록번호, 연락처, 등록된 고객사 이름 같은
+        민감정보는 AI로 보내기 전에 가려요. 사람 이름이나 주소는 가리지 못하니 넣지 말아 주세요.
+      </p>
       <ul className="space-y-2" aria-live="polite">
         {messages.map((m, i) => (
           <li key={i} className={m.role === "user" ? "text-right" : ""}>
@@ -43,6 +57,12 @@ export function ReviewChat({ reviewId, evidence }: { reviewId: string; evidence:
             >
               {m.text}
             </div>
+            {m.role === "user" && maskNotice(m.masked) && (
+              <p className="mt-1 inline-flex items-center gap-1 text-caption text-ink-muted">
+                <ShieldCheck aria-hidden className="size-3.5 text-success" />
+                {maskNotice(m.masked)}
+              </p>
+            )}
             {m.role === "assistant" && (m.providerKind || m.citations.length > 0) && (
               <div className="mt-1 flex flex-wrap items-center gap-1">
                 {m.providerKind && <SourceLabel kind={m.providerKind} />}

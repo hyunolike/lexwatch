@@ -1,6 +1,7 @@
 using LexWatch.Api.Ai;
 using LexWatch.Api.Data;
 using LexWatch.Api.Demo;
+using LexWatch.Api.Governance;
 using LexWatch.Api.Jobs;
 using LexWatch.Api.Observability;
 using LexWatch.Api.Runs;
@@ -26,6 +27,7 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
     p.WithOrigins(webOrigins).WithHeaders("X-Demo-Role", "Content-Type").WithMethods("GET", "POST")));
 
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton(GovernanceOptions.From(builder.Configuration));
 builder.Services.AddHostedService<WorkflowWorker>();
 
 builder.Services.AddLawApi();
@@ -71,6 +73,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok", commit = deployedCom
 app.MapJobEndpoints();
 app.MapReviewEndpoints();
 app.MapRunEndpoints();
+app.MapGovernanceEndpoints();
 app.Run();
 
 public partial class Program;

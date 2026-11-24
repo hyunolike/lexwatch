@@ -16,7 +16,7 @@ public static class RunEndpoints
         var api = app.MapGroup("/api/runs").AddEndpointFilter(async (ctx, next) =>
         {
             var role = ctx.HttpContext.Request.Headers["X-Demo-Role"].ToString();
-            if (role is not ("lawyer" or "admin"))
+            if (!LexWatch.Api.Governance.DemoRoles.IsKnown(role))
                 return Err(403, "FORBIDDEN", "역할 헤더가 없거나 올바르지 않다");
             return await next(ctx);
         });
@@ -167,6 +167,7 @@ public static class RunEndpoints
         return g.Status switch
         {
             ReviewStatus.Approved => s.Step == "notify",
+            ReviewStatus.AwaitingPartner => false,
             ReviewStatus.Rejected or ReviewStatus.Notified or ReviewStatus.ClosedIrrelevant => false,
             _ => true,
         };
