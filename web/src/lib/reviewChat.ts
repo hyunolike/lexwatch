@@ -3,11 +3,21 @@ import type { ApiError, ApiResult, EvidenceItem, ProviderKind } from "./api";
 export const MAX_QUESTION_CHARS = 500;
 export const MAX_HISTORY_TURNS = 6;
 
+/** 서버가 AI로 보내기 전에 가린 민감정보 한 종류(ai-governance GV-04). */
+export interface MaskHit {
+  kind: string;
+  label: string;
+  count: number;
+}
+
 export interface ChatResponse {
   answer: string;
   citations: string[];
   refused: boolean;
   provider: { name: string; kind: string };
+  /** 서버가 가린 질문. 이 값이 실제로 AI에 간 글이다. */
+  maskedQuestion?: string;
+  masked?: MaskHit[];
 }
 
 export interface ChatCitation {
@@ -23,6 +33,26 @@ export interface ChatMessage {
   providerKind: ProviderKind | null;
   /** 시스템 안내(한도·오류)라 대화 기록으로 서버에 보내지 않는다. */
   error: boolean;
+  /** 사용자 말풍선: 서버가 가린 민감정보 */
+  masked?: MaskHit[];
+}
+
+/**
+ * 성공 응답이면 사용자 말풍선을 서버가 가린 질문으로 바꾼다. 다음 질문의 대화 기록에도 가린 글이 간다.
+ * 오류 응답이면 그대로 둔다(서버가 다음 요청 때 기록을 다시 가린다).
+ */
+export function maskedUserTurn(original: ChatMessage, res: ApiResult<ChatResponse | ApiError>): ChatMessage {
+  if (res.waking || res.status >= 400) return original;
+  const d = res.data as ChatResponse;
+  if (typeof d.maskedQuestion !== "string") return original;
+  return { ...original, text: d.maskedQuestion, masked: d.masked ?? [] };
+}
+
+/** "민감정보를 가리고 보냈어요: 주민등록번호 1건, 고객사 2건". 가린 것이 없으면 null. */
+export function maskNotice(masked: MaskHit[] | undefined): string | null {
+  const hits = (masked ?? []).filter((h) => h.count > 0);
+  if (hits.length === 0) return null;
+  return `민감정보를 가리고 보냈어요: ${hits.map((h) => `${h.label} ${h.count}건`).join(", ")}`;
 }
 
 const note = (text: string): ChatMessage => ({ role: "assistant", text, citations: [], refused: false, providerKind: null, error: true });

@@ -14,6 +14,8 @@ const LINKS = [
   { href: "/runs", label: "실행 이력" },
   { href: "/inbox", label: "알림함" },
 ];
+/** 관리자에게만 보이는 메뉴(ai-governance GV-06). */
+const ADMIN_LINKS = [{ href: "/governance", label: "AI 사용 기록" }];
 
 /**
  * 공통 머리: 데모 안내 띠, 로고, 내비게이션, 둘러보기, 역할 전환.
@@ -47,7 +49,7 @@ export function AppHeader() {
             <span className="text-title-sm text-brand">LexWatch</span>
           </Link>
           <nav aria-label="주 메뉴" className="order-3 flex w-full gap-1 sm:order-none sm:w-auto">
-            {LINKS.map((l) => (
+            {[...LINKS, ...(role === "admin" ? ADMIN_LINKS : [])].map((l) => (
               <Link
                 key={l.href}
                 href={l.href}

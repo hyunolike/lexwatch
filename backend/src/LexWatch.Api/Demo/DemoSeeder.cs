@@ -36,6 +36,8 @@ public class DemoSeeder(LexWatchDb db, TimeProvider time)
 
         await DeleteReplaysAsync(ct);
         await db.ChatQuotas.ExecuteDeleteAsync(ct);
+        var cutoff = time.GetUtcNow().AddDays(-Governance.AiUsage.RetentionDays);
+        await db.AiUsageLogs.Where(l => l.At < cutoff).ExecuteDeleteAsync(ct);
 
         await EnsureGroupsAsync(ct);
         await InsertReplaysAsync(ct);

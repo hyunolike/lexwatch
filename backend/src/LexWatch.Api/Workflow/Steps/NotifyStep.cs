@@ -32,12 +32,18 @@ public class NotifyStep(TimeProvider? time = null) : IStepHandler
             var decided = await db.Approvals.Where(a => a.GroupReviewId == groupId && a.Decision == "approve")
                 .OrderByDescending(a => a.DecidedAt).Select(a => (DateTimeOffset?)a.DecidedAt).FirstOrDefaultAsync(ct)
                 ?? (time ?? TimeProvider.System).GetUtcNow();
+            var confirmed = await db.Approvals.Where(a => a.GroupReviewId == groupId && a.Decision == "confirm")
+                .OrderByDescending(a => a.DecidedAt).Select(a => (DateTimeOffset?)a.DecidedAt).FirstOrDefaultAsync(ct);
             var kst = TimeZoneInfo.ConvertTime(decided, Kst);
+            // 교차검토를 거쳤으면 두 결정을 모두 적는다(ai-governance GV-14).
+            var signoff = confirmed is { } c
+                ? $"\n(승인: 변호사 {kst:yyyy-MM-dd HH:mm}, 파트너 최종 승인 {TimeZoneInfo.ConvertTime(c, Kst):yyyy-MM-dd HH:mm})"
+                : $"\n(승인: 변호사, {kst:yyyy-MM-dd HH:mm})";
 
             var body = new StringBuilder()
                 .Append($"[{group?.Name ?? review.GroupCode}] {law.LawName} 개정 안내\n")
                 .Append(string.Join("\n", sentences.Select(s => s.Sentence)))
-                .Append($"\n(승인: 변호사, {kst:yyyy-MM-dd HH:mm})")
+                .Append(signoff)
                 .ToString();
             db.Notifications.Add(new Notification
             {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_HISTORY_TURNS, MAX_QUESTION_CHARS, mapChatResult, toHistory, type ChatMessage } from "./reviewChat";
+import { MAX_HISTORY_TURNS, MAX_QUESTION_CHARS, mapChatResult, maskNotice, maskedUserTurn, toHistory, type ChatMessage } from "./reviewChat";
 
 const ev = [{ id: "law:L1:23", kind: "law", title: "근로기준법 제23조", sourceUrl: null }];
 
@@ -44,4 +44,41 @@ describe("toHistory", () => {
     expect(h.at(-1)?.content).toBe("t8");
   });
   it("limits question length constant", () => expect(MAX_QUESTION_CHARS).toBe(500));
+});
+
+describe("maskedUserTurn", () => {
+  const mine: ChatMessage = { role: "user", text: "한빛전자 900101-1234567", citations: [], refused: false, providerKind: null, error: false };
+  const ok = {
+    waking: false as const,
+    status: 200,
+    data: {
+      answer: "답", citations: [], refused: false, provider: { name: "n", kind: "nvidia" },
+      maskedQuestion: "[고객사] [주민등록번호]",
+      masked: [{ kind: "client", label: "고객사", count: 1 }, { kind: "rrn", label: "주민등록번호", count: 1 }],
+    },
+  };
+  it("replaces_the_bubble_with_the_masked_question", () => {
+    const m = maskedUserTurn(mine, ok);
+    expect(m.text).toBe("[고객사] [주민등록번호]");
+    expect(m.masked).toHaveLength(2);
+    expect(toHistory([m])).toEqual([{ role: "user", content: "[고객사] [주민등록번호]" }]);
+  });
+  it("keeps_the_bubble_on_errors_and_old_servers", () => {
+    expect(maskedUserTurn(mine, { waking: true })).toBe(mine);
+    expect(maskedUserTurn(mine, { waking: false, status: 429, data: { code: "CHAT_QUOTA_EXCEEDED", message: "x" } })).toBe(mine);
+    const old = { waking: false as const, status: 200, data: { answer: "답", citations: [], refused: false, provider: { name: "n", kind: "nvidia" } } };
+    expect(maskedUserTurn(mine, old)).toBe(mine);
+  });
+});
+
+describe("maskNotice", () => {
+  it("lists_kinds_in_server_order", () => {
+    expect(maskNotice([{ kind: "rrn", label: "주민등록번호", count: 1 }, { kind: "client", label: "고객사", count: 2 }])).toBe(
+      "민감정보를 가리고 보냈어요: 주민등록번호 1건, 고객사 2건",
+    );
+  });
+  it("is_null_when_nothing_was_masked", () => {
+    expect(maskNotice([])).toBeNull();
+    expect(maskNotice(undefined)).toBeNull();
+  });
 });

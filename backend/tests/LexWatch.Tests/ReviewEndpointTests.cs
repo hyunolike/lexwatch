@@ -120,6 +120,8 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
     public async Task Approve_enqueues_notify_and_records_actor()
     {
         var g = await SeedAsync();
+        // 적발이 있으면 파트너 최종 승인을 기다린다(ai-governance GV-07, GovernanceTests). 여기서는 적발 없는 승인을 본다.
+        await using (var db0 = pg.CreateDb()) await db0.CriticFindings.ExecuteDeleteAsync();
         await using var f = Factory();
         var resp = await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version, comment = "ok", acknowledgedFindingCount = 1 });
         Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
@@ -173,6 +175,7 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
     public async Task Approved_group_whose_notify_failed_cannot_be_approved_again()
     {
         var g = await SeedAsync();
+        await using (var db0 = pg.CreateDb()) await db0.CriticFindings.ExecuteDeleteAsync(); // 바로 Approved로 가는 경로
         await using var f = Factory();
         var c = As(f, "lawyer");
         Assert.Equal(HttpStatusCode.OK, (await c.PostAsJsonAsync($"/api/reviews/{g.Id}/approve", new { version = g.Version, acknowledgedFindingCount = 1 })).StatusCode);

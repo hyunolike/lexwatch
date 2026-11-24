@@ -3,6 +3,7 @@ using LexWatch.Api.Ai;
 using LexWatch.Api.Critic;
 using LexWatch.Api.Data;
 using LexWatch.Api.Data.Entities;
+using LexWatch.Api.Governance;
 using LexWatch.Api.Workflow;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,12 +12,13 @@ namespace LexWatch.Api.Reviews;
 public record EditedSentence(string Sentence, List<string>? Citations);
 public record ApproveRequest(uint Version, List<EditedSentence>? EditedSentences, string? Comment, int? AcknowledgedFindingCount = null);
 public record RejectRequest(uint Version, string? Comment);
+public record ConfirmRequest(uint Version, string? Comment);
 public record ChatTurnInput(string? Role, string? Content);
 public record ChatRequest(string? Question, List<ChatTurnInput>? History);
 
 public static class ReviewEndpoints
 {
-    private static readonly ReviewStatus[] DefaultStatuses = [ReviewStatus.WaitingApproval, ReviewStatus.NeedsReview];
+    private static readonly ReviewStatus[] DefaultStatuses = [ReviewStatus.WaitingApproval, ReviewStatus.NeedsReview, ReviewStatus.AwaitingPartner];
     private static readonly JsonSerializerOptions J = AiMapping.Json;
 
     private static IResult Err(int status, string code, string message) =>
@@ -27,12 +29,21 @@ public static class ReviewEndpoints
 
     private static IResult Conflict() => Err(409, "REVIEW_ALREADY_DECIDED", "이미 결정됐거나 다른 사용자가 먼저 처리했다");
 
+    private static IResult InProgress() =>
+        Err(409, "ANALYSIS_IN_PROGRESS", "이 그룹의 분석이나 검사가 아직 끝나지 않았다. 끝난 뒤에 결정할 수 있다");
+
+    private static readonly StepStatus[] ActiveSteps = [StepStatus.Pending, StepStatus.Running, StepStatus.RetryScheduled];
+
+    /// <summary>그룹 단계가 남아 있으면 결정하지 않는다. 단계가 끝나며 상태를 덮어써 결정이 사라지지 않게 한다(GV-13).</summary>
+    private static Task<bool> HasActiveStepsAsync(LexWatchDb db, Guid groupId, CancellationToken ct) =>
+        db.StepRuns.AnyAsync(s => s.GroupReviewId == groupId && ActiveSteps.Contains(s.Status), ct);
+
     public static void MapReviewEndpoints(this IEndpointRouteBuilder app)
     {
         var api = app.MapGroup("/api").AddEndpointFilter(async (ctx, next) =>
         {
             var role = ctx.HttpContext.Request.Headers["X-Demo-Role"].ToString();
-            if (role is not ("lawyer" or "admin"))
+            if (!DemoRoles.IsKnown(role))
                 return Err(403, "FORBIDDEN", "역할 헤더가 없거나 올바르지 않다");
             return await next(ctx);
         });
@@ -87,6 +98,18 @@ public static class ReviewEndpoints
                 id = e.EvidenceId, kind = e.Kind, title = e.Title, sourceUrl = e.SourceUrl, excerpt = Excerpt(e),
             });
             summary["version"] = review.Version;
+            summary["lawyerApproval"] = null;
+            if (review.Status == ReviewStatus.AwaitingPartner)
+            {
+                var a = await db.Approvals.AsNoTracking().Where(x => x.GroupReviewId == id && x.Decision == "approve")
+                    .OrderByDescending(x => x.DecidedAt).FirstOrDefaultAsync(ct);
+                if (a is not null)
+                    summary["lawyerApproval"] = new
+                    {
+                        decidedAt = a.DecidedAt, acknowledgedFindingCount = a.AcknowledgedFindingCount ?? 0,
+                        findings = a.FindingsJson is null ? [] : JsonSerializer.Deserialize<List<DecisionFindingDto>>(a.FindingsJson, J) ?? [],
+                    };
+            }
             return Results.Ok(summary);
         });
 
@@ -97,6 +120,7 @@ public static class ReviewEndpoints
             var review = await db.GroupReviews.SingleOrDefaultAsync(g => g.Id == id, ct);
             if (review is null) return Err(404, "NOT_FOUND", "검토를 찾을 수 없다");
             if (!Decidable(review) || review.Version != req.Version) return Conflict();
+            if (await HasActiveStepsAsync(db, id, ct)) return InProgress();
             var current = await LatestDraftAsync(db, id, ct);
             if (current is null) return NoDraft();
 
@@ -152,14 +176,19 @@ public static class ReviewEndpoints
                     });
             }
 
+            // 교차검토(GV-07): 적발을 확인하고 승인했거나 파트너가 돌려보낸 적이 있으면 파트너 최종 승인을 기다린다.
+            var returned = await db.Approvals.AnyAsync(a => a.GroupReviewId == id && a.Decision == "return", ct);
+            var needsPartner = findings.Count > 0 || returned;
             var now = time.GetUtcNow();
-            review.Status = ReviewStatus.Approved;
+            review.Status = needsPartner ? ReviewStatus.AwaitingPartner : ReviewStatus.Approved;
             db.Approvals.Add(new Approval
             {
-                Id = Guid.NewGuid(), GroupReviewId = id, Decision = "approve", ActorRole = "lawyer",
+                Id = Guid.NewGuid(), GroupReviewId = id, Decision = "approve", ActorRole = DemoRoles.Lawyer,
                 Comment = req.Comment, DiffJson = diffJson, DecidedAt = now, AcknowledgedFindingCount = findings.Count,
+                FindingsJson = findings.Count == 0 ? null : JsonSerializer.Serialize(findings.Select(f =>
+                    new DecisionFindingDto(f.SentenceIndex, f.Tier, f.RuleId, f.Message)), J),
             });
-            db.StepRuns.Add(StepQueue.Create(review.RunId, new NextStep("notify", id, null), now));
+            if (!needsPartner) db.StepRuns.Add(StepQueue.Create(review.RunId, new NextStep("notify", id, null), now));
             return await SaveDecisionAsync(db, review, req.Version, now, ct);
         });
 
@@ -171,6 +200,7 @@ public static class ReviewEndpoints
             var review = await db.GroupReviews.SingleOrDefaultAsync(g => g.Id == id, ct);
             if (review is null) return Err(404, "NOT_FOUND", "검토를 찾을 수 없다");
             if (!Decidable(review) || review.Version != req.Version) return Conflict();
+            if (await HasActiveStepsAsync(db, id, ct)) return InProgress();
 
             var now = time.GetUtcNow();
             review.Status = ReviewStatus.Rejected;
@@ -182,9 +212,52 @@ public static class ReviewEndpoints
             return await SaveDecisionAsync(db, review, req.Version, now, ct);
         });
 
+        // 파트너 최종 승인(GV-08). 변호사가 적발을 확인하고 승인한 초안만 이 단계를 거친다.
+        api.MapPost("/reviews/{id:guid}/confirm", async (Guid id, ConfirmRequest req, HttpContext http, LexWatchDb db,
+            TimeProvider time, CancellationToken ct) =>
+        {
+            if (Role(http) != DemoRoles.Partner) return Err(403, "FORBIDDEN", "최종 승인은 파트너만 할 수 있다");
+            var review = await db.GroupReviews.SingleOrDefaultAsync(g => g.Id == id, ct);
+            if (review is null) return Err(404, "NOT_FOUND", "검토를 찾을 수 없다");
+            if (review.Status != ReviewStatus.AwaitingPartner || review.Version != req.Version) return Conflict();
+            if (await HasActiveStepsAsync(db, id, ct)) return InProgress();
+
+            var now = time.GetUtcNow();
+            review.Status = ReviewStatus.Approved;
+            db.Approvals.Add(new Approval
+            {
+                Id = Guid.NewGuid(), GroupReviewId = id, Decision = "confirm", ActorRole = DemoRoles.Partner,
+                Comment = req.Comment, DecidedAt = now,
+            });
+            db.StepRuns.Add(StepQueue.Create(review.RunId, new NextStep("notify", id, null), now));
+            return await SaveDecisionAsync(db, review, req.Version, now, ct);
+        });
+
+        // 파트너가 돌려보낸다(GV-09). 변호사가 다시 결정하고, 그 승인은 다시 파트너를 거친다.
+        api.MapPost("/reviews/{id:guid}/return", async (Guid id, RejectRequest req, HttpContext http, LexWatchDb db,
+            TimeProvider time, CancellationToken ct) =>
+        {
+            if (Role(http) != DemoRoles.Partner) return Err(403, "FORBIDDEN", "돌려보내기는 파트너만 할 수 있다");
+            if (string.IsNullOrWhiteSpace(req.Comment)) return Err(400, "COMMENT_REQUIRED", "돌려보내는 사유가 필요하다");
+            var review = await db.GroupReviews.SingleOrDefaultAsync(g => g.Id == id, ct);
+            if (review is null) return Err(404, "NOT_FOUND", "검토를 찾을 수 없다");
+            if (review.Status != ReviewStatus.AwaitingPartner || review.Version != req.Version) return Conflict();
+            if (await HasActiveStepsAsync(db, id, ct)) return InProgress();
+
+            var now = time.GetUtcNow();
+            review.Status = ReviewStatus.NeedsReview;
+            db.Approvals.Add(new Approval
+            {
+                Id = Guid.NewGuid(), GroupReviewId = id, Decision = "return", ActorRole = DemoRoles.Partner,
+                Comment = req.Comment, DecidedAt = now,
+            });
+            return await SaveDecisionAsync(db, review, req.Version, now, ct);
+        });
+
         // 검토 보조 채팅: 저장하지 않는다. IP·질문은 기록하지 않는다(해시만 할당량 표에 남는다).
+        // 민감정보는 AI 서비스로 보내기 전에 여기서 가리고, 메타데이터만 ai_usage_logs에 남긴다(ai-governance GV-03, GV-05).
         api.MapPost("/reviews/{id:guid}/chat", async (Guid id, ChatRequest req, HttpContext http, LexWatchDb db,
-            AiGateway ai, IConfiguration cfg, TimeProvider time, CancellationToken ct) =>
+            AiGateway ai, IConfiguration cfg, TimeProvider time, GovernanceOptions gov, ILoggerFactory logs, CancellationToken ct) =>
         {
             if (Role(http) != "lawyer") return Err(403, "FORBIDDEN", "검토 보조는 변호사만 쓸 수 있다");
             var question = req.Question?.Trim();
@@ -202,34 +275,55 @@ public static class ReviewEndpoints
                 return Err(429, "CHAT_QUOTA_EXCEEDED", "오늘 사용 한도를 다 썼다");
 
             // 한도를 올린 뒤 답을 받지 못하면(실패·취소·예외) 어떤 경로든 되돌린다. 답을 받은 거절은 되돌리지 않는다.
+            // 원문 전체를 가린 뒤 AI 계약 한도로 자른다. 자르고 가리면 경계에 걸린 번호 앞부분이 샌다.
+            var (maskedFull, hits) = SensitiveDataMasker.Mask(question, gov.ClientNames);
+            var maskedQuestion = SensitiveDataMasker.Clip(maskedFull, 500);
+            var usage = new AiUsageLog
+            {
+                Id = Guid.NewGuid(), At = time.GetUtcNow(), Purpose = "review_chat", GroupReviewId = id,
+                ActorRole = DemoRoles.Lawyer, Outcome = AiUsage.Failed, MaskedJson = AiUsage.MaskedJson(hits),
+            };
+            var started = time.GetTimestamp();
             var answered = false;
             try
             {
                 var evidence = await db.Evidence.AsNoTracking().Where(e => e.RunId == review.RunId).ToListAsync(ct);
+                // 기록은 이전 질문에서 이미 센 것이므로 가리기만 하고 건수에는 넣지 않는다(GV-04).
                 var history = (req.History ?? []).Where(h => (h.Role is "user" or "assistant") && !string.IsNullOrWhiteSpace(h.Content))
                     .TakeLast(6).Select(h => new ChatTurn
                     {
                         Role = h.Role == "user" ? ChatTurnRole.User : ChatTurnRole.Assistant,
-                        Content = (h.Content ?? "")[..Math.Min((h.Content ?? "").Length, 2000)],
+                        // 8000자로 먼저 줄이는 것은 정규식 비용 상한일 뿐이고, 결과는 그보다 훨씬 앞인 2000자에서 자른다.
+                        Content = SensitiveDataMasker.Clip(h.Role == "user"
+                            ? SensitiveDataMasker.Mask(h.Content![..Math.Min(h.Content!.Length, 8000)], gov.ClientNames).Masked
+                            : h.Content!, 2000),
                     }).ToList();
+                started = time.GetTimestamp();
                 var outcome = await ai.CallAsync((c, t) => c.ReviewChatAsync(new ReviewChatRequest
                 {
-                    Run_id = review.RunId.ToString(), Question = question,
+                    Run_id = review.RunId.ToString(), Question = maskedQuestion,
                     Evidence = AiMapping.Evidence(evidence), History = history,
                 }, t), 1, TimeSpan.FromSeconds(40), ct);
                 if (outcome.Failure is not null)
                     return Err(424, "AI_UNAVAILABLE", "검토 보조를 지금 쓸 수 없다");
                 answered = true;
                 var r = outcome.Value!;
+                usage.ProviderKind = AiMapping.ProviderKind(r.Provider);
+                usage.ProviderName = r.Provider.Name;
+                usage.Outcome = r.Provider.Name == "no-key" ? AiUsage.Unavailable : r.Refused ? AiUsage.Refused : AiUsage.Answered;
                 return Results.Ok(new
                 {
                     answer = r.Answer, citations = r.Citations, refused = r.Refused,
                     provider = new { name = r.Provider.Name, kind = AiMapping.ProviderKind(r.Provider) },
+                    maskedQuestion,
+                    masked = hits.Select(h => new { kind = h.Kind, label = h.Label, count = h.Count }),
                 });
             }
             finally
             {
                 if (!answered) await ChatQuotaService.RefundAsync(db, day, ipHash);
+                usage.DurationMs = (int)time.GetElapsedTime(started).TotalMilliseconds;
+                await AiUsage.TryLogAsync(db, usage, logs.CreateLogger("LexWatch.Governance"));
             }
         });
 
@@ -277,6 +371,8 @@ public static class ReviewEndpoints
     private static string Role(HttpContext http) => http.Request.Headers["X-Demo-Role"].ToString();
 
     private static bool Decidable(GroupReview r) => r.Status is ReviewStatus.WaitingApproval or ReviewStatus.NeedsReview;
+
+    private sealed record DecisionFindingDto(int SentenceIndex, int Tier, string RuleId, string Message);
 
     /// <summary>결정 저장과 실행 종결 판정을 한 트랜잭션으로 묶는다. xmin 충돌이면 전부 되돌린다.</summary>
     private static async Task<IResult> SaveDecisionAsync(LexWatchDb db, GroupReview review, uint version,

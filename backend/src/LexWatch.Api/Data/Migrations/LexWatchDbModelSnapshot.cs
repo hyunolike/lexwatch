@@ -60,6 +60,55 @@ namespace LexWatch.Api.Data.Migrations
                     b.ToTable("AgentToolCalls");
                 });
 
+            modelBuilder.Entity("LexWatch.Api.Data.Entities.AiUsageLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActorRole")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DurationMs")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("GroupReviewId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MaskedJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("ProviderKind")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("ProviderName")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("At");
+
+                    b.ToTable("AiUsageLogs");
+                });
+
             modelBuilder.Entity("LexWatch.Api.Data.Entities.Approval", b =>
                 {
                     b.Property<Guid>("Id")
@@ -84,6 +133,9 @@ namespace LexWatch.Api.Data.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("DiffJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("FindingsJson")
                         .HasColumnType("jsonb");
 
                     b.Property<Guid>("GroupReviewId")

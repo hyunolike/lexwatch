@@ -19,17 +19,18 @@ export function switchRole(r: Role) {
   listeners.forEach((l) => l());
 }
 
-const ROLES: [Role, string][] = [
-  ["lawyer", "변호사로 보기"],
-  ["admin", "관리자로 보기"],
+const ROLES: [Role, string, string][] = [
+  ["lawyer", "변호사로 보기", "변호사"],
+  ["partner", "파트너로 보기", "파트너"],
+  ["admin", "관리자로 보기", "관리자"],
 ];
 
-/** 역할 전환(로그인 없음). 두 칸짜리 선택 버튼. */
+/** 역할 전환(로그인 없음). 세 칸짜리 선택 버튼. 파트너는 적발이 남은 승인을 최종 승인한다(ai-governance). */
 export function RoleSwitch() {
   const role = useRole();
   return (
     <div role="group" aria-label="보기 역할" className="inline-flex rounded-md border border-line bg-surface-sunken p-0.5">
-      {ROLES.map(([r, label]) => (
+      {ROLES.map(([r, label, short]) => (
         <button
           key={r}
           type="button"
@@ -41,7 +42,7 @@ export function RoleSwitch() {
             role === r ? "bg-surface text-ink shadow-card" : "text-ink-muted hover:text-ink",
           )}
         >
-          <span className="sm:hidden">{r === "lawyer" ? "변호사" : "관리자"}</span>
+          <span className="sm:hidden">{short}</span>
           <span className="hidden sm:inline">{label}</span>
         </button>
       ))}
