@@ -154,7 +154,10 @@ public class PracticeGroup
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
     public string InterestText { get; set; } = "";
+    /// <summary>쓰는 곳이 없는 예약 열.</summary>
     public string[] LawIds { get; set; } = [];
+    /// <summary>법안 레이더가 지켜볼 법률 이름(bill-radar BR-01).</summary>
+    public string[] WatchLawNames { get; set; } = [];
     public Vector? Embedding { get; set; }
 }
 
@@ -189,4 +192,52 @@ public class AiUsageLog
     public int DurationMs { get; set; }
     /// <summary>질문에서 가린 종류별 건수. {"rrn":1}</summary>
     public string MaskedJson { get; set; } = "{}";
+}
+
+/// <summary>공포 전 법안(bill-radar). 그룹은 저장하지 않고 LawName과 PracticeGroup.WatchLawNames로 계산한다.</summary>
+public class Bill
+{
+    public Guid Id { get; set; }
+    public string Source { get; set; } = "";
+    public string ExternalId { get; set; } = "";
+    public string BillNo { get; set; } = "";
+    public string BillName { get; set; } = "";
+    public string LawName { get; set; } = "";
+    public string Stage { get; set; } = "";
+    public DateOnly ProposedOn { get; set; }
+    public string Proposer { get; set; } = "";
+    public string? LeadProposer { get; set; }
+    public string? Committee { get; set; }
+    public string? ProcResult { get; set; }
+    public DateOnly? ProcOn { get; set; }
+    public string DetailUrl { get; set; } = "";
+    public string RawJson { get; set; } = "{}";
+    public DateTimeOffset FirstSeenAt { get; set; }
+    public DateTimeOffset LastCheckedAt { get; set; }
+    public DateTimeOffset LastEventAt { get; set; }
+}
+
+public class BillEvent
+{
+    public Guid Id { get; set; }
+    public Guid BillId { get; set; }
+    public DateTimeOffset At { get; set; }
+    /// <summary>proposed, stage_changed</summary>
+    public string Kind { get; set; } = "";
+    public string? FromStage { get; set; }
+    public string ToStage { get; set; } = "";
+}
+
+public class BillCollectLog
+{
+    public Guid Id { get; set; }
+    public DateTimeOffset StartedAt { get; set; }
+    public DateTimeOffset FinishedAt { get; set; }
+    /// <summary>성공한 호출이 1건 이상인가.</summary>
+    public bool Ok { get; set; }
+    public int NewBills { get; set; }
+    public int StageChanges { get; set; }
+    public int Refreshed { get; set; }
+    public int FailureCount { get; set; }
+    public string FailuresJson { get; set; } = "[]";
 }

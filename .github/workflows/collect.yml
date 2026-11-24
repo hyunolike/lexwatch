@@ -89,3 +89,31 @@ jobs:
             fi
           done < run_ids.txt
           exit $bad
+
+  bills:
+    # 공포 전 법안 레이더(bill-radar BR-09). 법령 수집과 따로 돌아 서로의 실패에 영향을 주지 않는다.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API_BASE_URL: ${{ secrets.API_BASE_URL }}
+      JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
+    steps:
+      - name: 서버 깨우기
+        run: |
+          curl --silent --show-error --fail --max-time 30 \
+            --retry 12 --retry-delay 15 --retry-all-errors \
+            "$API_BASE_URL/health"
+
+      - name: 국회 법안 수집 (서버가 120초 안에 끝낸다. 502와 시간 초과는 다시 시도하지 않는다)
+        run: |
+          code=$(curl --silent --show-error --max-time 200 -o bills.json -w "%{http_code}" -X POST \
+            -H "X-Job-Token: $JOB_TOKEN" "$API_BASE_URL/jobs/collect-bills")
+          cat bills.json; echo
+          if [ "$code" != "200" ]; then
+            echo "::error::법안 수집 실패 (HTTP $code)"
+            exit 1
+          fi
+          n=$(jq '.failures | length' bills.json)
+          if [ "$n" -gt 0 ]; then
+            echo "::warning::법안 수집 중 $n건 실패: $(jq -c '[.failures[] | "\(.target) \(.code)"] | .[:10]' bills.json)"
+          fi

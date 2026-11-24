@@ -6,6 +6,7 @@ using LexWatch.Api.Jobs;
 using LexWatch.Api.Observability;
 using LexWatch.Api.Runs;
 using LexWatch.Api.LawApi;
+using LexWatch.Api.Radar;
 using LexWatch.Api.Reviews;
 using LexWatch.Api.Retrieval;
 using LexWatch.Api.Workflow.Steps;
@@ -31,6 +32,8 @@ builder.Services.AddSingleton(GovernanceOptions.From(builder.Configuration));
 builder.Services.AddHostedService<WorkflowWorker>();
 
 builder.Services.AddLawApi();
+builder.Services.AddAssemblyApi();
+builder.Services.AddScoped<BillRadarService>();
 builder.Services.AddAiGateway();
 builder.Services.AddScoped<DemoSeeder>();
 builder.Services.AddScoped<IStepHandler, FetchArticlesStep>();
@@ -74,6 +77,7 @@ app.MapJobEndpoints();
 app.MapReviewEndpoints();
 app.MapRunEndpoints();
 app.MapGovernanceEndpoints();
+app.MapRadarEndpoints();
 app.Run();
 
 public partial class Program;

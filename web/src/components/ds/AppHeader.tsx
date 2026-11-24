@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/", label: "승인 대기함" },
   { href: "/runs", label: "실행 이력" },
   { href: "/inbox", label: "알림함" },
+  { href: "/radar", label: "법안 레이더" },
 ];
 /** 관리자에게만 보이는 메뉴(ai-governance GV-06). */
 const ADMIN_LINKS = [{ href: "/governance", label: "AI 사용 기록" }];

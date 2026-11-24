@@ -305,6 +305,7 @@ function stepLabel(step: string): string;    // api.ts에서 옮김
 | decision | approve 승인(success), reject 반려(danger), confirm 파트너 최종 승인(success), return 파트너가 돌려보냄(warning) |
 | role | lawyer 변호사(neutral), partner 파트너(neutral), admin 관리자(neutral) |
 | usage | answered 답변(success), refused 거절(warning), unavailable 모델 없음(neutral), failed 실패(danger) |
+| billStage | Received 접수(neutral), Committee 위원회 심사(info), Judiciary 법사위 심사(info), Plenary 본회의 대기(warning), Passed 본회의 의결(success), Merged 대안에 반영(success), Closed 종료(neutral) |
 | channel | demo_inbox 그룹 알림함(neutral), admin 관리자 알림(neutral) |
 | 실무그룹 | labor 노동, privacy 개인정보, finance 금융 |
 
