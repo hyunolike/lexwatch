@@ -52,16 +52,17 @@ export function AppHeader() {
             <Mascot pose="avatar" size={32} className="rounded-full bg-surface-sunken" />
             <span className="text-title-sm text-brand">LexWatch</span>
           </Link>
-          <nav aria-label="주 메뉴" className="order-3 flex w-full gap-1 sm:order-none sm:w-auto">
+          <nav aria-label="주 메뉴" className="order-3 flex w-full gap-1 overflow-x-auto sm:order-none sm:w-auto sm:overflow-visible">
             {[...LINKS, ...(role === "admin" ? ADMIN_LINKS : [])].map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
                 aria-current={active(l.href) ? "page" : undefined}
                 className={cx(
-                  "relative rounded-md px-3 py-1.5 text-label transition-colors duration-[120ms]",
+                  // 좁은 화면에서는 메뉴가 늘어나도 글자 단위로 꺾이지 않고 옆으로 밀린다(관리자 메뉴 6개)
+                  "relative shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-label transition-colors duration-[120ms]",
                   active(l.href)
-                    ? "bg-surface-sunken text-ink after:absolute after:inset-x-3 after:-bottom-[9px] after:h-0.5 after:bg-brand"
+                    ? "bg-surface-sunken text-ink max-sm:after:hidden after:absolute after:inset-x-3 after:-bottom-[9px] after:h-0.5 after:bg-brand"
                     : "text-ink-muted hover:bg-surface-sunken hover:text-ink",
                 )}
               >

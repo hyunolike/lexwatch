@@ -62,7 +62,7 @@ function BarMark({ b }: { b: Bar }) {
 }
 
 /** 막대 오른쪽 글: 소요 시간, 상태, 시도. 터치에서도 보이도록 툴팁 대신 늘 보인다. */
-function barNote(b: Bar): string {
+export function barNote(b: Bar): string {
   const parts: string[] = [];
   if (b.pending) parts.push("대기");
   else if (b.durationMs !== null) parts.push(formatDuration(b.durationMs));
@@ -74,6 +74,13 @@ function barNote(b: Bar): string {
   if (b.again) parts.push("다시 시도한 기록");
   if (b.longest) parts.push("가장 오래 걸림");
   return parts.join(" · ");
+}
+
+/** 줄의 글: 마지막 기록 설명에, 앞 기록이 있으면 "(앞 기록: 53ms · 실패 AI_UPSTREAM_ERROR · 시도 5)"를 붙인다. */
+export function rowNote(bars: Bar[]): string {
+  const last = bars[bars.length - 1];
+  const earlier = bars.slice(0, -1).map((b) => barNote({ ...b, again: false, longest: false }));
+  return earlier.length ? `${barNote(last)} (앞 기록: ${earlier.join(" / ")})` : barNote(last);
 }
 
 /**
@@ -104,6 +111,7 @@ export function RunTimeline({ items }: { items: TimelineItem[] }) {
       </ul>
 
       <p className="sr-only">그래프의 내용은 목록 탭에 글로 모두 있어요.</p>
+      <p aria-hidden className="text-caption text-ink-subtle sm:hidden">그래프를 옆으로 밀면 나머지 단계가 보여요.</p>
       <div className="overflow-x-auto rounded-lg border border-line bg-surface" aria-hidden>
         <div className="relative" style={{ width: LABEL_W + plotW, height: AXIS_H + lines * ROW_H }}>
           <div className="absolute top-0 border-b border-line text-micro text-ink-subtle" style={{ left: LABEL_W, width: plotW, height: AXIS_H }}>
@@ -134,15 +142,18 @@ export function RunTimeline({ items }: { items: TimelineItem[] }) {
                 {r.bars.map((b, j) => (
                   <BarMark key={j} b={b} />
                 ))}
-                {r.bars.map((b, j) => (
-                  <span
-                    key={`t${j}`}
-                    className="absolute top-1/2 -translate-y-1/2 whitespace-nowrap pl-1.5 text-micro text-ink-muted"
-                    style={{ left: b.x + (b.pending ? 12 : b.w) }}
-                  >
-                    {barNote(b)}
-                  </span>
-                ))}
+                {/* 같은 줄에 기록이 여럿이면 앞 기록의 글이 뒤 막대와 겹친다. 마지막 막대 옆에 한 번만 적는다. */}
+                {(() => {
+                  const last = r.bars[r.bars.length - 1];
+                  return (
+                    <span
+                      className="absolute top-1/2 -translate-y-1/2 whitespace-nowrap pl-1.5 text-micro text-ink-muted"
+                      style={{ left: last.x + (last.pending ? 12 : last.w) }}
+                    >
+                      {rowNote(r.bars)}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           ))}
