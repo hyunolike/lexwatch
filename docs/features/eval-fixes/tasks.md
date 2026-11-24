@@ -16,6 +16,7 @@
 | EF-10 | `guide.roleSentence()` | `guide.test.ts` | 완료 |
 | EF-11 | `reviewPresentation.splitForRole()`, 대기함 묶음 | `reviewPresentation.test.ts` | 완료 |
 | EF-12 | `ChatRetry` 마감 90초, 최대 40회. 채팅 `AI_WAKING`, `GET /api/ai/status`. 웹 `waitForAi`, `isAiWaking`, `aiStateOf`, 검토 보조 상태 표시와 자동 재전송 | `ChatRetryTests` 기본값, `ReviewEndpointTests` AI_WAKING과 한도 환불, 상태 up/waking. `reviewChat.test.ts` 7건 | 완료 |
+| EF-13 | `guardrails._DRAFT`, `_REVIEW_ACTION` | `test_questions_about_the_draft_itself_are_in_scope`(화면 추천 질문 포함), `test_draft_word_alone_does_not_open_scope` | 완료 |
 
 ## EF-07 실제 모델 비교 (2026-11-24, Cloudflare `@cf/openai/gpt-oss-120b`)
 

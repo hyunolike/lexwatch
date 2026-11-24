@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_HISTORY_TURNS, MAX_QUESTION_CHARS, aiStateOf, isAiWaking, mapChatResult, waitForAi, maskNotice, maskedUserTurn, toHistory, type ChatMessage } from "./reviewChat";
+import { MAX_HISTORY_TURNS, MAX_QUESTION_CHARS, aiStateOf, isAiWaking, mapChatResult, suggestQuestions, waitForAi, maskNotice, maskedUserTurn, toHistory, type ChatMessage } from "./reviewChat";
 
 const ev = [{ id: "law:L1:23", kind: "law", title: "근로기준법 제23조", sourceUrl: null }];
 
@@ -128,5 +128,25 @@ describe("waitForAi", () => {
     const c = clock();
     const r = await waitForAi(async () => { n++; ac.abort(); return "waking"; }, { ...c, signal: ac.signal });
     expect([r, n]).toEqual([false, 1]);
+  });
+});
+
+describe("suggestQuestions", () => {
+  it("확인 필요 문장과 첫 조문을 넣고 최대 3개", () => {
+    const q = suggestQuestions({ flaggedSentences: 2, firstArticle: "제50조", hasDraft: true });
+    expect(q).toHaveLength(3);
+    expect(q[0]).toContain("확인 필요 문장 2개");
+    expect(q[1]).toContain("제50조");
+  });
+
+  it("적발과 신구조문이 없으면 시행일과 요약", () => {
+    expect(suggestQuestions({ flaggedSentences: 0, firstArticle: null, hasDraft: true })).toEqual([
+      "이 개정의 시행일과 경과규정이 근거에 있나요?",
+      "초안의 핵심 내용을 근거와 함께 세 줄로 요약해 주세요",
+    ]);
+  });
+
+  it("초안이 없으면 요약을 권하지 않는다", () => {
+    expect(suggestQuestions({ flaggedSentences: 0, firstArticle: null, hasDraft: false })).toHaveLength(1);
   });
 });

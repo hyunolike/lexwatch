@@ -121,3 +121,16 @@ export async function waitForAi(
   }
   return false;
 }
+
+/**
+ * 대화를 시작할 추천 질문(review-chat-ux RC-02). 모델을 부르지 않고 이 초안에서 만든다. 최대 3개.
+ * 확인 필요 문장이 있으면 그것을, 신구조문이 있으면 첫 조문을, 그리고 시행일을 묻는다.
+ */
+export function suggestQuestions(input: { flaggedSentences: number; firstArticle: string | null; hasDraft: boolean }): string[] {
+  const out: string[] = [];
+  if (input.flaggedSentences > 0) out.push(`확인 필요 문장 ${input.flaggedSentences}개가 근거와 어떻게 다른지 알려 주세요`);
+  if (input.firstArticle) out.push(`${input.firstArticle}에서 새로 생기거나 바뀐 의무는 무엇인가요?`);
+  out.push("이 개정의 시행일과 경과규정이 근거에 있나요?");
+  if (input.hasDraft) out.push("초안의 핵심 내용을 근거와 함께 세 줄로 요약해 주세요");
+  return out.slice(0, 3);
+}
