@@ -170,3 +170,14 @@ async def test_missing_draft_is_stated_to_the_model():
     llm = Scripted({"answer": "아직 초안이 없어요.", "citations": ["law:L1:23"]})
     await review_chat(req("초안 요약해줘"), llm=llm)
     assert "(아직 초안이 없음)" in llm.last[0]["content"]
+
+
+def test_evidence_block_keeps_cited_bodies_within_budget():
+    from app.review_chat import EVIDENCE_BUDGET, DraftLine, evidence_block
+
+    many = [Evidence(id=f"law:L1:{n}", kind="law", title=f"제{n}조", body="가" * 3000) for n in range(1, 41)]
+    block = evidence_block(many, [DraftLine(sentence="s", citations=["law:L1:40"])])
+    assert len(block) < EVIDENCE_BUDGET + 40 * 60  # bodies within budget, the rest are title lines
+    assert block.index("[law:L1:40] 제40조\n가") >= 0  # the cited one keeps its body even though it is last
+    assert "[law:L1:39] 제39조 (본문 생략" in block
+    assert all(f"[law:L1:{n}]" in block for n in range(1, 41))  # every id is still listed

@@ -23,7 +23,7 @@ from app.schemas import Evidence, ProviderInfo
 log = logging.getLogger("lexwatch.review_chat")
 
 MAX_TOOL_CALLS = 4
-DEADLINE_S = 30.0
+DEADLINE_S = 36.0  # must stay under the API per-attempt timeout (40 s, ChatRetry.PerAttempt)
 CHAT_TOOLS = {"get_article", "compare_old_new"}
 KEYLESS_ANSWER = "이 환경에서는 검토 보조가 NVIDIA 키가 있어야 동작해요. 키가 없어 답하지 않았어요."
 KEYLESS_PROVIDER = ProviderInfo(name="no-key", kind="fallback")
@@ -66,6 +66,30 @@ class ReviewChatRequest(BaseModel):
     draft: list[DraftLine] = Field(default_factory=list, max_length=40)
 
 
+# Evidence context budget. Sending every body in full (54 x 2000 chars in production) pushed the model
+# past the 30 s deadline and the chat refused (2026-11-25). Cited and old/new evidence go first.
+EVIDENCE_BUDGET = 10_000
+EVIDENCE_ITEM_LIMIT = 1_200
+
+
+def evidence_block(evidence: list[Evidence], draft: list[DraftLine]) -> str:
+    if not evidence:
+        return "(없음)"
+    cited = {c for d in draft for c in d.citations}
+    order = sorted(range(len(evidence)), key=lambda i: (evidence[i].id not in cited, evidence[i].kind != "oldnew", i))
+    used = 0
+    full: dict[int, str] = {}
+    for i in order:
+        e = evidence[i]
+        text = f"[{e.id}] {e.title}\n{clip(e.body, EVIDENCE_ITEM_LIMIT)}"
+        if used + len(text) > EVIDENCE_BUDGET:
+            continue
+        full[i] = text
+        used += len(text)
+    # Everything stays citable; bodies that did not fit are listed by title (get_article can fetch them).
+    return "\n\n".join(full.get(i) or f"[{e.id}] {e.title} (본문 생략, 필요하면 get_article로 확인)" for i, e in enumerate(evidence))
+
+
 def draft_block(draft: list[DraftLine]) -> str:
     if not draft:
         return "(아직 초안이 없음)"
@@ -96,7 +120,9 @@ _FORMAT: dict[str, Any] = {
 _TOOLS = [t for t in TOOL_SCHEMAS if t["function"]["name"] in CHAT_TOOLS]
 
 
-def _refuse(provider: ProviderInfo, answer: str = REFUSAL) -> ReviewChatResponse:
+def _refuse(provider: ProviderInfo, answer: str = REFUSAL, reason: str | None = None) -> ReviewChatResponse:
+    if reason:  # never log the question or the answer
+        log.info("review_chat refused reason=%s provider=%s", reason, provider.name)
     return ReviewChatResponse(answer=answer, citations=[], refused=True, provider=provider)
 
 
@@ -125,7 +151,7 @@ async def review_chat(req: ReviewChatRequest, llm: LLMProvider | None = None) ->
     fetched: set[str] = set()
     deadline = _now() + DEADLINE_S
     tools = Tools(get_law_api(), get_retriever(), "", "")
-    ev = "\n\n".join(f"[{e.id}] {e.title}\n{clip(e.body, 2000)}" for e in req.evidence) or "(없음)"
+    ev = evidence_block(req.evidence, req.draft)
     messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM + f"\n\n근거 목록:\n{ev}\n\n검토 중인 초안(근거가 아님):\n{draft_block(req.draft)}"}]
     # Client-supplied assistant turns are never replayed as assistant messages (they could be forged).
     # Earlier user questions go into one clearly labelled user-context block instead.
@@ -139,12 +165,12 @@ async def review_chat(req: ReviewChatRequest, llm: LLMProvider | None = None) ->
 
     while True:
         if _now() >= deadline:
-            return _refuse(provider)
+            return _refuse(provider, reason="deadline")
         try:
             resp = await llm.chat(messages, tools=_TOOLS, response_format=_FORMAT, deadline=deadline)
         except LLMError as e:
             if e.code == "LLM_TIMEOUT":
-                return _refuse(provider)
+                return _refuse(provider, reason="llm_timeout")
             raise
         provider = resp.provider
         if resp.tool_calls:
@@ -161,7 +187,7 @@ async def review_chat(req: ReviewChatRequest, llm: LLMProvider | None = None) ->
             for tc in resp.tool_calls:
                 remaining = deadline - _now()
                 if used >= MAX_TOOL_CALLS or remaining <= 0:
-                    return _refuse(provider)
+                    return _refuse(provider, reason="tool_budget")
                 used += 1
                 try:
                     if tc.name not in CHAT_TOOLS:
@@ -170,7 +196,7 @@ async def review_chat(req: ReviewChatRequest, llm: LLMProvider | None = None) ->
                     fetched |= {e.id for e in found if e.id.count(":") >= 2 and e.id.split(":", 2)[1] in law_ids}
                     result = "\n\n".join(f"[{e.id}] {e.title}\n{clip(e.body, 2000)}" for e in found) or "결과 없음"
                 except TimeoutError:
-                    return _refuse(provider)
+                    return _refuse(provider, reason="tool_timeout")
                 except Exception as e:  # noqa: BLE001 - tool failures never abort the chat
                     result = f"오류: {type(e).__name__}"
                 messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
@@ -180,7 +206,7 @@ async def review_chat(req: ReviewChatRequest, llm: LLMProvider | None = None) ->
         final = _parse(resp.content)
         if final is None:
             if nudged:
-                return _refuse(provider)
+                return _refuse(provider, reason="bad_json")
             nudged = True
             messages.append({"role": "user", "content": "지정된 JSON 형식으로만 답하세요."})
             continue
@@ -188,5 +214,5 @@ async def review_chat(req: ReviewChatRequest, llm: LLMProvider | None = None) ->
         if len(cites) != len(final.citations):
             log.info("review_chat stripped %d citation(s) outside the given evidence", len(final.citations) - len(cites))
         if not cites or not final.answer.strip():
-            return _refuse(provider)
+            return _refuse(provider, reason="no_valid_citation")
         return ReviewChatResponse(answer=final.answer.strip(), citations=cites, refused=False, provider=provider)
