@@ -2,12 +2,14 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { CircleHelp } from "lucide-react";
+import { CircleHelp, Search } from "lucide-react";
+import { openCommandPalette } from "@/components/CommandPalette";
 import { RoleSwitch, useRole } from "@/components/RoleSwitch";
 import { stepForVisit } from "@/lib/guide";
 import { guideStore } from "@/lib/guideStore";
 import { cx } from "@/lib/cx";
-import { Mascot } from "./layout";
+import { ThemeMenu } from "@/components/ThemeMenu";
+import { LogoMark } from "./LogoMark";
 
 const LINKS = [
   { href: "/", label: "승인 대기함" },
@@ -47,10 +49,10 @@ export function AppHeader() {
         데모 데이터는 매일 새벽 초기화됩니다.
       </p>
       <div className="border-b border-line bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex max-w-workspace flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2">
+        <div className="mx-auto flex max-w-workspace flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2 sm:min-h-[50px]">
           <Link href="/" className="flex items-center gap-2 rounded-md">
-            <Mascot pose="avatar" size={32} className="rounded-full bg-surface-sunken" />
-            <span className="text-title-sm text-brand">LexWatch</span>
+            <LogoMark size={24} className="text-brand-fg" />
+            <span className="font-serif text-title-sm text-ink">LexWatch</span>
           </Link>
           <nav aria-label="주 메뉴" className="order-3 flex w-full gap-1 overflow-x-auto sm:order-none sm:w-auto sm:overflow-visible">
             {[...LINKS, ...(role === "admin" ? ADMIN_LINKS : [])].map((l) => (
@@ -83,6 +85,17 @@ export function AppHeader() {
               <CircleHelp aria-hidden className="size-4" />
               <span aria-hidden className="hidden sm:inline">둘러보기</span>
             </button>
+            <button
+              type="button"
+              onClick={openCommandPalette}
+              aria-label="명령 팔레트 열기, 단축키 Command K"
+              className="hidden h-8 items-center gap-2 rounded-md border border-line px-2 text-label text-ink-subtle transition-colors duration-[120ms] hover:border-line-strong hover:text-ink lg:inline-flex"
+            >
+              <Search aria-hidden className="size-3.5" />
+              <span aria-hidden>찾기</span>
+              <kbd aria-hidden className="rounded-sm bg-surface-sunken px-1 font-mono text-micro">⌘K</kbd>
+            </button>
+            <ThemeMenu />
             <RoleSwitch />
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { ListChecks, Sparkles, UserCheck, type LucideIcon } from "lucide-react";
+import { ListChecks, Sparkles, UserCheck, type LucideIcon, History } from "lucide-react";
 import type { TrailActor, TrailStage } from "@/lib/api";
 import { ACTOR_LABEL, STAGE_NAMES, actorCounts, stageState, stageSummary } from "@/lib/aiTrail";
 import type { Tone } from "@/lib/labels";
@@ -6,9 +6,11 @@ import { SourceLabel } from "@/components/ds/badges";
 import { cx } from "@/lib/cx";
 
 const ACTOR: Record<TrailActor, { icon: LucideIcon; cls: string }> = {
-  ai: { icon: Sparkles, cls: "border-info/40 bg-info-bg text-info" },
-  rule: { icon: ListChecks, cls: "border-line-strong bg-surface-sunken text-ink-muted" },
-  human: { icon: UserCheck, cls: "border-success/40 bg-success-bg text-success" },
+  // 출처 색(DS2-05). 상태 색을 쓰지 않는다.
+  ai: { icon: Sparkles, cls: "border-prov-ai/40 bg-prov-ai-bg text-prov-ai" },
+  rule: { icon: ListChecks, cls: "border-prov-rule/40 bg-prov-rule-bg text-prov-rule" },
+  human: { icon: UserCheck, cls: "border-prov-human/40 bg-prov-human-bg text-prov-human" },
+  replay: { icon: History, cls: "border-dashed border-line-strong bg-prov-replay-bg text-prov-replay" },
 };
 
 const TONE_TEXT: Record<Tone, string> = {

@@ -28,7 +28,33 @@ function Text({ parts }: { parts: Part[] }) {
 
 const plain = (text: string): Part[] => [{ kind: "same", text }];
 
-function Columns({ before, after, oldLabel, newLabel }: { before: ReactNode; after: ReactNode; oldLabel: ReactNode; newLabel: ReactNode }) {
+function Columns({
+  before,
+  after,
+  oldLabel,
+  newLabel,
+  stacked = false,
+}: {
+  before: ReactNode;
+  after: ReactNode;
+  oldLabel: ReactNode;
+  newLabel: ReactNode;
+  stacked?: boolean;
+}) {
+  // 근거 패널처럼 좁은 칸에서는 화면 폭과 상관없이 구조문 위, 신조문 아래로 쌓는다.
+  if (stacked)
+    return (
+      <div className="grid gap-px bg-line">
+        <div className="bg-surface-sunken p-4">
+          <p className="mb-2 text-micro text-ink-subtle">{oldLabel}</p>
+          {before}
+        </div>
+        <div className="bg-surface p-4">
+          <p className="mb-2 text-micro text-ink-subtle">{newLabel}</p>
+          {after}
+        </div>
+      </div>
+    );
   return (
     <>
       {/* 768px 이상: 두 칸. 서버와 브라우저 결과가 같도록 CSS로만 전환한다. */}
@@ -64,24 +90,25 @@ function Status({ r }: { r: Redline }) {
   );
 }
 
-function Article({ item }: { item: OldNew }) {
+/** 한 조의 신구 대조 카드. 근거 패널은 stacked로 쓴다(DS2-07). */
+export function RedlineArticle({ item, stacked = false }: { item: OldNew; stacked?: boolean }) {
   const r = redline(item);
   let body: ReactNode;
   switch (r.status) {
     case "diff":
-      body = <Columns oldLabel="구조문" newLabel="신조문" before={<Text parts={r.old} />} after={<Text parts={r.new} />} />;
+      body = <Columns stacked={stacked} oldLabel="구조문" newLabel="신조문" before={<Text parts={r.old} />} after={<Text parts={r.new} />} />;
       break;
     case "added":
-      body = <Columns oldLabel="구조문" newLabel="신조문 · 신설" before={<p className="text-ui text-ink-subtle">없음</p>} after={<Text parts={plain(item.after)} />} />;
+      body = <Columns stacked={stacked} oldLabel="구조문" newLabel="신조문 · 신설" before={<p className="text-ui text-ink-subtle">없음</p>} after={<Text parts={plain(item.after)} />} />;
       break;
     case "removed":
-      body = <Columns oldLabel="구조문 · 삭제" newLabel="신조문" before={<Text parts={[{ kind: "del", text: item.before }]} />} after={<p className="text-ui text-ink-subtle">없음</p>} />;
+      body = <Columns stacked={stacked} oldLabel="구조문 · 삭제" newLabel="신조문" before={<Text parts={[{ kind: "del", text: item.before }]} />} after={<p className="text-ui text-ink-subtle">없음</p>} />;
       break;
     case "tooLong":
       body = (
         <>
           <p className="px-4 pt-3 text-caption text-ink-subtle">변경이 많아 강조하지 않았어요.</p>
-          <Columns oldLabel="구조문" newLabel="신조문" before={<Text parts={plain(item.before)} />} after={<Text parts={plain(item.after)} />} />
+          <Columns stacked={stacked} oldLabel="구조문" newLabel="신조문" before={<Text parts={plain(item.before)} />} after={<Text parts={plain(item.after)} />} />
         </>
       );
       break;
@@ -109,7 +136,7 @@ export function RedlineDiff({ items }: { items: OldNew[] }) {
   return (
     <div className="space-y-4">
       {items.map((it) => (
-        <Article key={it.articleNo} item={it} />
+        <RedlineArticle key={it.articleNo} item={it} />
       ))}
     </div>
   );

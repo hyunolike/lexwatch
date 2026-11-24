@@ -3,6 +3,9 @@ import { useState, useSyncExternalStore, type ReactNode } from "react";
 import type { EvidenceItem, OldNew } from "@/lib/api";
 import { ConfidenceMeter, CountBadge, SourceLabel, StatusLozenge } from "@/components/ds/badges";
 import { Callout } from "@/components/ds/Callout";
+import { CheckMark } from "@/components/ds/CheckMark";
+import { SkeletonRows } from "@/components/ds/Skeleton";
+import { SHORTCUT_HELP } from "@/lib/shortcuts";
 import { CitationChip } from "@/components/ds/CitationChip";
 import { RedlineDiff } from "@/components/ds/RedlineDiff";
 import { CARD } from "@/components/ds/layout";
@@ -105,14 +108,76 @@ export function Showcase() {
           </div>
         </Block>
 
-        <Block title="SourceLabel" note="누가 만들었는지 알리는 분류. 품질 판정이 아니다. 마우스를 올리거나 Tab으로 설명을 본다.">
+        <Block title="SourceLabel: 누가 만들었나" note="AI, 규칙, 사람, 재현 네 종류만 색이 있다. 어느 AI인지는 글자로 말한다. 품질 판정이 아니다.">
           <div className="flex flex-wrap gap-2">
-            <SourceLabel kind="nvidia" />
             <SourceLabel kind="cloudflare" />
             <SourceLabel kind="groq" />
+            <SourceLabel kind="nvidia" />
             <SourceLabel kind="fallback" />
+            <SourceLabel kind="fallback" name="guardrail" />
+            <SourceLabel actor="human" role="lawyer" />
+            <SourceLabel actor="human" role="partner" />
             <SourceLabel kind="replay" />
           </div>
+        </Block>
+
+        <Block title="CheckMark: 맞는지 검사했나" note="출처와 다른 부품이다. 검사 통과는 규칙과 AI 판정이 문제를 찾지 못했다는 뜻이고 내용이 맞다는 뜻이 아니다.">
+          <div className="flex flex-wrap gap-4">
+            <CheckMark state="passed" />
+            <CheckMark state="flagged" />
+            <CheckMark state="unchecked" />
+          </div>
+        </Block>
+
+        <Block title="두 테마 나란히" note="같은 부품을 data-theme만 바꿔 그린다. 화면 코드는 테마를 모른다.">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(["light", "dark"] as const).map((t) => (
+              <div key={t} data-theme={t} className="space-y-3 rounded-lg border border-line bg-canvas p-4 text-ink">
+                <p className="font-serif text-title-sm">{t === "light" ? "밝은 테마" : "어두운 테마"}</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="primary" size="sm">승인</Button>
+                  <Button size="sm">수정</Button>
+                  <Button variant="danger" size="sm">반려 확정</Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <SourceLabel kind="cloudflare" tooltip={false} />
+                  <CheckMark state="flagged" />
+                  <StatusLozenge domain="review" value="WaitingApproval" />
+                </div>
+                <Callout tone="warning">확인할 문장 2개가 있어요.</Callout>
+              </div>
+            ))}
+          </div>
+        </Block>
+
+        <Block title="읽기 글꼴 비교" note="본문은 Pretendard가 기본이다. 세리프 본문은 표와 버튼과 서체가 섞여 아직 쓰지 않는다(spec 3절).">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <p className="text-reading text-ink">
+              <span className="block text-caption text-ink-subtle">산세리프 (기본)</span>
+              근로자의 1주 근로시간은 휴게시간을 제외하고 40시간을 초과할 수 없다.
+            </p>
+            <p className="font-serif text-reading text-ink">
+              <span className="block font-sans text-caption text-ink-subtle">세리프 (비교용)</span>
+              근로자의 1주 근로시간은 휴게시간을 제외하고 40시간을 초과할 수 없다.
+            </p>
+          </div>
+        </Block>
+
+        <Block title="Skeleton" note="서버가 깨어 있는데 응답이 늦을 때 실제 배치 자리를 잡는다. 서버가 잠들었으면 렉스 대기 화면이 대신 나온다.">
+          <SkeletonRows rows={2} />
+        </Block>
+
+        <Block title="키보드 단축키" note="? 키로 어느 화면에서나 연다. 입력창과 한글 조합 중에는 동작하지 않는다.">
+          <table className="w-full text-label">
+            <tbody className="divide-y divide-line">
+              {SHORTCUT_HELP.map((r) => (
+                <tr key={r.keys}>
+                  <td className="py-1.5 pr-3 font-mono text-caption whitespace-nowrap text-ink">{r.keys}</td>
+                  <td className="py-1.5 text-ink">{r.what}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </Block>
 
         <Block title="CountBadge와 ConfidenceMeter" note="확인 필요 수만 danger. 그룹 관련성은 숫자와 5칸 막대이며 초안 정확도가 아니다.">
@@ -127,7 +192,7 @@ export function Showcase() {
           </div>
         </Block>
 
-        <Block title="CitationChip" note="누르거나 Enter로 근거 본문 앞부분을 본다. 근거가 없으면 경고 모양.">
+        <Block title="CitationChip" note="마우스를 올리면 미리보기, 누르거나 Enter로 고정한다. 검토 상세 분할 화면에서는 근거 패널을 바꾼다. 근거가 없으면 경고 모양.">
           <div className="flex flex-wrap gap-2">
             <CitationChip id={EVIDENCE.id} evidence={EVIDENCE} />
             <CitationChip id="law:999:제1조" />

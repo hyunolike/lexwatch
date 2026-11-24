@@ -1,79 +1,98 @@
 /*
- * LexWatch 디자인 토큰. 색, 글자, 모서리, 그림자, 움직임의 유일한 원본이다.
- * 설계: docs/features/design-system/design.md 2절
- * 대비 검사: src/design/contrast.test.ts가 이 파일을 읽는다.
+ * LexWatch 디자인 토큰 v2. 색, 글자, 모서리, 그림자, 움직임의 유일한 원본이다.
+ * 설계: docs/features/design-system-v2/design.md 2절
+ * 대비 검사: src/design/contrast.test.ts가 아래 :root와 [data-theme="dark"] 블록을 읽는다.
+ *
+ * 색은 두 층이다. 클래스(bg-surface 등)는 @theme inline이 만들고 값은 --lw-* 변수를 그대로 가리킨다.
+ * 실제 값은 :root(밝은 테마)와 [data-theme="dark"](어두운 테마)에만 있다. 화면 코드는 테마를 모른다.
  */
-@theme {
+@theme inline {
   /* Tailwind 기본 색 팔레트를 비운다. 원색 클래스(slate-500 등)는 CSS가 생성되지 않는다. */
   --color-*: initial;
 
   /* 바탕 */
-  --color-canvas: #f6f7f9;
-  --color-surface: #ffffff;
-  --color-surface-sunken: #eef1f5;
+  --color-canvas: var(--lw-canvas);
+  --color-surface: var(--lw-surface);
+  --color-surface-raised: var(--lw-surface-raised);
+  --color-surface-sunken: var(--lw-surface-sunken);
 
   /* 글자 */
-  --color-ink: #1a2233;
-  --color-ink-muted: #4a5568;
-  --color-ink-subtle: #5f6779;
+  --color-ink: var(--lw-ink);
+  --color-ink-muted: var(--lw-ink-muted);
+  --color-ink-subtle: var(--lw-ink-subtle);
 
   /* 경계 */
-  --color-line: #d9dee7;
-  --color-line-strong: #737d93;
+  --color-line: var(--lw-line);
+  --color-line-strong: var(--lw-line-strong);
 
-  /* 브랜드 */
-  --color-brand: #1f2a44;
-  --color-brand-hover: #2c3b5e;
-  --color-on-brand: #ffffff;
-  --color-focus: #1f6feb;
+  /* 브랜드: 넓은 면은 brand, 글자는 brand-fg */
+  --color-brand: var(--lw-brand);
+  --color-brand-hover: var(--lw-brand-hover);
+  --color-brand-subtle: var(--lw-brand-subtle);
+  --color-brand-fg: var(--lw-brand-fg);
+  --color-on-brand: var(--lw-on-brand);
+  --color-focus: var(--lw-focus);
 
   /* 상태 */
-  --color-success: #1e6b3a;
-  --color-success-bg: #e7f4ec;
-  --color-danger: #b3261e;
-  --color-danger-bg: #fcebea;
-  --color-warning: #8a5a00;
-  --color-warning-bg: #fff4d6;
-  --color-info: #1d4ed8;
-  --color-info-bg: #e8effd;
-  --color-neutral: #4a5568;
-  --color-neutral-bg: #eef1f5;
+  --color-success: var(--lw-success);
+  --color-success-bg: var(--lw-success-bg);
+  --color-danger: var(--lw-danger);
+  --color-danger-bg: var(--lw-danger-bg);
+  --color-on-danger: var(--lw-on-danger);
+  --color-warning: var(--lw-warning);
+  --color-warning-bg: var(--lw-warning-bg);
+  --color-info: var(--lw-info);
+  --color-info-bg: var(--lw-info-bg);
+  --color-neutral: var(--lw-ink-muted);
+  --color-neutral-bg: var(--lw-surface-sunken);
 
-  /* 출처 (상태 색 계열을 쓰지 않는다) */
-  --color-source-nvidia: #5b3fc4;
-  --color-source-nvidia-bg: #efebfc;
-  --color-source-cloudflare: #8e2c7a;
-  --color-source-cloudflare-bg: #f8e9f4;
-  --color-source-groq: #0b6670;
-  --color-source-groq-bg: #e2f3f5;
-  --color-source-fallback: #3d4a63;
-  --color-source-fallback-bg: #e9ecf2;
-  --color-source-replay: #5a6172;
-  --color-source-replay-bg: #ffffff;
+  /* 출처: 누가 만들었나. 상태 색 계열을 쓰지 않는다(DS2-05) */
+  --color-prov-ai: var(--lw-prov-ai);
+  --color-prov-ai-bg: var(--lw-prov-ai-bg);
+  --color-prov-rule: var(--lw-prov-rule);
+  --color-prov-rule-bg: var(--lw-prov-rule-bg);
+  --color-prov-human: var(--lw-prov-human);
+  --color-prov-human-bg: var(--lw-prov-human-bg);
+  --color-prov-replay: var(--lw-prov-replay);
+  --color-prov-replay-bg: var(--lw-prov-replay-bg);
 
   /* 신구 대조 */
-  --color-diff-del: #9b1c1c;
-  --color-diff-del-bg: #fdecec;
-  --color-diff-ins: #14532d;
-  --color-diff-ins-bg: #e6f4ea;
+  --color-diff-del: var(--lw-diff-del);
+  --color-diff-del-bg: var(--lw-diff-del-bg);
+  --color-diff-ins: var(--lw-diff-ins);
+  --color-diff-ins-bg: var(--lw-diff-ins-bg);
 
-  /* 글꼴 */
+  /* 대화상자 배경막: 두 테마 모두 어둡게 */
+  --color-scrim: var(--lw-scrim);
+
+  /* 그림자: 어두운 바탕에서는 더 진해야 보인다 */
+  --shadow-card: var(--lw-shadow-card);
+  --shadow-pop: var(--lw-shadow-pop);
+  --shadow-dialog: var(--lw-shadow-dialog);
+}
+
+@theme {
+  /* 글꼴. 제목은 세리프, 나머지는 Pretendard. */
   --font-sans: "Pretendard Variable", "Pretendard Fallback", system-ui, -apple-system, "Apple SD Gothic Neo",
     "Malgun Gothic", sans-serif;
+  --font-serif: "Noto Serif KR Variable", "Noto Serif KR Fallback", AppleMyungjo, Batang, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* 글자 척도 */
-  --text-title-lg: 1.5rem;
-  --text-title-lg--line-height: 2rem;
-  --text-title-lg--font-weight: 700;
-  --text-title-md: 1.25rem;
-  --text-title-md--line-height: 1.75rem;
-  --text-title-md--font-weight: 700;
+  /* 글자 척도 (design.md 2.8) */
+  --text-display: 2rem;
+  --text-display--line-height: 2.5rem;
+  --text-display--font-weight: 600;
+  --text-title-lg: 1.625rem;
+  --text-title-lg--line-height: 2.25rem;
+  --text-title-lg--font-weight: 600;
+  --text-title-md: 1.3125rem;
+  --text-title-md--line-height: 1.875rem;
+  --text-title-md--font-weight: 600;
   --text-title-sm: 1rem;
   --text-title-sm--line-height: 1.5rem;
   --text-title-sm--font-weight: 600;
-  --text-reading: 1rem;
-  --text-reading--line-height: 1.75rem;
+  --text-reading: 1.0625rem;
+  --text-reading--line-height: 1.875rem;
   --text-ui: 0.9375rem;
   --text-ui--line-height: 1.5rem;
   --text-label: 0.875rem;
@@ -90,14 +109,9 @@
   --radius-md: 8px;
   --radius-lg: 12px;
 
-  /* 그림자 */
-  --shadow-card: 0 1px 2px rgb(26 34 51 / 0.06);
-  --shadow-pop: 0 8px 24px rgb(26 34 51 / 0.14);
-  --shadow-dialog: 0 24px 48px rgb(26 34 51 / 0.24);
-
-  /* 화면 구성: 조문 비교는 작업 폭, 초안은 읽기 폭. 레이어는 모달이 가장 앞. */
+  /* 화면 구성: 조문 비교는 작업 폭, 초안은 읽기 폭(17px 기준 한 줄 40em). 레이어는 모달이 가장 앞. */
   --container-workspace: 70rem;
-  --container-reading: 48rem;
+  --container-reading: 40em;
   --layer-modal: 60;
   --layer-tooltip: 70;
 
@@ -105,9 +119,113 @@
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
 }
 
+/* 밝은 테마. 테마 스크립트가 data-theme을 적기 전과 스크립트가 실패한 경우에도 이 값이다.
+   [data-theme="light"]도 받아 어두운 화면 안의 견본 상자 하나를 밝게 그릴 수 있다. */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --lw-header-h: 78px; /* 데모 안내 띠 28px + 메뉴 줄 50px */
+
+  --lw-canvas: #f7f6f3;
+  --lw-surface: #ffffff;
+  --lw-surface-raised: #ffffff;
+  --lw-surface-sunken: #efede8;
+  --lw-ink: #1b1d22;
+  --lw-ink-muted: #474b55;
+  --lw-ink-subtle: #61656e;
+  --lw-line: #e2dfd8;
+  --lw-line-strong: #86888f;
+  --lw-brand: #1f3a68;
+  --lw-brand-hover: #2a4a80;
+  --lw-brand-subtle: #e9eef7;
+  --lw-brand-fg: #1f3a68;
+  --lw-on-brand: #ffffff;
+  --lw-focus: #2f6fdb;
+  --lw-success: #1c6b3a;
+  --lw-success-bg: #e7f3eb;
+  --lw-danger: #b3261e;
+  --lw-danger-bg: #fbeae8;
+  --lw-on-danger: #ffffff;
+  --lw-warning: #8a5300;
+  --lw-warning-bg: #fbf0d9;
+  --lw-info: #1d5fa8;
+  --lw-info-bg: #e7f0fa;
+  --lw-prov-ai: #5b3fc4;
+  --lw-prov-ai-bg: #f0ecfc;
+  --lw-prov-rule: #0b6670;
+  --lw-prov-rule-bg: #e2f2f3;
+  --lw-prov-human: #8e2c7a;
+  --lw-prov-human-bg: #f8e9f4;
+  --lw-prov-replay: #585f6e;
+  --lw-prov-replay-bg: #ffffff;
+  --lw-diff-del: #9b1c1c;
+  --lw-diff-del-bg: #fdecec;
+  --lw-diff-ins: #14532d;
+  --lw-diff-ins-bg: #e4f3e8;
+
+  --lw-scrim: rgb(17 18 20 / 0.4);
+  --lw-shadow-card: 0 1px 2px rgb(27 29 34 / 0.06);
+  --lw-shadow-pop: 0 8px 24px rgb(27 29 34 / 0.14);
+  --lw-shadow-dialog: 0 24px 48px rgb(27 29 34 / 0.24);
+}
+
+/* 어두운 테마. :root로 한정하지 않아 /design-system이 견본 상자 하나만 어둡게 그릴 수 있다. */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --lw-canvas: #111214;
+  --lw-surface: #18191c;
+  --lw-surface-raised: #202226;
+  --lw-surface-sunken: #0b0c0e;
+  --lw-ink: #ecedef;
+  --lw-ink-muted: #b3b7bf;
+  --lw-ink-subtle: #8e939c;
+  --lw-line: #2c2e33;
+  --lw-line-strong: #6c707a;
+  --lw-brand: #8fa9e0;
+  --lw-brand-hover: #a7bce8;
+  --lw-brand-subtle: #1a2335;
+  --lw-brand-fg: #9db4e6;
+  --lw-on-brand: #0c1322;
+  --lw-focus: #6ea2f7;
+  --lw-success: #6cc48c;
+  --lw-success-bg: #12261a;
+  --lw-danger: #f08a80;
+  --lw-danger-bg: #331719;
+  --lw-on-danger: #1b0a09;
+  --lw-warning: #e3b25a;
+  --lw-warning-bg: #2b2110;
+  --lw-info: #7fb0ee;
+  --lw-info-bg: #132238;
+  --lw-prov-ai: #b6a6f5;
+  --lw-prov-ai-bg: #221c3b;
+  --lw-prov-rule: #6fc6ce;
+  --lw-prov-rule-bg: #0f272a;
+  --lw-prov-human: #e69dd2;
+  --lw-prov-human-bg: #2d1728;
+  --lw-prov-replay: #a3a9b5;
+  --lw-prov-replay-bg: #18191c;
+  --lw-diff-del: #f4a3a3;
+  --lw-diff-del-bg: #3a1618;
+  --lw-diff-ins: #8fd6a6;
+  --lw-diff-ins-bg: #10291a;
+
+  --lw-scrim: rgb(0 0 0 / 0.6);
+  --lw-shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+  --lw-shadow-pop: 0 8px 24px rgb(0 0 0 / 0.5);
+  --lw-shadow-dialog: 0 24px 48px rgb(0 0 0 / 0.6);
+}
+
 /* 웹 글꼴을 받기 전후의 줄바꿈 차이를 줄이는 대체 글꼴 */
 @font-face {
   font-family: "Pretendard Fallback";
   src: local("Apple SD Gothic Neo"), local("Malgun Gothic");
   size-adjust: 96%;
+}
+
+/* size-adjust 100%는 추정치다. 6단계 화면 확인에서 줄바꿈 차이를 보고 고친다(design.md 2.8). */
+@font-face {
+  font-family: "Noto Serif KR Fallback";
+  src: local("AppleMyungjo"), local("Batang");
+  size-adjust: 100%;
 }

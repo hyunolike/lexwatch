@@ -99,3 +99,48 @@ export const stepLabel = (s: string) => STEP_LABELS[s] ?? s;
 
 /** 재현 데이터임을 알리는 문구. 정직성 표시라 화면에서 빼지 않는다. */
 export const REPLAY_NOTE = "재현 예시예요. 실제 공포 법령이 아니에요.";
+
+/** 출처 네 종류(design-system-v2 design.md 3.2). 누가 만들었나이고 품질 판정이 아니다. */
+export type ProvKind = "ai" | "rule" | "human" | "replay" | "neutral";
+export type Provenance = { kind: ProvKind; label: string; help: string };
+
+const AI_VENDORS: Record<string, { name: string; help: string }> = {
+  nvidia: { name: "NVIDIA", help: "AI가 만들었어요. NVIDIA Nemotron이 실제로 처리했어요." },
+  cloudflare: { name: "Cloudflare", help: "AI가 만들었어요. Cloudflare Workers AI의 공개 모델(gpt-oss)이 처리했어요." },
+  groq: { name: "Groq", help: "AI가 만들었어요. Cloudflare 무료 한도가 끝나 Groq의 공개 모델(gpt-oss)이 대신 처리했어요." },
+};
+const HUMAN_ROLES: Record<string, string> = { lawyer: "변호사", partner: "파트너", admin: "관리자" };
+
+/**
+ * 출처를 한 곳에서 정한다. SourceLabel, AiLabel, AiTrail, RunTimeline이 모두 이 함수를 쓴다.
+ * - providerKind: API의 공급자 종류. none이나 빈 값은 그리지 않는다(null).
+ * - providerName "guardrail": 입력 규칙이 모델 호출 전에 거절한 경우라 규칙이다.
+ * - actor/role: AI 흔적 단계나 승인 기록. 사람은 역할 이름으로 적는다.
+ */
+export function provenanceOf(input: {
+  providerKind?: string | null;
+  providerName?: string | null;
+  actor?: string | null;
+  role?: string | null;
+}): Provenance | null {
+  const { providerKind: k, providerName, actor, role } = input;
+  if (k && k !== "none") {
+    if (k === "replay") return { kind: "replay", label: "재현", help: "녹화한 예시를 다시 보여 주는 데모 데이터예요." };
+    if (k === "fallback")
+      return providerName === "guardrail"
+        ? { kind: "rule", label: "규칙", help: "입력 규칙이 모델에 보내기 전에 거절했어요." }
+        : { kind: "rule", label: "규칙", help: "모델 대신 규칙 기반 대체 구현이 만들었어요. 품질 판정이 아니에요." };
+    const v = AI_VENDORS[k];
+    if (v) return { kind: "ai", label: `AI ${v.name}`, help: v.help };
+    return { kind: "neutral", label: k, help: k };
+  }
+  if (actor === "replay") return { kind: "replay", label: "재현", help: "녹화한 예시를 다시 보여 주는 데모 데이터예요." };
+  if (actor === "human") {
+    const name = (role && HUMAN_ROLES[role]) || "사람";
+    return { kind: "human", label: name, help: `${name}이 결정했어요.` };
+  }
+  if (actor === "ai") return { kind: "ai", label: "AI", help: "AI가 처리한 단계예요." };
+  if (actor === "rule") return { kind: "rule", label: "규칙", help: "규칙으로 처리한 단계예요." };
+  if (actor) return { kind: "neutral", label: actor, help: actor };
+  return null;
+}

@@ -10,6 +10,11 @@ import { useRole } from "@/components/RoleSwitch";
 import { WakeGate } from "@/components/WakeGate";
 import { FirstVisitGuide } from "@/components/FirstVisitGuide";
 import { splitForRole } from "@/lib/reviewPresentation";
+import { inboxCache } from "@/lib/inboxCache";
+import { cycle } from "@/lib/shortcuts";
+import { useShortcuts } from "@/components/Shortcuts";
+import { useEffect } from "react";
+import { SkeletonRows } from "@/components/ds/Skeleton";
 
 /** 재현이면 replay 출처를 덧붙인다. */
 const kindsOf = (r: ReviewSummary) =>
@@ -19,6 +24,7 @@ function Row({ r }: { r: ReviewSummary }) {
   return (
     <li>
       <Link
+        data-review-row
         href={`/reviews/${r.id}`}
         className="group grid grid-cols-[1fr_auto] items-center gap-x-4 gap-y-3 px-4 py-4 transition-colors duration-[120ms] hover:bg-surface-sunken md:grid-cols-[minmax(0,1fr)_6rem_11rem_4rem_7rem_1rem]"
       >
@@ -40,7 +46,21 @@ function Row({ r }: { r: ReviewSummary }) {
   );
 }
 
+/** j/k로 행 링크 사이를 실제 포커스로 옮긴다(DS2-09). Enter는 링크의 기본 동작이다. */
+function useRowKeys() {
+  const move = (dir: 1 | -1) => () => {
+    const rows = [...document.querySelectorAll<HTMLAnchorElement>("[data-review-row]")];
+    const next = cycle(rows, rows.find((r) => r === document.activeElement) ?? null, dir);
+    next?.focus();
+    next?.scrollIntoView({ block: "nearest" });
+  };
+  useShortcuts({ next: move(1), prev: move(-1) });
+}
+
 function Queue({ items, role }: { items: ReviewSummary[]; role: string }) {
+  useRowKeys();
+  // 명령 팔레트의 검토 검색이 이 결과를 쓴다(DS2-10).
+  useEffect(() => inboxCache.set(items), [items]);
   if (items.length === 0)
     return (
       <EmptyState
@@ -84,7 +104,7 @@ export default function Home() {
         <p className="max-w-reading text-caption text-ink-subtle">그룹 관련성은 법령과 실무그룹의 관련 정도예요. 초안의 정확도를 뜻하지 않아요.</p>
       </div>
       <FirstVisitGuide />
-      <WakeGate<ReviewSummary[]> key={role} label="승인 대기함" load={() => apiFetch<ReviewSummary[]>("/api/reviews")}>
+      <WakeGate<ReviewSummary[]> key={role} label="승인 대기함" fallback={<div className="space-y-6"><SkeletonRows rows={3} /><SkeletonRows rows={3} /></div>} load={() => apiFetch<ReviewSummary[]>("/api/reviews")}>
         {(res) =>
           Array.isArray(res.data) ? (
             <Queue items={res.data} role={role} />

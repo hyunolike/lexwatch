@@ -9,13 +9,11 @@ import { Sparkline } from "@/components/ds/Sparkline";
 import { useRole } from "@/components/RoleSwitch";
 import { WakeGate } from "@/components/WakeGate";
 import { cx } from "@/lib/cx";
+import { OpsSkeleton } from "@/components/ds/Skeleton";
 
 const DAYS = [7, 14, 30] as const;
-const PROVIDER: Record<string, { label: string; cls: string }> = {
-  nvidia: { label: "NVIDIA", cls: "bg-source-nvidia" },
-  cloudflare: { label: "Cloudflare", cls: "bg-source-cloudflare" },
-  groq: { label: "Groq", cls: "bg-info" },
-};
+/** 공급자는 모두 AI라 색으로 나누지 않고 이름과 건수로 구분한다(design.md 1.1). */
+const PROVIDER: Record<string, string> = { nvidia: "NVIDIA", cloudflare: "Cloudflare", groq: "Groq" };
 const DECISION: Record<string, string> = { approve: "승인", reject: "반려", confirm: "파트너 최종 승인", return: "파트너가 돌려보냄" };
 
 function Card({ label, value, sub, series }: { label: string; value: string; sub?: string; series?: number[] }) {
@@ -113,21 +111,17 @@ function Summary({ s }: { s: OpsSummary }) {
             {providers.length === 0 ? (
               <p className="text-ui text-ink-subtle">이 기간에 모델이 처리한 단계가 없어요.</p>
             ) : (
-              <>
-                <span aria-hidden className="flex h-3 w-full overflow-hidden rounded-sm">
-                  {providers.map((p) => (
-                    <span key={p.key} className={PROVIDER[p.key]?.cls ?? "bg-ink-muted"} style={{ width: `${p.share * 100}%` }} />
-                  ))}
-                </span>
-                <ul className="flex flex-wrap gap-x-4 gap-y-1 text-caption text-ink">
-                  {providers.map((p) => (
-                    <li key={p.key} className="inline-flex items-center gap-1.5">
-                      <span aria-hidden className={cx("size-2.5 rounded-sm", PROVIDER[p.key]?.cls ?? "bg-ink-muted")} />
-                      {PROVIDER[p.key]?.label ?? p.key} {p.value}건 ({pct(p.share, 0)})
-                    </li>
-                  ))}
-                </ul>
-              </>
+              <ul className="space-y-2">
+                {providers.map((p) => (
+                  <li key={p.key} className="grid grid-cols-[6.5rem_1fr_auto] items-center gap-3 text-caption text-ink">
+                    <span>AI {PROVIDER[p.key] ?? p.key}</span>
+                    <HBar value={p.share} max={1} tone="bg-prov-ai" />
+                    <span className="tabular-nums text-ink-muted">
+                      {p.value}건 ({pct(p.share, 0)})
+                    </span>
+                  </li>
+                ))}
+              </ul>
             )}
             <p className="text-caption text-ink-muted">
               규칙 대체 {s.ai.ruleFallback}건, 실패 {s.ai.failed}건. 검토 보조 채팅 {s.ai.chat.total}건(답변 {s.ai.chat.byOutcome.answered ?? 0}, 거절{" "}
@@ -192,7 +186,7 @@ export default function OpsPage() {
       {role !== "admin" ? (
         <Callout tone="info">관리자로 보기에서 볼 수 있어요.</Callout>
       ) : (
-        <WakeGate<OpsSummary | ApiError> key={`${role}-${days}`} label="운영 현황" load={() => apiFetch<OpsSummary | ApiError>(`/api/ops/summary?days=${days}`)}>
+        <WakeGate<OpsSummary | ApiError> key={`${role}-${days}`} label="운영 현황" fallback={<OpsSkeleton />} load={() => apiFetch<OpsSummary | ApiError>(`/api/ops/summary?days=${days}`)}>
           {(res) => (res.status === 200 ? <Summary s={res.data as OpsSummary} /> : <Callout tone="danger">운영 현황을 불러오지 못했어요.</Callout>)}
         </WakeGate>
       )}

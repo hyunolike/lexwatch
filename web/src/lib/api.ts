@@ -77,7 +77,8 @@ export interface ReviewDetail extends ReviewSummary {
 
 /** ai-footprints AF-01. 백엔드 Reviews/AiTrail.cs와 같은 값. */
 export type TrailKey = "collect" | "classify" | "index" | "analyze" | "critic_citation" | "critic_source" | "critic_judge" | "decision";
-export type TrailActor = "ai" | "rule" | "human";
+/** replay는 녹화 예시를 다시 보여 주는 단계(design-system-v2 3.2). 백엔드는 아직 보내지 않는다. */
+export type TrailActor = "ai" | "rule" | "human" | "replay";
 export type TrailStatus = "done" | "needs_review" | "failed" | "running" | "waiting" | "skipped" | "not_run";
 
 export interface TrailStage {

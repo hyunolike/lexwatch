@@ -214,7 +214,7 @@ function Tips() {
         href="/intro.mp4"
         target="_blank"
         rel="noopener"
-        className="mt-2 inline-block rounded-sm text-label font-semibold text-ink underline underline-offset-2 hover:text-brand"
+        className="mt-2 inline-block rounded-sm text-label font-semibold text-ink underline underline-offset-2 hover:text-brand-fg"
       >
         36초 소개 영상 보기
         <span className="sr-only"> (새 탭에서 열림)</span>

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { MAX_RETRIES, RETRY_INTERVAL_MS, pingHealth, type ApiResult } from "@/lib/api";
-import { DONE_HOLD_MS, HEALTH_RETRY_MS, SHOW_DELAY_MS } from "@/lib/wake";
+import { DONE_HOLD_MS, HEALTH_RETRY_MS, SHOW_DELAY_MS, gateView, type Health } from "@/lib/wake";
 import { Mascot } from "@/components/ds/layout";
 import { Button } from "@/components/ui/Button";
 import { WakeWait } from "@/components/WakeWait";
@@ -19,7 +19,10 @@ export function WakeGate<T>({
   load,
   label,
   children,
+  fallback,
 }: {
+  /** 서버가 깨어 있는데 응답이 늦을 때 보일 스켈레톤(DS2-13). 주면 렉스는 서버가 잠들었을 때만 나온다. */
+  fallback?: ReactNode;
   load: () => Promise<ApiResult<T>>;
   /** 단계 이름 "〈label〉 불러오기"에 쓴다. */
   label: string;
@@ -32,6 +35,9 @@ export function WakeGate<T>({
   const [wait, setWait] = useState<{ startedAt: number } | null>(null);
   const [apiUp, setApiUp] = useState(false);
   const [holding, setHolding] = useState(false);
+  const [health, setHealth] = useState<Health>("unknown");
+  const healthRef = useRef<Health>("unknown");
+  const hasFallback = fallback !== undefined;
   const loadRef = useRef(load);
   useEffect(() => {
     loadRef.current = load;
@@ -41,6 +47,7 @@ export function WakeGate<T>({
   useEffect(() => {
     let cancelled = false;
     let shown = false;
+    healthRef.current = "unknown"; // 다시 불러오면 서버 상태를 새로 묻는다
     const timers: ReturnType<typeof setTimeout>[] = [];
     const t0 = Date.now();
     const showTimer = setTimeout(() => {
@@ -61,7 +68,8 @@ export function WakeGate<T>({
       if (!r.waking) {
         const ready = { status: r.status, data: r.data };
         clearTimeout(showTimer);
-        if (!shown || reducedMotion()) {
+        // 스켈레톤을 보이던 중이면(서버가 깨어 있었음) 완료 유지 없이 바로 바꾼다.
+        if (!shown || reducedMotion() || (hasFallback && healthRef.current !== "waking")) {
           setRes(ready);
           return;
         }
@@ -80,10 +88,10 @@ export function WakeGate<T>({
       cancelled = true;
       timers.forEach(clearTimeout);
     };
-  }, [nonce]);
+  }, [nonce, hasFallback]);
 
-  // 대기 화면이 떠 있는 동안 /health로 서버가 깼는지 본다. 한 번에 요청 하나.
-  const pinging = wait != null && !apiUp && !res && !gaveUp && !failed && !holding;
+  // /health로 서버가 깼는지 본다. 한 번에 요청 하나. 스켈레톤이 있는 화면은 처음부터 물어 잠든 서버를 일찍 가린다.
+  const pinging = (hasFallback || wait != null) && !apiUp && !res && !gaveUp && !failed && !holding;
   useEffect(() => {
     if (!pinging) return;
     const ctrl = new AbortController();
@@ -91,6 +99,9 @@ export function WakeGate<T>({
     const ping = async () => {
       try {
         const r = await pingHealth(ctrl.signal);
+        const h: Health = r === "up" ? "up" : r === "waking" ? "waking" : "unknown";
+        healthRef.current = h;
+        setHealth(h);
         if (r === "up") setApiUp(true);
         else if (r === "waking") timer = setTimeout(ping, HEALTH_RETRY_MS);
       } catch {
@@ -109,6 +120,7 @@ export function WakeGate<T>({
     setWait(null);
     setApiUp(false);
     setHolding(false);
+    setHealth("unknown");
     setGaveUp(false);
     setFailed(false);
     setNonce((n) => n + 1);
@@ -118,7 +130,7 @@ export function WakeGate<T>({
   if (failed || gaveUp)
     return (
       <div className="flex flex-col items-center py-10 text-center">
-        <Mascot pose="error" size={180} />
+        <Mascot pose="error" size={120} />
         <p className="mt-4 text-title-sm text-ink">
           {failed ? "화면을 불러오지 못했어요" : "서버가 아직 깨어나지 않았어요"}
         </p>
@@ -128,5 +140,7 @@ export function WakeGate<T>({
         </Button>
       </div>
     );
+  const view = gateView({ hasFallback, health, waitShown: wait != null });
+  if (view === "skeleton") return <div aria-busy="true" aria-label={`${label} 불러오는 중`}>{fallback}</div>;
   return <WakeWait label={label} startedAt={wait?.startedAt ?? null} apiUp={apiUp} loaded={holding} />;
 }

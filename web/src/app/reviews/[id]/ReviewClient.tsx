@@ -21,13 +21,18 @@ import { aiExplain, findStage, isAiProvider } from "@/lib/aiTrail";
 import { ReviewChat } from "@/components/ReviewChat";
 import { SourceLabel, StatusLozenge } from "@/components/ds/badges";
 import { Callout } from "@/components/ds/Callout";
-import { RedlineDiff } from "@/components/ds/RedlineDiff";
+import { SplitPane } from "@/components/ds/SplitPane";
+import { EvidencePanel } from "./EvidencePanel";
+import { SPLIT_QUERY, useMediaQuery } from "@/lib/useMediaQuery";
+import { useShortcuts } from "@/components/Shortcuts";
+import { cycle } from "@/lib/shortcuts";
 import { CARD, SummaryList } from "@/components/ds/layout";
 import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useRole } from "@/components/RoleSwitch";
 import { WakeGate } from "@/components/WakeGate";
 import { guideStore } from "@/lib/guideStore";
+import { ReviewSkeleton } from "@/components/ds/Skeleton";
 
 type Notice = { tone: "warning" | "danger"; text: string; conflict?: boolean } | null;
 
@@ -55,6 +60,38 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
     review.isReplay && !review.providerKinds.includes("replay") ? [...review.providerKinds, "replay" as const] : review.providerKinds;
 
   const [returning, setReturning] = useState(false);
+  // 분할 화면(DS2-07): 고른 문장과 근거. 1280px 미만에서는 고르지 않고 칩이 팝오버로 열린다.
+  const split = useMediaQuery(SPLIT_QUERY);
+  const [sentence, setSentence] = useState<number | null>(null);
+  const [evidenceId, setEvidenceId] = useState<string | null>(null);
+  const allCited = [...new Set(draft?.sentences.flatMap((s) => s.citations) ?? [])];
+  const selectSentence = (i: number, id?: string) => {
+    setSentence(i);
+    setEvidenceId(id ?? null);
+  };
+
+  // 단축키(DS2-09): 보이는 버튼을 그대로 누른다. 버튼이 없거나 비활성이면(역할, 상태, 처리 중) 아무 일도 하지 않는다.
+  // 재검사 적발이 남아 확인이 필요하면 a는 동작하지 않는다(확인 버튼을 직접 눌러야 한다).
+  const press = (name: string) => () =>
+    document.querySelector<HTMLButtonElement>(`[data-shortcut="${name}"]:not(:disabled)`)?.click();
+  const flagged = draft?.sentences.flatMap((s, i) => (s.findings.length > 0 ? [i] : [])) ?? [];
+  const moveFlag = (dir: 1 | -1) => () => {
+    const pool = flagged.length > 0 ? flagged : (draft?.sentences.map((_, i) => i) ?? []);
+    const next = cycle(pool, sentence, dir);
+    if (next === null) return;
+    setSentence(next);
+    setEvidenceId(null);
+    const el = document.getElementById(`draft-sentence-${next + 1}`);
+    el?.focus({ preventScroll: true });
+    el?.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
+  useShortcuts({
+    approve: pending ? undefined : press("approve"),
+    edit: press("edit"),
+    reject: press("reject"),
+    nextFlag: moveFlag(1),
+    prevFlag: moveFlag(-1),
+  });
 
   async function decide(kind: DecisionKind, acknowledgedFindingCount?: number) {
     setBusy(true);
@@ -74,14 +111,15 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
   }
 
   return (
-    <div className="space-y-5">
+    // 1280px 이상에서는 작업 폭(70rem)을 벗어나 두 칸을 넉넉히 둔다(design.md 3.4).
+    <div className="space-y-5 xl:relative xl:left-1/2 xl:w-[min(96rem,calc(100vw-3rem))] xl:-translate-x-1/2">
       <Link href="/" className="inline-flex items-center gap-1 rounded-md text-label text-ink-muted hover:text-ink">
         <ArrowLeft aria-hidden className="size-4" /> 승인 대기함
       </Link>
 
       <header className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-title-lg break-words text-ink">{review.lawName}</h1>
+          <h1 className="font-serif text-title-lg break-words text-ink">{review.lawName}</h1>
           <StatusLozenge domain="review" value={review.status} />
           {kinds.map((k) => (
             <SourceLabel key={k} kind={k} />
@@ -97,7 +135,9 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
         >
           <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
             <p className="text-label text-ink-muted">
-              {editing ? "수정 전 초안의 검사 결과예요. 수정한 문장과 근거를 다시 확인해 주세요." : "승인하기 전에 초안의 문장과 인용 근거를 직접 확인해 주세요."}
+              {editing
+                ? "수정 전 초안의 검사 결과예요. 수정한 문장과 근거를 다시 확인해 주세요."
+                : "자동 검사 통과는 내용이 맞다는 뜻이 아니에요. 승인하기 전에 초안의 문장과 인용 근거를 직접 대조해 주세요."}
             </p>
             {attention.firstFlaggedIndex !== null && (
               <a href={`#draft-sentence-${attention.firstFlaggedIndex + 1}`} className="rounded-sm text-label font-semibold text-ink underline underline-offset-4">
@@ -125,8 +165,10 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
         </Callout>
       )}
 
-      <div className="space-y-8">
-        <section aria-labelledby="draft" className="mx-auto max-w-reading space-y-3">
+      <SplitPane
+        label="초안과 근거 폭"
+        left={
+        <section aria-labelledby="draft" className="mx-auto max-w-reading space-y-3 xl:mx-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 id="draft" className="text-title-md text-ink">영향 검토 초안</h2>
             {draft && isAiProvider(analyze?.providerKind) && (
@@ -149,7 +191,10 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
                   : undefined
               }
               draft={draft}
+              stages={review.aiTrail?.stages}
               evidence={review.evidence}
+              selected={sentence}
+              onSelect={split ? selectSentence : undefined}
               editing={editing}
               edited={edited}
               onChange={(next) => {
@@ -161,11 +206,19 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
             <Callout tone="warning">아직 초안이 없어요. 근거가 부족하면 사유를 적어 반려할 수 있어요.</Callout>
           )}
         </section>
-        <section aria-labelledby="oldnew" className="space-y-3">
-          <h2 id="oldnew" className="text-title-md text-ink">신구조문 비교</h2>
-          <RedlineDiff items={review.oldNew} />
-        </section>
-      </div>
+        }
+        right={
+          <EvidencePanel
+            sentence={split ? sentence : null}
+            cited={sentence !== null && draft ? draft.sentences[sentence]?.citations ?? [] : []}
+            allCited={allCited}
+            selected={split ? evidenceId : null}
+            onSelect={(id) => setEvidenceId(id)}
+            evidence={review.evidence}
+            oldNew={review.oldNew}
+          />
+        }
+      />
 
       <details className={`${CARD} p-4`}>
         <summary className="w-fit cursor-pointer rounded-sm text-label font-medium text-ink-muted">법령과 초안 정보</summary>
@@ -212,7 +265,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
           <div className="flex flex-wrap items-center gap-2">
             {actions.approve && !editing && (
               <ConfirmDialog
-                trigger={<Button variant="primary" disabled={busy}>승인</Button>}
+                trigger={<Button data-shortcut="approve" variant="primary" disabled={busy}>승인</Button>}
                 title={shownFindings > 0 ? `확인이 필요한 문장 ${attention.flaggedSentences}개가 남아 있어요` : "승인할까요?"}
                 description={
                   shownFindings > 0
@@ -225,7 +278,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
             )}
             {actions.edit && editing && (
               <ConfirmDialog
-                trigger={<Button variant="primary" disabled={busy}>수정 후 승인</Button>}
+                trigger={<Button data-shortcut="approve" variant="primary" disabled={busy}>수정 후 승인</Button>}
                 title="수정한 내용으로 승인할까요?"
                 description={`수정 전과 후가 함께 기록되고, ${review.groupName} 그룹 알림함으로 안내문이 발송돼요.`}
                 confirmLabel="수정 내용으로 승인"
@@ -234,6 +287,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
             )}
             {actions.edit && (
               <Button
+                data-shortcut="edit"
                 disabled={busy}
                 onClick={() => {
                   setPending(null);
@@ -244,7 +298,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
                 {editing ? "수정 취소" : "수정"}
               </Button>
             )}
-            <Button variant="danger-ghost" disabled={busy} aria-expanded={rejecting} onClick={() => setRejecting((r) => !r)}>
+            <Button data-shortcut="reject" variant="danger-ghost" disabled={busy} aria-expanded={rejecting} onClick={() => setRejecting((r) => !r)}>
               반려
             </Button>
           </div>
@@ -255,6 +309,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
               </label>
               <textarea
                 id="reject-reason"
+                autoFocus
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 rows={2}
@@ -271,13 +326,13 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
         <section aria-label="파트너 결정" className={`${CARD} sticky bottom-4 z-20 space-y-3 p-4 shadow-pop`}>
           <div className="flex flex-wrap items-center gap-2">
             <ConfirmDialog
-              trigger={<Button variant="primary" disabled={busy}>최종 승인</Button>}
+              trigger={<Button data-shortcut="approve" variant="primary" disabled={busy}>최종 승인</Button>}
               title="최종 승인할까요?"
               description={`변호사가 확인한 적발을 검토했다면 최종 승인해 주세요. ${review.groupName} 그룹 알림함으로 안내문이 발송되고, 발송 뒤에는 되돌릴 수 없어요.`}
               confirmLabel="최종 승인하고 알림 보내기"
               onConfirm={() => decide("confirm")}
             />
-            <Button variant="danger-ghost" disabled={busy} aria-expanded={returning} onClick={() => setReturning((r) => !r)}>
+            <Button data-shortcut="reject" variant="danger-ghost" disabled={busy} aria-expanded={returning} onClick={() => setReturning((r) => !r)}>
               돌려보내기
             </Button>
           </div>
@@ -288,6 +343,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
               </label>
               <textarea
                 id="return-reason"
+                autoFocus
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 rows={2}
@@ -351,7 +407,7 @@ function PartnerPanel({ review }: { review: ReviewDetail }) {
 export function ReviewClient({ id }: { id: string }) {
   const role = useRole();
   return (
-    <WakeGate<ReviewDetail | ApiError> key={`${id}-${role}`} label="초안" load={() => apiFetch<ReviewDetail | ApiError>(`/api/reviews/${id}`)}>
+    <WakeGate<ReviewDetail | ApiError> key={`${id}-${role}`} label="초안" fallback={<ReviewSkeleton />} load={() => apiFetch<ReviewDetail | ApiError>(`/api/reviews/${id}`)}>
       {(res, reload) =>
         res.status === 200 ? (
           <Detail

@@ -1,5 +1,5 @@
 "use client";
-import { ListChecks, Sparkles, UserCheck, type LucideIcon } from "lucide-react";
+import { History, ListChecks, Sparkles, UserCheck, type LucideIcon } from "lucide-react";
 import { formatDuration, type TimelineItem, type TrailActor } from "@/lib/api";
 import { groupLabel, statusLabel, stepLabel } from "@/lib/labels";
 import { GAP_PX, formatGap, layoutTimeline, type Bar } from "@/lib/runTimeline";
@@ -10,14 +10,16 @@ const AXIS_H = 28;
 const LABEL_W = 176;
 
 const ACTOR: Record<TrailActor, { icon: LucideIcon; label: string; bar: string; badge: string }> = {
-  ai: { icon: Sparkles, label: "AI", bar: "bg-info", badge: "border-info/40 bg-info-bg text-info" },
-  rule: { icon: ListChecks, label: "규칙", bar: "bg-ink-muted", badge: "border-line-strong bg-surface-sunken text-ink-muted" },
-  human: { icon: UserCheck, label: "사람", bar: "bg-success", badge: "border-success/40 bg-success-bg text-success" },
+  // 출처 색(DS2-05). 상태 색(info, success)을 쓰지 않는다.
+  ai: { icon: Sparkles, label: "AI", bar: "bg-prov-ai", badge: "border-prov-ai/40 bg-prov-ai-bg text-prov-ai" },
+  rule: { icon: ListChecks, label: "규칙", bar: "bg-prov-rule", badge: "border-prov-rule/40 bg-prov-rule-bg text-prov-rule" },
+  human: { icon: UserCheck, label: "사람", bar: "bg-prov-human", badge: "border-prov-human/40 bg-prov-human-bg text-prov-human" },
+  replay: { icon: History, label: "재현", bar: "bg-prov-replay", badge: "border-dashed border-line-strong bg-prov-replay-bg text-prov-replay" },
 };
 
 const DECISIONS: Record<string, string> = { approve: "승인", reject: "반려", confirm: "파트너 최종 승인", return: "파트너가 돌려보냄" };
 const ROLES: Record<string, string> = { lawyer: "변호사", partner: "파트너", admin: "관리자" };
-const FAILED_BG = "repeating-linear-gradient(135deg, var(--color-danger) 0 4px, var(--color-danger-bg) 4px 7px)";
+const FAILED_BG = "repeating-linear-gradient(135deg, var(--lw-danger) 0 4px, var(--lw-danger-bg) 4px 7px)";
 
 const clock = (t: number) =>
   new Date(t).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -125,7 +127,7 @@ export function RunTimeline({ items }: { items: TimelineItem[] }) {
               <span
                 aria-hidden
                 className="absolute inset-x-0 bottom-0"
-                style={{ top: AXIS_H, backgroundImage: "repeating-linear-gradient(90deg, transparent 0 5px, var(--color-line) 5px 6px)" }}
+                style={{ top: AXIS_H, backgroundImage: "repeating-linear-gradient(90deg, transparent 0 5px, var(--lw-line) 5px 6px)" }}
               />
             </div>
           ))}
