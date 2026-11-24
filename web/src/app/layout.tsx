@@ -6,6 +6,9 @@ import "@fontsource-variable/noto-serif-kr/wght.css";
 import "./globals.css";
 import { AppHeader } from "@/components/ds/AppHeader";
 import { THEME_SCRIPT } from "@/lib/theme";
+import { ToastProvider } from "@/components/ui/Toast";
+import { CommandPalette } from "@/components/CommandPalette";
+import { ShortcutHelp } from "@/components/Shortcuts";
 
 export const metadata: Metadata = {
   title: "LexWatch",
@@ -20,17 +23,23 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-full">
-        <Suspense fallback={<div className="h-(--lw-header-h)" />}>
-          <AppHeader />
-        </Suspense>
-        <main id="main" tabIndex={-1} className="mx-auto max-w-workspace px-4 py-6 outline-none sm:py-8">
-          {children}
-        </main>
-        <footer className="mx-auto max-w-workspace px-4 pb-8 text-caption text-ink-subtle">
-          <Link href="/design-system" className="rounded-sm underline underline-offset-2 hover:text-ink">
-            디자인 시스템
-          </Link>
-        </footer>
+        <ToastProvider>
+          <Suspense fallback={<div className="h-(--lw-header-h)" />}>
+            <AppHeader />
+          </Suspense>
+          <main id="main" tabIndex={-1} className="mx-auto max-w-workspace px-4 py-6 outline-none sm:py-8">
+            {children}
+          </main>
+          <footer className="mx-auto max-w-workspace px-4 pb-8 text-caption text-ink-subtle">
+            <Link href="/design-system" className="rounded-sm underline underline-offset-2 hover:text-ink">
+              디자인 시스템
+            </Link>
+          </footer>
+          <Suspense>
+            <CommandPalette />
+          </Suspense>
+          <ShortcutHelp />
+        </ToastProvider>
       </body>
     </html>
   );

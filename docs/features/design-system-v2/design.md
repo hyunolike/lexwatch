@@ -394,3 +394,11 @@ Base UI Dialog 안에 Autocomplete(`inline`, `autoHighlight`). 묶음과 문구:
 | M8 명령 팔레트 | `<Autocomplete.Root inline open autoHighlight>` |
 | M9 스켈레톤 규칙 | 건강 상태를 `unknown \| up \| waking` 셋으로 둔다. `fallback`이 있으면 `unknown`과 `up`에서는 스켈레톤, `/health`가 실패하거나 시간 초과일 때만(`waking`) 렉스 대기 화면. 스켈레톤을 보이던 중이면 완료 유지(`DONE_HOLD_MS`)를 건너뛴다 |
 | M10 범위 맞춤 | 고정 비율은 58:42 하나(spec도 같게). DS2-16에서 "밀도 비교", DS2-15에서 "표 행"을 뺀다. 두 테마 견본은 단계 1에 넣었다(구현 완료) |
+
+## 8. 구현 중 바꾼 것 (2026-11-25)
+
+| 설계 | 구현 | 이유 |
+|---|---|---|
+| 3.6 `a`는 `ConfirmDialog`를 제어형(`open`, `onOpenChange`)으로 바꿔 연다 | 결정 버튼에 `data-shortcut="approve|edit|reject"`를 달고 단축키는 보이는 버튼 중 비활성이 아닌 것을 누른다. `ConfirmDialog`는 그대로 | 버튼과 단축키가 같은 처리 함수, 같은 비활성 조건을 따로 맞출 필요가 없다. 재검사 적발이 남아 있으면 `a`는 동작하지 않는다 |
+| 3.6 `shouldHandle(e, doc)` | `focusSpot(active)`로 포커스 위치를 요약하고 `shouldHandle(e, spot)`이 판정 | jsdom 없이 판정을 테스트한다. `focusSpot`은 가짜 요소로 테스트 |
+| 3.4 선택 강조는 분할 화면에서만 | `]`/`[`로 고른 문장은 좁은 화면에서도 강조 | 키보드 이동 위치가 보여야 한다 |

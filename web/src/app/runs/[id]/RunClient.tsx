@@ -6,6 +6,7 @@ import { apiFetch, hasRetryableStep, retryRun, type RunDetail } from "@/lib/api"
 import { REPLAY_NOTE } from "@/lib/labels";
 import { SourceLabel, StatusLozenge } from "@/components/ds/badges";
 import { Callout } from "@/components/ds/Callout";
+import { useToast } from "@/components/ui/Toast";
 import { Button } from "@/components/ui/Button";
 import { useRole } from "@/components/RoleSwitch";
 import { Timeline } from "@/components/Timeline";
@@ -17,18 +18,24 @@ function Detail({ data, reload }: { data: RunDetail; reload: () => void }) {
   const role = useRole();
   const [retrying, setRetrying] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const toast = useToast();
   const onRetry = async () => {
     setRetrying(true);
     setNotice(null);
     const out = await retryRun(data.run.id);
     setRetrying(false);
-    if (out.kind === "ok") return reload();
+    // 접수와 "할 것 없음"은 화면에 바로 보이지 않아 토스트로 알린다(DS2-11). 고쳐야 하거나 기다릴 일은 Callout.
+    if (out.kind === "ok") {
+      toast.add("재실행을 접수했어요", out.requeued.length > 0 ? `다시 도는 단계 ${out.requeued.length}개` : undefined);
+      return reload();
+    }
+    if (out.kind === "nothing") return toast.add("다시 실행할 단계가 없어요", out.message);
     setNotice(out.kind === "waking" ? "서버가 깨어나는 중이에요. 잠시 뒤에 다시 시도해 주세요." : out.message);
   };
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-title-md text-ink">{data.lawChange.lawName}</h1>
+        <h1 className="font-serif text-title-md text-ink">{data.lawChange.lawName}</h1>
         <StatusLozenge domain="run" value={data.run.status} />
         {data.run.isReplay && <SourceLabel kind="replay" />}
         {!data.run.isReplay && <span className="text-caption text-ink-subtle">{data.lawChange.promulgationDate} 공포</span>}
