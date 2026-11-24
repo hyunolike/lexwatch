@@ -7,7 +7,7 @@ import { Search } from "lucide-react";
 import { inboxCache } from "@/lib/inboxCache";
 import { isComposingEvent, isPaletteKey } from "@/lib/shortcuts";
 import { applyTheme, THEME_LABEL, type ThemeChoice } from "@/lib/theme";
-import type { Role } from "@/lib/api";
+import type { ReviewSummary, Role } from "@/lib/api";
 import { switchRole, useRole } from "@/components/RoleSwitch";
 
 type Item = { id: string; label: string; hint?: string; run: () => void };
@@ -28,6 +28,8 @@ const ROLES: [Role, string][] = [
   ["admin", "관리자로 보기"],
 ];
 const THEMES: ThemeChoice[] = ["system", "light", "dark"];
+/** 서버 스냅샷은 같은 참조여야 한다. 새 배열을 매번 만들면 React가 무한 반복으로 본다. */
+const NO_REVIEWS: ReviewSummary[] = [];
 
 /** 팔레트를 여는 버튼(헤더)과 키 입력이 같은 상태를 연다. */
 const openers = new Set<(v: boolean) => void>();
@@ -41,7 +43,7 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const role = useRole();
-  const reviews = useSyncExternalStore(inboxCache.subscribe, inboxCache.get, () => []);
+  const reviews = useSyncExternalStore(inboxCache.subscribe, inboxCache.get, () => NO_REVIEWS);
 
   useEffect(() => {
     openers.add(setOpen);

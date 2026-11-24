@@ -168,7 +168,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
       <SplitPane
         label="초안과 근거 폭"
         left={
-        <section aria-labelledby="draft" className="mx-auto max-w-reading space-y-3 xl:mx-0">
+        <section aria-labelledby="draft" className="mx-auto max-w-reading space-y-3 xl:mx-0 xl:max-w-none">
           <div className="flex flex-wrap items-center gap-2">
             <h2 id="draft" className="text-title-md text-ink">영향 검토 초안</h2>
             {draft && isAiProvider(analyze?.providerKind) && (
