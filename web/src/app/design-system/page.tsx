@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { Metadata } from "next";
 import { CONTRAST_PAIRS, contrastRatio, parseThemes } from "@/design/tokens";
-import { CARD, Mascot, PageHeader } from "@/components/ds/layout";
+import { CARD, Mascot } from "@/components/ds/layout";
 import { Showcase } from "./Showcase";
 
 export const metadata: Metadata = { title: "디자인 시스템 · LexWatch" };
@@ -33,7 +33,6 @@ const TYPE = [
 ] as const;
 
 const POSES = [
-  ["avatar", "헤더 로고 32px"],
   ["empty-queue", "승인 대기 없음"],
   ["empty-inbox", "알림 없음"],
   ["waking", "서버 깨우는 중"],
@@ -47,13 +46,13 @@ export default function DesignSystemPage() {
     <div className="space-y-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <PageHeader title="디자인 시스템" />
+          <h1 className="font-serif text-display text-ink">디자인 시스템</h1>
           <p className="mt-1 max-w-[40em] text-ui text-ink-muted">
             로펌 직원이 긴 법령 문장을 오래 읽고, 근거를 확인한 뒤 승인하는 화면을 위한 규칙이에요. 값의 원본은{" "}
             <code className="font-mono text-caption">src/styles/tokens.css</code> 하나이고, 대비는 테스트가 WCAG 2.2 AA로 검사해요.
           </p>
         </div>
-        <Mascot pose="master" size={120} />
+        <Mascot pose="master" size={96} />
       </div>
 
       <section aria-labelledby="colors" className="space-y-4">
@@ -156,10 +155,10 @@ export default function DesignSystemPage() {
       <section aria-labelledby="mascot" className="space-y-3">
         <h2 id="mascot" className="text-title-md text-ink">마스코트 렉스</h2>
         <p className="max-w-[40em] text-ui text-ink-muted">
-          매일 아침 개정을 지켜보는 부엉이예요. 빈 화면, 대기, 오류, 헤더 로고처럼 여유 있는 순간에만 나와요.{" "}
+          매일 아침 개정을 지켜보는 부엉이예요. v2부터는 빈 화면, 서버 깨우기 대기, 오류처럼 여유 있는 순간에만 120px 이하로 나와요. 헤더는 평면 로고 마크를 써요.{" "}
           <strong className="text-ink">승인과 반려 버튼 주변, 확인 대화상자, 초안 본문, 신구조문, 실행 타임라인에는 쓰지 않아요.</strong>
         </p>
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {POSES.map(([pose, label]) => (
             <li key={pose} className={`${CARD} flex flex-col items-center p-3 text-center`}>
               <Mascot pose={pose} size={120} />

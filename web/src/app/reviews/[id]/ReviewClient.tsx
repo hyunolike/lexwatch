@@ -32,6 +32,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useRole } from "@/components/RoleSwitch";
 import { WakeGate } from "@/components/WakeGate";
 import { guideStore } from "@/lib/guideStore";
+import { ReviewSkeleton } from "@/components/ds/Skeleton";
 
 type Notice = { tone: "warning" | "danger"; text: string; conflict?: boolean } | null;
 
@@ -406,7 +407,7 @@ function PartnerPanel({ review }: { review: ReviewDetail }) {
 export function ReviewClient({ id }: { id: string }) {
   const role = useRole();
   return (
-    <WakeGate<ReviewDetail | ApiError> key={`${id}-${role}`} label="초안" load={() => apiFetch<ReviewDetail | ApiError>(`/api/reviews/${id}`)}>
+    <WakeGate<ReviewDetail | ApiError> key={`${id}-${role}`} label="초안" fallback={<ReviewSkeleton />} load={() => apiFetch<ReviewDetail | ApiError>(`/api/reviews/${id}`)}>
       {(res, reload) =>
         res.status === 200 ? (
           <Detail

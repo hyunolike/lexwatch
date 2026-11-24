@@ -7,9 +7,12 @@ const TOKEN_FILE = new URL('../src/styles/tokens.css', import.meta.url);
 const COLORS = ['canvas', 'surface', 'ink', 'brand', 'danger', 'warning', 'focus', 'prov-ai'];
 const hex = (value) => (value.length === 4 ? '#' + [...value.slice(1)].map((c) => c + c).join('') : value).toLowerCase();
 
-/** 선택자로 시작하는 블록들의 본문. 압축된 CSS는 [data-theme=dark]처럼 따옴표가 빠질 수 있다. */
+/** 선택자 목록에 selector가 들어 있는 블록들의 본문. 압축된 CSS는 [data-theme=dark]처럼 따옴표가 빠질 수 있다. */
 function blocks(compact, selector) {
-  return [...compact.matchAll(new RegExp(`(?:^|[}{,])${selector}\\{([^{}]*)\\}`, 'g'))].map((m) => m[1]);
+  const re = new RegExp(`^${selector}$`);
+  return [...compact.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter((m) => m[1].split(',').some((x) => re.test(x.trim())))
+    .map((m) => m[2]);
 }
 
 function sourceValues(source, selector) {
@@ -27,10 +30,12 @@ export async function verifyDesignCss(css) {
   const source = await readFile(TOKEN_FILE, 'utf8');
   const errors = [];
   const compact = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\s+/g, '');
-  const light = sourceValues(source, '(?:^|\\n):root');
+  const light = sourceValues(source, '(?:^|\\n):root(?:,\\s*\\[data-theme="light"\\])?');
   const dark = sourceValues(source, '\\[data-theme="dark"\\]');
   const lightBlocks = blocks(compact, ':root');
   const darkBlocks = blocks(compact, '\\[data-theme=(?:"dark"|dark)\\]');
+  const themedLight = blocks(compact, '\\[data-theme=(?:"light"|light)\\]');
+  if (!themedLight.length) errors.push('[data-theme=light] 블록 누락(견본 상자를 밝게 그릴 수 없음)');
   const has = (bodies, decl) => bodies.some((b) => b.split(';').map((d) => d.replace(/#[0-9a-f]{3,6}\b/gi, hex)).includes(decl));
 
   for (const name of COLORS) {

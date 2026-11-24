@@ -12,7 +12,7 @@ const script = fileURLToPath(new URL('./verify-design-css.mjs', import.meta.url)
 // 관찰한 배포 오류: HTML만 새 의미 클래스로 바뀌고 CSS에는 이전 body가 남았다.
 const stale = ':root{--background:#fff;--foreground:#171717}@media(prefers-color-scheme:dark){:root{--background:#0a0a0a}}body{background:var(--background);font-family:Arial,Helvetica,sans-serif}';
 const theme =
-  ':root{color-scheme:light;--lw-canvas:#f7f6f3;--lw-surface:#fff;--lw-ink:#1b1d22;--lw-brand:#1f3a68;--lw-danger:#b3261e;--lw-warning:#8a5300;--lw-focus:#2f6fdb;--lw-prov-ai:#5b3fc4}' +
+  ':root,[data-theme=light]{color-scheme:light;--lw-canvas:#f7f6f3;--lw-surface:#fff;--lw-ink:#1b1d22;--lw-brand:#1f3a68;--lw-danger:#b3261e;--lw-warning:#8a5300;--lw-focus:#2f6fdb;--lw-prov-ai:#5b3fc4}' +
   '[data-theme=dark]{color-scheme:dark;--lw-canvas:#111214;--lw-surface:#18191c;--lw-ink:#ecedef;--lw-brand:#8fa9e0;--lw-danger:#f08a80;--lw-warning:#e3b25a;--lw-focus:#6ea2f7;--lw-prov-ai:#b6a6f5}' +
   ':root,:host{--font-sans:"Pretendard Variable";--font-serif:"Noto Serif KR Variable";--text-title-lg:1.625rem}';
 const utilities =

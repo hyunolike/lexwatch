@@ -119,8 +119,10 @@
   --ease-out: cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* 밝은 테마. 테마 스크립트가 data-theme을 적기 전과 스크립트가 실패한 경우에도 이 값이다. */
-:root {
+/* 밝은 테마. 테마 스크립트가 data-theme을 적기 전과 스크립트가 실패한 경우에도 이 값이다.
+   [data-theme="light"]도 받아 어두운 화면 안의 견본 상자 하나를 밝게 그릴 수 있다. */
+:root,
+[data-theme="light"] {
   color-scheme: light;
   --lw-header-h: 78px; /* 데모 안내 띠 28px + 메뉴 줄 50px */
 

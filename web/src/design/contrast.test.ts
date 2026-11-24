@@ -75,7 +75,7 @@ describe("팔레트", () => {
   });
 
   it("두 테마 블록이 color-scheme을 적는다", () => {
-    expect(css).toMatch(/:root\s*\{\s*color-scheme:\s*light;/);
+    expect(css).toMatch(/:root,\s*\[data-theme="light"\]\s*\{\s*color-scheme:\s*light;/);
     expect(css).toMatch(/\[data-theme="dark"\]\s*\{\s*color-scheme:\s*dark;/);
   });
 });

@@ -14,6 +14,7 @@ import { inboxCache } from "@/lib/inboxCache";
 import { cycle } from "@/lib/shortcuts";
 import { useShortcuts } from "@/components/Shortcuts";
 import { useEffect } from "react";
+import { SkeletonRows } from "@/components/ds/Skeleton";
 
 /** 재현이면 replay 출처를 덧붙인다. */
 const kindsOf = (r: ReviewSummary) =>
@@ -103,7 +104,7 @@ export default function Home() {
         <p className="max-w-reading text-caption text-ink-subtle">그룹 관련성은 법령과 실무그룹의 관련 정도예요. 초안의 정확도를 뜻하지 않아요.</p>
       </div>
       <FirstVisitGuide />
-      <WakeGate<ReviewSummary[]> key={role} label="승인 대기함" load={() => apiFetch<ReviewSummary[]>("/api/reviews")}>
+      <WakeGate<ReviewSummary[]> key={role} label="승인 대기함" fallback={<div className="space-y-6"><SkeletonRows rows={3} /><SkeletonRows rows={3} /></div>} load={() => apiFetch<ReviewSummary[]>("/api/reviews")}>
         {(res) =>
           Array.isArray(res.data) ? (
             <Queue items={res.data} role={role} />

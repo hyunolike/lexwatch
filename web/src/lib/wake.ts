@@ -84,3 +84,16 @@ export const TIPS: readonly { title: string; body: string }[] = [
 export function nextTip(i: number, dir: 1 | -1 = 1): number {
   return (i + dir + TIPS.length) % TIPS.length;
 }
+
+/** 서버 상태(design.md 7절 M9). 첫 /health 응답 전은 unknown. */
+export type Health = "unknown" | "up" | "waking";
+
+/**
+ * 데이터를 기다리는 동안 무엇을 보일지. 스켈레톤(fallback)을 준 화면은 서버가 잠들었다고 확인될 때만
+ * 렉스 대기 화면을 보이고, 서버가 깨어 있거나 아직 모를 때는 스켈레톤을 보인다. 그래서 렉스는 잠든 서버에만 나온다.
+ * 스켈레톤이 없는 화면은 지금처럼 SHOW_DELAY_MS 뒤 대기 화면, 그 전에는 아무것도 보이지 않는다.
+ */
+export function gateView(input: { hasFallback: boolean; health: Health; waitShown: boolean }): "skeleton" | "wake" | "blank" {
+  if (input.hasFallback) return input.health === "waking" ? "wake" : "skeleton";
+  return input.waitShown ? "wake" : "blank";
+}

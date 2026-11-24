@@ -14,6 +14,7 @@ import { useRole } from "@/components/RoleSwitch";
 import { Tabs } from "@/components/ui/Tabs";
 import { WakeGate } from "@/components/WakeGate";
 import { cx } from "@/lib/cx";
+import { SkeletonRows } from "@/components/ds/Skeleton";
 
 /** 탭 순서: 노동, 개인정보, 금융(BR-08). 모르는 그룹은 뒤에. */
 const GROUP_ORDER = ["labor", "privacy", "finance"];
@@ -162,6 +163,7 @@ export default function RadarPage() {
         보여 주고, 공포되면 승인 대기함의 검토로 이어져요.
       </p>
       <WakeGate<Radar | ApiError>
+        fallback={<SkeletonRows rows={4} title={false} />}
         key={`${role}-${limit ?? "default"}`}
         label="법안 레이더"
         load={() => apiFetch<Radar | ApiError>(limit ? `/api/radar?limit=${limit}` : "/api/radar")}

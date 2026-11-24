@@ -26,7 +26,7 @@ function aliases(css: string): Record<string, string> {
 
 /** 밝은 테마(:root)와 어두운 테마([data-theme="dark"])의 색. 별칭도 풀어 넣는다. */
 export function parseThemes(css: string): ThemeTokens {
-  const light = readBlock(css, /(?:^|\n)\s*:root\s*\{/);
+  const light = readBlock(css, /(?:^|\n)\s*:root(?:,\s*\[data-theme="light"\])?\s*\{/);
   const dark = readBlock(css, /(?:^|\n)\s*\[data-theme="dark"\]\s*\{/);
   for (const [name, target] of Object.entries(aliases(css))) {
     if (light[target]) light[name] = light[target];
