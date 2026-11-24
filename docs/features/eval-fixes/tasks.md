@@ -15,6 +15,7 @@
 | EF-09 | `reset-demo.yml` 예약 2개, `--max-time 90`, 작업 한도 25분 | 다음 예약 실행 결과 | 배포 후 확인 |
 | EF-10 | `guide.roleSentence()` | `guide.test.ts` | 완료 |
 | EF-11 | `reviewPresentation.splitForRole()`, 대기함 묶음 | `reviewPresentation.test.ts` | 완료 |
+| EF-12 | `ChatRetry` 마감 90초, 최대 40회. 채팅 `AI_WAKING`, `GET /api/ai/status`. 웹 `waitForAi`, `isAiWaking`, `aiStateOf`, 검토 보조 상태 표시와 자동 재전송 | `ChatRetryTests` 기본값, `ReviewEndpointTests` AI_WAKING과 한도 환불, 상태 up/waking. `reviewChat.test.ts` 7건 | 완료 |
 
 ## EF-07 실제 모델 비교 (2026-11-24, Cloudflare `@cf/openai/gpt-oss-120b`)
 

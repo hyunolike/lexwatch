@@ -56,4 +56,13 @@ public class ChatRetryTests
         await ChatRetry.RunAsync((_, t) => { seen = t; return Task.FromResult(Ok); }, opt, TimeProvider.System, default);
         Assert.True(seen <= TimeSpan.FromSeconds(8));
     }
+
+    [Fact]
+    public void Default_options_let_the_deadline_decide_not_the_attempt_count()
+    {
+        var d = ChatRetry.Options.Default;
+        // 4초 간격으로 마감까지 시도할 수 있어야 한다. 잠든 AI 서비스가 깨는 데 2분 가까이 걸린 적이 있다.
+        Assert.True(d.MaxAttempts * d.Delay.TotalSeconds >= d.Deadline.TotalSeconds);
+        Assert.True(d.Deadline >= TimeSpan.FromSeconds(90));
+    }
 }

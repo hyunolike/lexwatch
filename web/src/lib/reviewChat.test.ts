@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_HISTORY_TURNS, MAX_QUESTION_CHARS, mapChatResult, maskNotice, maskedUserTurn, toHistory, type ChatMessage } from "./reviewChat";
+import { MAX_HISTORY_TURNS, MAX_QUESTION_CHARS, aiStateOf, isAiWaking, mapChatResult, waitForAi, maskNotice, maskedUserTurn, toHistory, type ChatMessage } from "./reviewChat";
 
 const ev = [{ id: "law:L1:23", kind: "law", title: "근로기준법 제23조", sourceUrl: null }];
 
@@ -80,5 +80,53 @@ describe("maskNotice", () => {
   it("is_null_when_nothing_was_masked", () => {
     expect(maskNotice([])).toBeNull();
     expect(maskNotice(undefined)).toBeNull();
+  });
+});
+
+describe("isAiWaking", () => {
+  it("AI 서비스가 깨는 중(424 AI_WAKING)과 API가 잠든 경우만 다시 보낼 대상이다", () => {
+    expect(isAiWaking({ waking: true })).toBe(true);
+    expect(isAiWaking({ waking: false, status: 424, data: { code: "AI_WAKING", message: "" } })).toBe(true);
+    expect(isAiWaking({ waking: false, status: 424, data: { code: "AI_UNAVAILABLE", message: "" } })).toBe(false);
+    expect(isAiWaking({ waking: false, status: 429, data: { code: "CHAT_QUOTA_EXCEEDED", message: "" } })).toBe(false);
+  });
+});
+
+describe("aiStateOf", () => {
+  it("200 up만 up이고 나머지는 waking", () => {
+    expect(aiStateOf({ waking: false, status: 200, data: { state: "up" } })).toBe("up");
+    expect(aiStateOf({ waking: false, status: 200, data: { state: "waking" } })).toBe("waking");
+    expect(aiStateOf({ waking: true })).toBe("waking");
+    expect(aiStateOf({ waking: false, status: 403, data: { code: "FORBIDDEN", message: "" } })).toBe("waking");
+  });
+});
+
+describe("waitForAi", () => {
+  const clock = () => {
+    let t = 0;
+    return { now: () => t, sleep: async (ms: number) => void (t += ms) };
+  };
+
+  it("깰 때까지 묻고 깨면 true", async () => {
+    const states = ["waking", "waking", "up"] as const;
+    let i = 0;
+    const c = clock();
+    expect(await waitForAi(async () => states[i++], { ...c, pollMs: 5000 })).toBe(true);
+    expect(i).toBe(3);
+  });
+
+  it("마감을 넘기면 false", async () => {
+    let n = 0;
+    const c = clock();
+    expect(await waitForAi(async () => (n++, "waking"), { ...c, deadlineMs: 20_000, pollMs: 5000 })).toBe(false);
+    expect(n).toBe(5); // 0, 5, 10, 15, 20초
+  });
+
+  it("취소되면 더 묻지 않는다", async () => {
+    const ac = new AbortController();
+    let n = 0;
+    const c = clock();
+    const r = await waitForAi(async () => { n++; ac.abort(); return "waking"; }, { ...c, signal: ac.signal });
+    expect([r, n]).toEqual([false, 1]);
   });
 });

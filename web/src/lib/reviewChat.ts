@@ -83,3 +83,41 @@ export function toHistory(messages: ChatMessage[]): { role: "user" | "assistant"
     .slice(-MAX_HISTORY_TURNS)
     .map((m) => ({ role: m.role, content: m.text }));
 }
+
+/** AI 서비스 상태(검토 보조 머리의 표시). checking은 첫 확인 전. */
+export type AiState = "checking" | "up" | "waking";
+
+/** 잠든 AI 서비스를 기다리는 최대 시간. 운영에서 깨는 데 2분 넘게 걸린 적이 있다(2026-11-25). */
+export const AI_WAKE_WAIT_MS = 180_000;
+export const AI_POLL_MS = 5_000;
+
+/** 서버(API)나 AI 서비스가 깨는 중이라 같은 질문을 나중에 다시 보내면 되는 응답인지. */
+export function isAiWaking(res: ApiResult<ChatResponse | ApiError>): boolean {
+  if (res.waking) return true;
+  return res.status === 424 && (res.data as ApiError | null)?.code === "AI_WAKING";
+}
+
+/** `/api/ai/status` 응답을 상태로 접는다. API 자체가 잠들었거나 이상한 응답이면 waking으로 본다. */
+export function aiStateOf(res: ApiResult<{ state?: string } | ApiError>): Exclude<AiState, "checking"> {
+  if (res.waking || res.status !== 200) return "waking";
+  return (res.data as { state?: string } | null)?.state === "up" ? "up" : "waking";
+}
+
+/**
+ * AI 서비스가 깰 때까지 `poll` 간격으로 상태를 묻는다. 깨면 true, 마감을 넘기거나 취소되면 false.
+ * 화면과 테스트가 시간과 요청을 주입한다.
+ */
+export async function waitForAi(
+  check: () => Promise<Exclude<AiState, "checking">>,
+  opts: { deadlineMs?: number; pollMs?: number; now?: () => number; sleep?: (ms: number) => Promise<void>; signal?: AbortSignal } = {},
+): Promise<boolean> {
+  const { deadlineMs = AI_WAKE_WAIT_MS, pollMs = AI_POLL_MS, now = Date.now, signal } = opts;
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const start = now();
+  while (!signal?.aborted) {
+    if ((await check()) === "up") return true;
+    if (now() - start + pollMs > deadlineMs) return false;
+    await sleep(pollMs);
+  }
+  return false;
+}

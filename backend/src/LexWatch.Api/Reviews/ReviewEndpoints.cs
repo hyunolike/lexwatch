@@ -322,8 +322,11 @@ public static class ReviewEndpoints
                 var outcome = await ChatRetry.RunAsync(
                     (attempt, timeout) => ai.CallAsync((c, t) => c.ReviewChatAsync(chatReq, t), attempt, timeout, ct),
                     ChatRetry.Options.From(cfg), time, ct);
+                // 마감까지 일시 오류만 났다면 AI 서비스가 아직 깨는 중이다. 화면이 기다렸다가 다시 보낼 수 있게 구분한다.
                 if (outcome.Failure is not null)
-                    return Err(424, "AI_UNAVAILABLE", "검토 보조를 지금 쓸 수 없다");
+                    return ChatRetry.IsTransient(outcome.Failure)
+                        ? Err(424, "AI_WAKING", "AI 서비스가 아직 깨는 중이다")
+                        : Err(424, "AI_UNAVAILABLE", "검토 보조를 지금 쓸 수 없다");
                 answered = true;
                 var r = outcome.Value!;
                 usage.ProviderKind = AiMapping.ProviderKind(r.Provider);
@@ -342,6 +345,23 @@ public static class ReviewEndpoints
                 if (!answered) await ChatQuotaService.RefundAsync(db, day, ipHash);
                 usage.DurationMs = (int)time.GetElapsedTime(started).TotalMilliseconds;
                 await AiUsage.TryLogAsync(db, usage, logs.CreateLogger("LexWatch.Governance"));
+            }
+        });
+
+        // AI 서비스 상태. 검토 상세가 열릴 때 불러 잠든 AI 서비스를 미리 깨운다(질문을 쓰는 동안 깨어난다).
+        // 짧게 기다리고 답이 없으면 waking. 이 요청 자체가 Render의 깨우기 신호가 된다.
+        api.MapGet("/ai/status", async (IAiClient client, CancellationToken ct) =>
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(5));
+            try
+            {
+                await client.HealthAsync(cts.Token);
+                return Results.Ok(new { state = "up" });
+            }
+            catch (Exception e) when (e is AiApiException or HttpRequestException or OperationCanceledException && !ct.IsCancellationRequested)
+            {
+                return Results.Ok(new { state = "waking" });
             }
         });
 
