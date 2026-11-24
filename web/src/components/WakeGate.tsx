@@ -118,7 +118,7 @@ export function WakeGate<T>({
   if (failed || gaveUp)
     return (
       <div className="flex flex-col items-center py-10 text-center">
-        <Mascot pose="error" size={180} />
+        <Mascot pose="error" size={120} />
         <p className="mt-4 text-title-sm text-ink">
           {failed ? "화면을 불러오지 못했어요" : "서버가 아직 깨어나지 않았어요"}
         </p>

@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import type { Draft, EditedSentence, EvidenceItem } from "@/lib/api";
+import type { Draft, EditedSentence, EvidenceItem, TrailStage } from "@/lib/api";
+import { checkState } from "@/lib/checkState";
+import { CheckMark } from "@/components/ds/CheckMark";
 import { AiLabel } from "@/components/ds/AiLabel";
 import { Callout } from "@/components/ds/Callout";
 import type { Explain } from "@/lib/aiTrail";
@@ -16,7 +18,10 @@ export function DraftEditor({
   edited,
   onChange,
   judgeExplain,
+  stages,
 }: {
+  /** AI 흔적 단계. 크리틱이 끝났는지 보고 "검사 통과"와 "검사 전"을 가른다(DS2-06). */
+  stages?: TrailStage[] | null;
   /** 크리틱 3단(AI 판정) 적발에 붙일 AI 라벨 설명. AI가 판정하지 않았으면 없다. */
   judgeExplain?: Explain;
   draft: Draft;
@@ -38,7 +43,16 @@ export function DraftEditor({
           <article key={i} id={`draft-sentence-${i + 1}`} tabIndex={-1} aria-label={`${i + 1}번째 문장`} className={`${CARD} p-4 sm:p-6`}>
             <div className="mb-3 flex items-center justify-between gap-3">
               <span className="text-caption text-ink-subtle">문장 {i + 1}</span>
-              {s.findings.length > 0 && <span className="text-caption font-semibold text-danger">확인 필요</span>}
+              <CheckMark
+                state={checkState({
+                  findings: s.findings.length,
+                  stages,
+                  edited:
+                    editing &&
+                    ((edited[i]?.sentence ?? s.sentence) !== s.sentence ||
+                      (edited[i]?.citations ?? s.citations).join("|") !== s.citations.join("|")),
+                })}
+              />
             </div>
             {editing ? (
               <textarea

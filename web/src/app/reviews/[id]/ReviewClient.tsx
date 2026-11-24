@@ -81,7 +81,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
 
       <header className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-title-lg break-words text-ink">{review.lawName}</h1>
+          <h1 className="font-serif text-title-lg break-words text-ink">{review.lawName}</h1>
           <StatusLozenge domain="review" value={review.status} />
           {kinds.map((k) => (
             <SourceLabel key={k} kind={k} />
@@ -97,7 +97,9 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
         >
           <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
             <p className="text-label text-ink-muted">
-              {editing ? "수정 전 초안의 검사 결과예요. 수정한 문장과 근거를 다시 확인해 주세요." : "승인하기 전에 초안의 문장과 인용 근거를 직접 확인해 주세요."}
+              {editing
+                ? "수정 전 초안의 검사 결과예요. 수정한 문장과 근거를 다시 확인해 주세요."
+                : "자동 검사 통과는 내용이 맞다는 뜻이 아니에요. 승인하기 전에 초안의 문장과 인용 근거를 직접 대조해 주세요."}
             </p>
             {attention.firstFlaggedIndex !== null && (
               <a href={`#draft-sentence-${attention.firstFlaggedIndex + 1}`} className="rounded-sm text-label font-semibold text-ink underline underline-offset-4">
@@ -149,6 +151,7 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
                   : undefined
               }
               draft={draft}
+              stages={review.aiTrail?.stages}
               evidence={review.evidence}
               editing={editing}
               edited={edited}
