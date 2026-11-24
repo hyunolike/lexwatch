@@ -16,7 +16,10 @@ const LINKS = [
   { href: "/radar", label: "법안 레이더" },
 ];
 /** 관리자에게만 보이는 메뉴(ai-governance GV-06). */
-const ADMIN_LINKS = [{ href: "/governance", label: "AI 사용 기록" }];
+const ADMIN_LINKS = [
+  { href: "/ops", label: "운영 현황" },
+  { href: "/governance", label: "AI 사용 기록" },
+];
 
 /**
  * 공통 머리: 데모 안내 띠, 로고, 내비게이션, 둘러보기, 역할 전환.

@@ -9,6 +9,8 @@ import { Callout } from "@/components/ds/Callout";
 import { Button } from "@/components/ui/Button";
 import { useRole } from "@/components/RoleSwitch";
 import { Timeline } from "@/components/Timeline";
+import { RunTimeline } from "@/components/RunTimeline";
+import { Tabs } from "@/components/ui/Tabs";
 import { WakeGate } from "@/components/WakeGate";
 
 function Detail({ data, reload }: { data: RunDetail; reload: () => void }) {
@@ -42,7 +44,13 @@ function Detail({ data, reload }: { data: RunDetail; reload: () => void }) {
           {notice}
         </Callout>
       )}
-      <Timeline items={data.timeline} />
+      <Tabs
+        label="실행 보기"
+        tabs={[
+          { value: "list", title: "목록", panel: <Timeline items={data.timeline} /> },
+          { value: "timeline", title: "타임라인", panel: <RunTimeline items={data.timeline} /> },
+        ]}
+      />
     </div>
   );
 }

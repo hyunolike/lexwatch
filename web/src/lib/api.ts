@@ -402,3 +402,44 @@ export interface Radar {
   watch: { groupCode: string; groupName: string; lawNames: string[] }[];
   bills: RadarBill[];
 }
+
+/** ops-visibility OV-10~16. 백엔드 Ops/OpsSummary.cs */
+export interface OpsStep {
+  step: string;
+  outcomes: number;
+  failed: number;
+  failureRate: number | null;
+  autoRetries: number;
+  extraRecords: number;
+  samples: number;
+  p50Ms: number | null;
+  p90Ms: number | null;
+}
+
+export interface OpsSummary {
+  days: number;
+  from: string;
+  to: string;
+  dates: string[];
+  runs: { total: number; daily: number[]; byStatus: Record<string, number> };
+  collect: (number | null)[];
+  stepTotals: { outcomes: number; failed: number; failureRate: number | null };
+  steps: OpsStep[];
+  ai: {
+    total: number;
+    byProvider: Record<string, number>;
+    ruleFallback: number;
+    failed: number;
+    chat: { total: number; byOutcome: Record<string, number>; byProvider: Record<string, number> };
+    daily: number[];
+  };
+  critic: { drafts: number; flagged: number; flaggedRate: number | null; byTier: Record<string, number> };
+  decisions: {
+    total: number;
+    byKind: Record<string, number>;
+    firstDecisionSamples: number;
+    medianHoursToFirstDecision: number | null;
+    waiting: number;
+  };
+  bills: { lastSuccessAt: string | null; failedRuns: number };
+}
