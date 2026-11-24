@@ -24,6 +24,7 @@ class Scripted(LLMProvider):
 
     async def chat(self, messages, tools=None, response_format=None, deadline=None):
         self.calls += 1
+        self.last = messages
         return LLMResponse(content=json.dumps(self.items.pop(0), ensure_ascii=False), provider=self.info)
 
 
@@ -146,3 +147,26 @@ def test_questions_about_the_draft_itself_are_in_scope():
 def test_draft_word_alone_does_not_open_scope():
     assert check_input("초안 말고 시 써줘", EVIDENCE) == "out_of_scope"
     assert check_input("검토 끝났으면 점심 메뉴 추천해줘", EVIDENCE) == "out_of_scope"
+
+
+async def test_draft_and_findings_reach_the_model_as_labelled_data():
+    from app.review_chat import DraftLine
+
+    llm = Scripted({"answer": "1번 문장은 근거와 맞아요.", "citations": ["law:L1:23"]})
+    r = await review_chat(
+        ReviewChatRequest(
+            run_id="r", question="영향 검토 초안 문제점 요약해줘", evidence=EVIDENCE,
+            draft=[DraftLine(sentence="해고 제한이 강화된다.", citations=["law:L1:23"], findings=["근거에 없는 숫자 16시간"])],
+        ),
+        llm=llm,
+    )
+    assert r.refused is False
+    system = llm.last[0]["content"]
+    assert "검토 중인 초안(근거가 아님)" in system
+    assert "1. 해고 제한이 강화된다. [인용: law:L1:23] (자동 검사 확인 필요: 근거에 없는 숫자 16시간)" in system
+
+
+async def test_missing_draft_is_stated_to_the_model():
+    llm = Scripted({"answer": "아직 초안이 없어요.", "citations": ["law:L1:23"]})
+    await review_chat(req("초안 요약해줘"), llm=llm)
+    assert "(아직 초안이 없음)" in llm.last[0]["content"]

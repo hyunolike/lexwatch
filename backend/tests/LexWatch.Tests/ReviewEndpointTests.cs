@@ -605,4 +605,20 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
             .RespondWith(WireMock.ResponseBuilders.Response.Create().WithStatusCode(200).WithHeader("Content-Type", "application/json").WithBody("{\"status\":\"ok\"}"));
         Assert.Equal("up", (await c.GetFromJsonAsync<JsonElement>("/api/ai/status")).GetProperty("state").GetString());
     }
+
+    [Fact]
+    public async Task Chat_sends_the_draft_and_its_findings_to_the_ai()
+    {
+        var g = await SeedAsync();
+        using var ai = new AiStub();
+        ai.Json("/review-chat", 200, ChatOk);
+        await using var f = ChatFactory(ai);
+        var r = await As(f, "lawyer").PostAsJsonAsync($"/api/reviews/{g.Id}/chat", new { question = "영향 검토 초안 문제점 요약해줘" });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var draft = ai.Requests("/review-chat").Single().RootElement.GetProperty("draft");
+        Assert.Equal(2, draft.GetArrayLength());
+        Assert.Equal("해고가 제한된다.", draft[0].GetProperty("sentence").GetString());
+        Assert.Equal("단정", draft[0].GetProperty("findings")[0].GetString());
+        Assert.Equal(0, draft[1].GetProperty("findings").GetArrayLength());
+    }
 }

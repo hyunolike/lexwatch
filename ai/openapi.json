@@ -431,6 +431,36 @@
         ],
         "title": "CritiqueResponse"
       },
+      "DraftLine": {
+        "properties": {
+          "sentence": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Sentence"
+          },
+          "citations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "findings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Findings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sentence"
+        ],
+        "title": "DraftLine",
+        "description": "One sentence of the draft under review, with its citations and the automatic check findings."
+      },
       "EmbedRequest": {
         "properties": {
           "texts": {
@@ -708,6 +738,14 @@
             "type": "array",
             "maxItems": 6,
             "title": "History"
+          },
+          "draft": {
+            "items": {
+              "$ref": "#/components/schemas/DraftLine"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Draft"
           }
         },
         "type": "object",
