@@ -2,7 +2,9 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import type { Draft, EditedSentence, EvidenceItem } from "@/lib/api";
+import { AiLabel } from "@/components/ds/AiLabel";
 import { Callout } from "@/components/ds/Callout";
+import type { Explain } from "@/lib/aiTrail";
 import { CitationChip } from "@/components/ds/CitationChip";
 import { CARD } from "@/components/ds/layout";
 
@@ -13,7 +15,10 @@ export function DraftEditor({
   editing,
   edited,
   onChange,
+  judgeExplain,
 }: {
+  /** 크리틱 3단(AI 판정) 적발에 붙일 AI 라벨 설명. AI가 판정하지 않았으면 없다. */
+  judgeExplain?: Explain;
   draft: Draft;
   evidence: EvidenceItem[];
   editing: boolean;
@@ -90,7 +95,10 @@ export function DraftEditor({
               <div className="mt-3 space-y-1.5">
                 {s.findings.map((f, k) => (
                   <Callout key={k} tone="danger" className="py-2">
-                    <p>{f.message}</p>
+                    <p className="flex flex-wrap items-start gap-2">
+                      <span className="min-w-0 flex-1">{f.message}</span>
+                      {f.tier === 3 && judgeExplain && <AiLabel explain={judgeExplain} text="AI 판정" context={`문장 ${i + 1}`} />}
+                    </p>
                     <details className="mt-2 text-caption text-ink-muted">
                       <summary className="w-fit cursor-pointer rounded-sm">검사 정보</summary>
                       <p className="mt-1">크리틱 {f.tier}단 · <span className="font-mono">{f.ruleId}</span></p>

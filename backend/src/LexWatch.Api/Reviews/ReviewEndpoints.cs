@@ -110,6 +110,20 @@ public static class ReviewEndpoints
                         findings = a.FindingsJson is null ? [] : JsonSerializer.Deserialize<List<DecisionFindingDto>>(a.FindingsJson, J) ?? [],
                     };
             }
+            // 이 초안이 만들어진 과정(ai-footprints AF-01~04)
+            var steps = await db.StepRuns.AsNoTracking()
+                .Where(x => x.RunId == review.RunId && (x.GroupReviewId == null || x.GroupReviewId == id)).ToListAsync(ct);
+            var approvals = await db.Approvals.AsNoTracking().Where(x => x.GroupReviewId == id).ToListAsync(ct);
+            var tiers = draft is null ? []
+                : await db.CriticFindings.AsNoTracking().Where(f => f.MemoDraftId == draft.Id).Select(f => f.Tier).ToListAsync(ct);
+            summary["aiTrail"] = new
+            {
+                stages = AiTrail.Build(review, steps, approvals, draft, tiers).Select(x => new
+                {
+                    key = x.Key, actor = x.Actor, status = x.Status, providerKind = x.ProviderKind, providerName = x.ProviderName,
+                    detail = x.Detail,
+                }),
+            };
             return Results.Ok(summary);
         });
 

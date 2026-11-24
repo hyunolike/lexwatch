@@ -544,4 +544,37 @@ public class ReviewEndpointTests(PostgresFixture pg) : IAsyncLifetime
         Assert.All(await last.ChatQuotas.ToListAsync(), q => Assert.Equal(0, q.Count));
         Assert.NotEmpty(await last.ChatQuotas.ToListAsync());
     }
+
+    [Fact]
+    public async Task Detail_includes_ai_trail_in_order_with_latest_draft_findings()
+    {
+        var g = await SeedAsync();
+        await using (var db = pg.CreateDb())
+        {
+            db.StepRuns.Add(new StepRun
+            {
+                Id = Guid.NewGuid(), RunId = g.RunId, GroupReviewId = g.Id, Step = "analyze", Attempt = 1, Status = StepStatus.Succeeded,
+                OutputJson = """{"toolCalls": 3, "retrieval": {"status": "ok", "mode": "Hybrid", "sent": 8, "denseUsed": true}}""",
+                ProviderKind = "nvidia", ProviderName = "nemotron", NotBefore = DateTimeOffset.UtcNow, StartedAt = DateTimeOffset.UtcNow,
+            });
+            db.StepRuns.Add(new StepRun
+            {
+                Id = Guid.NewGuid(), RunId = g.RunId, GroupReviewId = g.Id, Step = "critic_judge", Attempt = 1, Status = StepStatus.Succeeded,
+                OutputJson = """{"findings": 5}""", ProviderKind = "nvidia", ProviderName = "nemotron",
+                NotBefore = DateTimeOffset.UtcNow, StartedAt = DateTimeOffset.UtcNow,
+            });
+            await db.SaveChangesAsync();
+        }
+        await using var f = Factory();
+        var d = await As(f, "lawyer").GetFromJsonAsync<JsonElement>($"/api/reviews/{g.Id}");
+        var stages = d.GetProperty("aiTrail").GetProperty("stages").EnumerateArray().ToList();
+        Assert.Equal(["collect", "classify", "index", "analyze", "critic_citation", "critic_source", "critic_judge", "decision"],
+            stages.Select(x => x.GetProperty("key").GetString()));
+        var analyze = stages[3];
+        Assert.Equal(("ai", "done", "nvidia"), (analyze.GetProperty("actor").GetString(), analyze.GetProperty("status").GetString(),
+            analyze.GetProperty("providerKind").GetString()));
+        Assert.Equal(8, analyze.GetProperty("detail").GetProperty("sent").GetInt32());
+        Assert.Equal(1, stages[6].GetProperty("detail").GetProperty("findings").GetInt32());   // 단계 출력(5)이 아니라 초안의 3단 적발 1건
+        Assert.Equal("human", stages[7].GetProperty("actor").GetString());
+    }
 }

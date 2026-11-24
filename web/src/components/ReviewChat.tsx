@@ -12,6 +12,8 @@ import {
   type ChatResponse,
 } from "@/lib/reviewChat";
 import { SourceLabel } from "@/components/ds/badges";
+import { AiLabel } from "@/components/ds/AiLabel";
+import { aiExplain, isAiProvider } from "@/lib/aiTrail";
 import { CARD } from "@/components/ds/layout";
 import { Button } from "@/components/ui/Button";
 import { cx } from "@/lib/cx";
@@ -65,6 +67,9 @@ export function ReviewChat({ reviewId, evidence }: { reviewId: string; evidence:
             )}
             {m.role === "assistant" && (m.providerKind || m.citations.length > 0) && (
               <div className="mt-1 flex flex-wrap items-center gap-1">
+                {!m.refused && !m.error && isAiProvider(m.providerKind) && (
+                  <AiLabel text="AI 답변" context={`${i + 1}번째 메시지`} explain={aiExplain("chat", { providerKind: m.providerKind })} />
+                )}
                 {m.providerKind && <SourceLabel kind={m.providerKind} />}
                 {m.citations.map((c) => (
                   <span key={c.id} title={c.id} className="rounded-sm bg-neutral-bg px-2 py-0.5 text-micro text-neutral">{c.title}</span>

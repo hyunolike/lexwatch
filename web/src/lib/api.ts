@@ -72,6 +72,45 @@ export interface ReviewDetail extends ReviewSummary {
   evidence: EvidenceItem[];
   version: number;
   lawyerApproval?: LawyerApproval | null;
+  aiTrail?: AiTrail | null;
+}
+
+/** ai-footprints AF-01. 백엔드 Reviews/AiTrail.cs와 같은 값. */
+export type TrailKey = "collect" | "classify" | "index" | "analyze" | "critic_citation" | "critic_source" | "critic_judge" | "decision";
+export type TrailActor = "ai" | "rule" | "human";
+export type TrailStatus = "done" | "needs_review" | "failed" | "running" | "waiting" | "skipped" | "not_run";
+
+export interface TrailStage {
+  key: TrailKey;
+  actor: TrailActor;
+  status: TrailStatus;
+  providerKind: ProviderKind | null;
+  providerName: string | null;
+  /** 단계별 값. 없는 값은 키가 빠진다(설계 3절). */
+  detail: {
+    evidence?: number;
+    oldNew?: string;
+    confidence?: number;
+    chunks?: number;
+    dense?: string;
+    toolCalls?: number;
+    retrievalMode?: string | null;
+    sent?: number;
+    denseUsed?: boolean;
+    insufficient?: boolean;
+    findings?: number;
+    recheckedOnApprove?: boolean;
+    fallback?: boolean;
+    edited?: boolean;
+    decision?: string;
+    role?: string;
+    decidedAt?: string;
+    awaiting?: string;
+  };
+}
+
+export interface AiTrail {
+  stages: TrailStage[];
 }
 
 export interface EditedSentence {

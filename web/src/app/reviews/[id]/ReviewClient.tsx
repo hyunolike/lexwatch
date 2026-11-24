@@ -15,6 +15,9 @@ import {
 import { REPLAY_NOTE } from "@/lib/labels";
 import { reviewAttention } from "@/lib/reviewPresentation";
 import { DraftEditor } from "@/components/DraftEditor";
+import { AiTrail } from "@/components/AiTrail";
+import { AiLabel } from "@/components/ds/AiLabel";
+import { aiExplain, findStage, isAiProvider } from "@/lib/aiTrail";
 import { ReviewChat } from "@/components/ReviewChat";
 import { SourceLabel, StatusLozenge } from "@/components/ds/badges";
 import { Callout } from "@/components/ds/Callout";
@@ -31,6 +34,10 @@ type Notice = { tone: "warning" | "danger"; text: string; conflict?: boolean } |
 function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }) {
   const role = useRole();
   const draft = review.draft;
+  // AI 라벨(ai-footprints AF-06~08): 초안은 분석 단계, 판정은 크리틱 3단의 공급자를 쓴다.
+  const analyze = findStage(review.aiTrail?.stages, "analyze");
+  const judge = findStage(review.aiTrail?.stages, "critic_judge");
+  const trailEdited = !!findStage(review.aiTrail?.stages, "decision")?.detail.edited;
   const initial = () => draft?.sentences.map((s) => ({ sentence: s.sentence, citations: s.citations })) ?? [];
   const [editing, setEditing] = useState(false);
   const [edited, setEdited] = useState<EditedSentence[]>(initial);
@@ -101,6 +108,8 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
         </Callout>
       )}
 
+      {review.aiTrail && review.aiTrail.stages.length > 0 && <AiTrail stages={review.aiTrail.stages} />}
+
       {review.status === "AwaitingPartner" && <PartnerPanel review={review} />}
 
       {notice && (
@@ -118,9 +127,27 @@ function Detail({ review, reload }: { review: ReviewDetail; reload: () => void }
 
       <div className="space-y-8">
         <section aria-labelledby="draft" className="mx-auto max-w-reading space-y-3">
-          <h2 id="draft" className="text-title-md text-ink">영향 검토 초안</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 id="draft" className="text-title-md text-ink">영향 검토 초안</h2>
+            {draft && isAiProvider(analyze?.providerKind) && (
+              <AiLabel
+                text={trailEdited ? "AI 초안, 변호사 수정" : "AI 초안"}
+                explain={aiExplain("draft", {
+                  providerKind: analyze?.providerKind ?? null,
+                  providerName: analyze?.providerName,
+                  sent: analyze?.detail.sent,
+                  edited: trailEdited,
+                })}
+              />
+            )}
+          </div>
           {draft ? (
             <DraftEditor
+              judgeExplain={
+                isAiProvider(judge?.providerKind)
+                  ? aiExplain("judge", { providerKind: judge?.providerKind ?? null, providerName: judge?.providerName, findings: judge?.detail.findings })
+                  : undefined
+              }
               draft={draft}
               evidence={review.evidence}
               editing={editing}
