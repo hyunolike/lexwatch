@@ -16,7 +16,7 @@ from typing import Any
 
 import httpx
 
-from app.providers.llm.base import LLMError, LLMProvider, LLMResponse, OutputInvalid, RateLimited, ToolCall
+from app.providers.llm.base import LLMError, LLMProvider, LLMResponse, OptionalTools, OutputInvalid, RateLimited, ToolCall
 from app.schemas import ProviderInfo
 
 _THINK = re.compile(r"<think>(.*?)</think>", re.S)
@@ -289,3 +289,18 @@ class GroqProvider(GptOssProvider):
         # 무료 등급은 분당 8,000 토큰, 하루 1,000회(2026-11-22 응답 헤더 확인). 분당 한도는 1분 안에 풀리므로
         # 429의 Retry-After를 30초까지 기다렸다가 다시 부른다(기본 8초면 큰 크리틱 요청이 매번 실패한다).
         self.retry_max_delay = 30.0
+
+    async def chat(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+        response_format: dict[str, Any] | None = None,
+        deadline: float | None = None,
+    ) -> LLMResponse:
+        # Groq는 JSON 형식 지정과 도구 호출을 한 요청에 함께 받지 않는다(400 "json mode cannot be combined with
+        # tool/function calling"). 2026-11-25 운영에서 Cloudflare 한도가 끝나자 검토 보조가 이 400으로 매번 실패했다.
+        # 호출자가 없어도 되는 도구(OptionalTools, 검토 보조)라고 표시했으면 도구를 빼고 형식을 지킨다.
+        # 형식을 빼는 쪽은 gpt-oss가 없는 도구("JSON", "commentary")를 불러 다시 400이 나서 쓰지 않는다.
+        if tools and response_format and isinstance(tools, OptionalTools):
+            tools = None
+        return await super().chat(messages, tools=tools, response_format=response_format, deadline=deadline)
