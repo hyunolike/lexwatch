@@ -8,8 +8,8 @@ on:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    # 깨우기(API 3분, AI 3분) + 수집(재시도 포함 약 6분) + 감시 15분 (collect-health CH-05)
-    timeout-minutes: 30
+    # 깨우기(API 3분, AI 3분) + 수집(재시도 포함 약 6분) + 감시 25분 (collect-health CH-05, ai-wake-retry WR-05)
+    timeout-minutes: 40
     env:
       API_BASE_URL: ${{ secrets.API_BASE_URL }}
       JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
@@ -41,7 +41,7 @@ jobs:
           jq -r '.runIds[]' collect.json > run_ids.txt
           echo "이번 수집이 만든 실행: $(wc -l < run_ids.txt)건"
 
-      - name: 실행이 끝날 때까지 감시하고 실패를 잡 실패로 올린다 (최대 15분)
+      - name: 실행이 끝날 때까지 감시하고 실패를 잡 실패로 올린다 (최대 25분. AI가 깨지 않으면 단계가 약 10분까지 기다린다, ai-wake-retry)
         run: |
           # 분류가 끝나면 실행 상태는 바로 InReview가 되지만 그룹 분석과 크리틱은 그 뒤에 돈다.
           # 그래서 실행 상태만 보지 않고 남은 단계와 Analyzing 그룹까지 본다(collect-health CH-04).
@@ -59,7 +59,7 @@ jobs:
             | map(select(.status == "Failed"))'
 
           if [ ! -s run_ids.txt ]; then echo "새 실행이 없다"; exit 0; fi
-          for i in $(seq 1 15); do
+          for i in $(seq 1 25); do
             pending=0
             while read -r id; do
               n=$(detail_of "$id" | jq "$PENDING" 2>/dev/null || echo 1)
@@ -85,7 +85,7 @@ jobs:
               echo "::error::실패한 단계가 있다: $name ($id)"
             elif [ "$(echo "$detail" | jq "$PENDING" 2>/dev/null || echo 1)" != "0" ]; then
               bad=1
-              echo "::error::15분 안에 끝나지 않음: $name ($id)"
+              echo "::error::25분 안에 끝나지 않음: $name ($id)"
             fi
           done < run_ids.txt
           exit $bad

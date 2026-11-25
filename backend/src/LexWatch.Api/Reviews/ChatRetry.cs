@@ -20,7 +20,7 @@ public static class ChatRetry
             int.TryParse(cfg["Chat:RetryDelayMs"], out var ms) ? Default with { Delay = TimeSpan.FromMilliseconds(ms) } : Default;
     }
 
-    private static readonly HashSet<string> Transient = ["AI_UNAVAILABLE", "AI_UPSTREAM_ERROR", "AI_BAD_RESPONSE"];
+    private static readonly HashSet<string> Transient = ["AI_WAKING", "AI_UNAVAILABLE", "AI_UPSTREAM_ERROR", "AI_BAD_RESPONSE"];
 
     public static bool IsTransient(StepResult? failure) =>
         failure is StepResult.Retry r && (Transient.Contains(r.ErrorCode) || r.ErrorCode.StartsWith("AI_UPSTREAM", StringComparison.Ordinal));

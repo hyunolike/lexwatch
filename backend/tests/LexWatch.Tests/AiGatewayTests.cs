@@ -54,6 +54,29 @@ public class AiGatewayTests
         Assert.Equal("RETRIEVER_ERROR", r.ErrorCode);
     }
 
+    [Theory]
+    [InlineData(502)]
+    [InlineData(503)]
+    [InlineData(504)]
+    public async Task Proxy_5xx_without_code_maps_to_ai_waking(int status)
+    {
+        // 잠든 Render 서비스는 프록시가 본문 코드 없이 502, 503을 돌려준다(2026-11-25 수집 실패, ai-wake-retry WR-01).
+        using var ai = new AiStub();
+        ai.Json("/embed", status, "Service Unavailable");
+        var r = Assert.IsType<StepResult.Retry>((await Embed(ai.Gateway())).Failure);
+        Assert.Equal("AI_WAKING", r.ErrorCode);
+        Assert.Contains(status.ToString(), r.Message);
+    }
+
+    [Fact]
+    public async Task App_500_without_code_stays_upstream_error()
+    {
+        using var ai = new AiStub();
+        ai.Json("/embed", 500, "Internal Server Error");
+        var r = Assert.IsType<StepResult.Retry>((await Embed(ai.Gateway())).Failure);
+        Assert.Equal("AI_UPSTREAM_ERROR", r.ErrorCode);
+    }
+
     [Fact]
     public async Task Timeout_maps_to_ai_timeout()
     {

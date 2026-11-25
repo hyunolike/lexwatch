@@ -74,6 +74,9 @@ public class AiGateway(IAiClient client, AiGatewayOptions options)
             case 422:
                 // 요청 검증 오류: 다시 보내도 같다. 계약 불일치이므로 실패로 둔다.
                 return new StepResult.Failed("AI_REQUEST_INVALID", "AI 서비스가 요청을 거절했다(422)");
+            case 502 or 503 or 504 when code is null:
+                // 본문에 오류 코드가 없으면 앱이 아니라 Render 프록시의 응답이다. AI 서비스가 꺼져 있거나 깨는 중이다(ai-wake-retry WR-01).
+                return new StepResult.Retry("AI_WAKING", $"AI 서비스가 아직 깨어나지 않았다({e.StatusCode})", null);
             case >= 500:
                 return new StepResult.Retry(code ?? "AI_UPSTREAM_ERROR", $"AI 서비스 오류({e.StatusCode})", null);
             case 200:
