@@ -177,7 +177,7 @@ def test_evidence_block_keeps_cited_bodies_within_budget():
 
     many = [Evidence(id=f"law:L1:{n}", kind="law", title=f"제{n}조", body="가" * 3000) for n in range(1, 41)]
     block = evidence_block(many, [DraftLine(sentence="s", citations=["law:L1:40"])])
-    assert len(block) < EVIDENCE_BUDGET + 40 * 60  # bodies within budget, the rest are title lines
-    assert block.index("[law:L1:40] 제40조\n가") >= 0  # the cited one keeps its body even though it is last
-    assert "[law:L1:39] 제39조 (본문 생략" in block
-    assert all(f"[law:L1:{n}]" in block for n in range(1, 41))  # every id is still listed
+    assert len(block) < EVIDENCE_BUDGET + 40 * 12  # bodies within budget, the rest as a short id list
+    assert "[law:L1:40] 제40조\n가" in block  # the cited one keeps its body even though it is last
+    assert "본문 생략" in block and "law:L1:39" in block
+    assert all(f"law:L1:{n}" in block for n in range(1, 41))  # every id is still listed

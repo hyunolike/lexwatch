@@ -143,3 +143,23 @@ def test_factory_builds_chain_in_order(monkeypatch):
 def test_groq_waits_longer_for_per_minute_token_limit():
     # 분당 8,000 토큰 한도는 1분 안에 풀린다. 8초에서 포기하지 않는다.
     assert GroqProvider("g").retry_max_delay >= 30
+
+
+
+async def test_groq_drops_optional_tools_and_keeps_json_format():
+    # Groq는 response_format과 tools를 함께 보내면 400을 낸다(2026-11-25 운영 검토 보조 실패).
+    from app.providers.llm.base import OptionalTools
+
+    seen = []
+
+    def handler(req):
+        body = json.loads(req.content)
+        seen.append(("tools" in body, "response_format" in body))
+        return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": "{}"}}]})
+
+    g = GroqProvider("gk", transport=httpx.MockTransport(handler))
+    fmt = {"type": "json_schema", "json_schema": {"name": "x", "schema": {}}}
+    tool = {"type": "function", "function": {"name": "get_article", "parameters": {}}}
+    await g.chat(MSG, tools=OptionalTools([tool]), response_format=fmt)
+    await g.chat(MSG, tools=[tool], response_format=fmt)  # 분석 단계의 필수 도구는 그대로 보낸다(동작 변경 없음)
+    assert seen == [(False, True), (True, True)]

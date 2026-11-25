@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from app.agent.loop import get_law_api
 from app.agent.tools import TOOL_SCHEMAS, Tools, clip
 from app.guardrails import ENGINE, REFUSAL, check_input
-from app.providers.llm.base import LLMError, LLMProvider
+from app.providers.llm.base import LLMError, LLMProvider, OptionalTools
 from app.providers.llm.factory import get_llm
 from app.providers.llm.mock import MockLLMProvider
 from app.rag.factory import get_retriever
@@ -68,8 +68,8 @@ class ReviewChatRequest(BaseModel):
 
 # Evidence context budget. Sending every body in full (54 x 2000 chars in production) pushed the model
 # past the 30 s deadline and the chat refused (2026-11-25). Cited and old/new evidence go first.
-EVIDENCE_BUDGET = 10_000
-EVIDENCE_ITEM_LIMIT = 1_200
+EVIDENCE_BUDGET = 4_500  # Groq free tier counts the prompt against 8,000 tokens per minute (Korean ~1 token/char)
+EVIDENCE_ITEM_LIMIT = 800
 
 
 def evidence_block(evidence: list[Evidence], draft: list[DraftLine]) -> str:
@@ -86,8 +86,12 @@ def evidence_block(evidence: list[Evidence], draft: list[DraftLine]) -> str:
             continue
         full[i] = text
         used += len(text)
-    # Everything stays citable; bodies that did not fit are listed by title (get_article can fetch them).
-    return "\n\n".join(full.get(i) or f"[{e.id}] {e.title} (본문 생략, 필요하면 get_article로 확인)" for i, e in enumerate(evidence))
+    # Bodies that did not fit are listed by id only (titles alone cost ~3,000 chars on a 54-item review).
+    rest = [e.id for i, e in enumerate(evidence) if i not in full]
+    parts = [full[i] for i in sorted(full)]
+    if rest:
+        parts.append("본문 생략(필요하면 get_article로 확인): " + ", ".join(rest))
+    return "\n\n".join(parts)
 
 
 def draft_block(draft: list[DraftLine]) -> str:
@@ -117,7 +121,8 @@ _FORMAT: dict[str, Any] = {
     "type": "json_schema",
     "json_schema": {"name": "review_chat", "schema": _Final.model_json_schema()},
 }
-_TOOLS = [t for t in TOOL_SCHEMAS if t["function"]["name"] in CHAT_TOOLS]
+# Optional: the evidence is already in the prompt, so a provider that cannot mix tools and JSON may drop them.
+_TOOLS = OptionalTools(t for t in TOOL_SCHEMAS if t["function"]["name"] in CHAT_TOOLS)
 
 
 def _refuse(provider: ProviderInfo, answer: str = REFUSAL, reason: str | None = None) -> ReviewChatResponse:
@@ -194,7 +199,7 @@ async def review_chat(req: ReviewChatRequest, llm: LLMProvider | None = None) ->
                         raise ValueError(f"사용할 수 없는 도구: {tc.name}")
                     found = await asyncio.wait_for(tools.run(tc.name, tc.arguments), timeout=remaining)
                     fetched |= {e.id for e in found if e.id.count(":") >= 2 and e.id.split(":", 2)[1] in law_ids}
-                    result = "\n\n".join(f"[{e.id}] {e.title}\n{clip(e.body, 2000)}" for e in found) or "결과 없음"
+                    result = "\n\n".join(f"[{e.id}] {e.title}\n{clip(e.body, EVIDENCE_ITEM_LIMIT)}" for e in found) or "결과 없음"
                 except TimeoutError:
                     return _refuse(provider, reason="tool_timeout")
                 except Exception as e:  # noqa: BLE001 - tool failures never abort the chat

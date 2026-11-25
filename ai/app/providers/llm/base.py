@@ -56,3 +56,10 @@ class LLMProvider(ABC):
         response_format: dict[str, Any] | None = None,
         deadline: float | None = None,
     ) -> LLMResponse: ...
+
+
+class OptionalTools(list):
+    """Tools the caller can do without (the answer can come from the prompt alone).
+
+    Providers that cannot combine tools with a JSON response format (Groq) drop these tools and keep the format.
+    """
