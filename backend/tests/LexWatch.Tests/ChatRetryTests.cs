@@ -13,10 +13,10 @@ public class ChatRetryTests
     [Fact]
     public async Task Waking_ai_is_retried_until_it_answers()
     {
-        var calls = new Queue<AiOutcome<string>>([Fail("AI_UPSTREAM_ERROR"), Fail("AI_UNAVAILABLE"), Ok]);
+        var calls = new Queue<AiOutcome<string>>([Fail("AI_WAKING"), Fail("AI_UPSTREAM_ERROR"), Fail("AI_UNAVAILABLE"), Ok]);
         var n = 0;
         var r = await ChatRetry.RunAsync((_, _) => { n++; return Task.FromResult(calls.Dequeue()); }, Fast, TimeProvider.System, default);
-        Assert.Equal(("답", 3), (r.Value, n));
+        Assert.Equal(("답", 4), (r.Value, n));
     }
 
     [Theory]
