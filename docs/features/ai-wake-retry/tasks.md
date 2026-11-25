@@ -16,4 +16,5 @@
 - 백엔드 전체: DB가 필요 없는 204건 통과. 실패 130건은 모두 `DockerUnavailableException`(로컬 Docker API 1.41)이고 CI가 돌린다.
 - `actionlint .github/workflows/collect.yml` 통과.
 - 실패한 3건(2026-11-25 수집)은 수정 전에 관리자 재실행(`POST /api/runs/{id}/retry`)으로 회복했다. 세 건 모두 분류 1회에 성공했고 세 그룹 모두 관련 없음으로 닫혔다.
-- 배포 뒤 확인할 것: 다음 예약 수집에서 AI가 잠든 채 시작하면 분류 단계가 `AI_WAKING`과 30초 이상 대기로 기록되는지.
+- 배포 뒤 확인할 것: 다음 예약 수집에서 AI가 잠든 채 시작하면 분류 단계가 `AI_WAKING`과 30초 이상 대기로 기록되는지. 이슈 [#42](https://github.com/hyunolike/lexwatch/issues/42)로 추적한다.
+- 운영 배포: 2026-11-26, `156f17a`(API `/health` 커밋 일치, CI 백엔드 333건 통과).

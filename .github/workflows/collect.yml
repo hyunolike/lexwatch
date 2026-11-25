@@ -2,8 +2,16 @@ name: collect
 
 on:
   schedule:
-    - cron: "0 22 * * *"   # UTC 22:00 = KST 07:00 (GitHub 예약 실행은 몇 시간 늦게 시작되기도 한다)
+    # GitHub 예약 실행은 부하가 높으면 늦거나 빠진다. 매 정시가 가장 붐벼서 13분에 건다(ops-process OP-02).
+    - cron: "13 22 * * *"   # UTC 22:13 = KST 07:13
+    # 첫 예약이 빠질 때를 대비해 두 시간 뒤에 한 번 더 건다. 수집은 이미 가져온 개정을 건너뛰므로 두 번 돌아도 결과가 같다.
+    - cron: "13 0 * * *"    # UTC 00:13 = KST 09:13
   workflow_dispatch:
+
+# 늦게 시작한 첫 예약과 두 번째 예약이 겹치지 않게 한 번에 하나만 돈다.
+concurrency:
+  group: collect
+  cancel-in-progress: false
 
 jobs:
   collect:
@@ -90,6 +98,14 @@ jobs:
           done < run_ids.txt
           exit $bad
 
+      - name: 성공 신호 보내기 (데드맨 스위치, ops-process OP-03. HEALTHCHECK_URL이 없으면 건너뛴다)
+        if: success()
+        env:
+          HEALTHCHECK_URL: ${{ secrets.HEALTHCHECK_URL }}
+        run: |
+          if [ -z "$HEALTHCHECK_URL" ]; then echo "HEALTHCHECK_URL 없음: 건너뜀"; exit 0; fi
+          curl --silent --show-error --max-time 10 --retry 3 "$HEALTHCHECK_URL" > /dev/null || echo "::warning::성공 신호를 보내지 못했다"
+
   bills:
     # 공포 전 법안 레이더(bill-radar BR-09). 법령 수집과 따로 돌아 서로의 실패에 영향을 주지 않는다.
     runs-on: ubuntu-latest
@@ -116,4 +132,32 @@ jobs:
           n=$(jq '.failures | length' bills.json)
           if [ "$n" -gt 0 ]; then
             echo "::warning::법안 수집 중 $n건 실패: $(jq -c '[.failures[] | "\(.target) \(.code)"] | .[:10]' bills.json)"
+          fi
+
+  alert:
+    # 실패를 이슈로 남겨 저장소를 지켜보는 사람에게 알린다(ops-process OP-03).
+    # GitHub의 예약 실행 실패 메일은 워크플로를 만든 사람에게만 가고, 2026-11-25 실패는 16시간 뒤에야 발견했다.
+    needs: [collect, bills]
+    if: always() && contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      RESULTS: "collect=${{ needs.collect.result }}, bills=${{ needs.bills.result }}"
+    steps:
+      - name: 열린 알림 이슈에 덧붙이거나 새로 연다
+        run: |
+          gh label create ops-alert --color B60205 --description "예약 작업 실패 알림" --force > /dev/null 2>&1 || true
+          body="$(date -u +%Y-%m-%dT%H:%MZ) 수집 작업 실패 ($RESULTS)
+          $RUN_URL
+          실행 이력에서 실패 단계를 확인하고, 원인이 풀렸으면 관리자 화면에서 다시 실행한다. 확인이 끝나면 이 이슈를 닫는다."
+          n=$(gh issue list --label ops-alert --state open --json number -q '.[0].number')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --body "$body"
+          else
+            gh issue create --title "수집 작업 실패" --label ops-alert --body "$body"
           fi

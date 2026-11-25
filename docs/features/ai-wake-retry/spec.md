@@ -14,6 +14,22 @@
 - 2026-11-23에도 같은 증상이 있었고(collect-health), 그때는 깨우기를 먼저 하는 것으로 막았다. 이번에는 깨우기 3분으로도 부족했다.
 - 실패한 3건은 2026-11-26에 관리자 재실행으로 회복했다(분류 성공, 세 그룹 모두 관련 없음).
 
+## 회고
+
+[장애 회고 규칙](../../incident-review.md)의 첫 적용.
+
+- 언제, 무엇이: 2026-11-25 04:44~04:49 UTC 수집, 분류 3건 실패. 사용자 화면에는 세 개정이 대기함에 오지 않았다.
+- 언제 알았나: 2026-11-25 21:21 UTC, 사용자의 "다시 확인" 요청으로 최근 실행을 보다가 발견했다. 약 16시간 뒤.
+- 같은 장애가 전에 있었나: 2026-11-23([collect-health](../collect-health/spec.md)). 그때는 깨우기를 먼저 하는 피해 줄이기만 했고 재시도 정책은 범위 밖으로 뺐다. 깨우기 3분보다 오래 잠든 경우를 막지 못했다.
+
+| 갈래 | 조치 | 상태 |
+|---|---|---|
+| 지금 복구 | 관리자 재실행(`POST /api/runs/{id}/retry`) 3건 | 완료(분류 성공, 관련 없음으로 닫힘) |
+| 감지 | 수집 실패를 `ops-alert` 이슈로, 성공 신호로 예약 누락 감지([ops-process](../ops-process/spec.md) OP-03) | 완료(신호 주소는 사용자 등록 대기) |
+| 피해 줄이기 | 감시 25분, 예약을 정시에서 옮기고 한 번 더(OP-02) | 완료 |
+| 예방 | 깨는 중 오류만 약 10분 기다리는 재시도(WR-01~03) | 완료(#41) |
+| 배포 뒤 확인 | AI가 잠든 날 분류가 `AI_WAKING`으로 기다리는지 | [#42](https://github.com/hyunolike/lexwatch/issues/42) |
+
 ## 레퍼런스
 
 - 재시도해서 나아질 오류만 재시도하고 나머지는 빨리 실패시킨다: [AWS Well-Architected REL05-BP03](https://docs.aws.amazon.com/ko_kr/wellarchitected/2023-04-10/framework/rel_mitigate_interaction_failure_limit_retries.html), [AWS Batch 서비스 작업 재시도](https://docs.aws.amazon.com/ko_kr/batch/latest/userguide/service-job-retries.html), [Temporal non-retryable errors](https://docs.temporal.io/best-practices/error-handling).
