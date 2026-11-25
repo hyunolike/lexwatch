@@ -2,10 +2,10 @@ name: reset-demo
 
 on:
   schedule:
-    - cron: "0 19 * * *"   # UTC 19:00 = KST 04:00
+    - cron: "7 19 * * *"   # UTC 19:07 = KST 04:07 (정시는 GitHub가 가장 붐빈다, ops-process OP-02)
     # GitHub 예약 실행은 몇 시간씩 늦거나 건너뛸 때가 있다(2026-11-23은 실행 자체가 없었다).
     # 초기화는 여러 번 해도 결과가 같으므로 두 시간 뒤에 한 번 더 건다.
-    - cron: "0 21 * * *"   # UTC 21:00 = KST 06:00
+    - cron: "7 21 * * *"   # UTC 21:07 = KST 06:07
   workflow_dispatch:
 
 jobs:

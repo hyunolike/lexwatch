@@ -97,7 +97,7 @@ Vercel 준비(한 번):
 ## 구성과 순서
 
 ```
-GitHub Actions (collect 07:00 KST, reset-demo 04:00 KST)  --X-Job-Token-->  Render (backend, Docker, free 512MB)
+GitHub Actions (collect 07:13과 09:13 KST, reset-demo 04:07과 06:07 KST)  --X-Job-Token-->  Render (backend, Docker, free 512MB)
 Vercel web (Next.js)  --HTTPS-->  Render  --HTTPS-->  Vercel ai (FastAPI, Python serverless)
 Render  --Postgres(세션 풀러)-->  Supabase (pgvector)
 ```
@@ -240,6 +240,8 @@ curl -s -H 'X-Demo-Role: lawyer' https://<render>.onrender.com/api/reviews   # �
 - 저장소 Settings → Secrets and variables → Actions → New repository secret:
   - `API_BASE_URL` = `https://<render>.onrender.com` (끝 슬래시 없음)
   - `JOB_TOKEN` = Render에 넣은 값과 **동일**
+  - `HEALTHCHECK_URL`(선택) = 데드맨 스위치 모니터의 신호 주소(예: Healthchecks.io의 `https://hc-ping.com/<uuid>`). 모니터는 주기 1일, 유예 2시간으로 만든다. 수집이 성공할 때마다 신호를 보내므로, 예약이 빠지거나 실패가 이어지면 모니터가 메일을 보낸다. 없으면 이 단계는 건너뛴다([ops-process](features/ops-process/spec.md) OP-03)
+- 수집이 실패하면 `alert` 작업이 `ops-alert` 라벨 이슈를 열거나 열린 이슈에 덧붙인다. 저장소 알림(Watch)을 켜 둬야 메일이 온다. 확인이 끝나면 이슈를 닫는다.
 - CI(`ci.yml`)는 시크릿을 쓰지 않는다. 시크릿은 `collect.yml`, `reset-demo.yml`만 쓴다.
 
 ### 수집 수동 실행
@@ -247,6 +249,12 @@ curl -s -H 'X-Demo-Role: lawyer' https://<render>.onrender.com/api/reviews   # �
 - 확인: 응답이 `{"created":N,"skipped":M}`이고(`LAW_OC`가 유효해야 한다. 502면 법제처 호출 실패), 웹 수신함에 새 실행이 생기며 `/runs/<id>`의 타임라인에서 단계가 진행된다.
   이후 분석 단계는 Vercel ai를 부르므로 `NVIDIA_API_KEY` 없이도 mock으로 완료된다.
 - `reset-demo`도 한 번 수동 실행해 `{"reset":true}`를 확인한다.
+
+## 로컬 개발의 LLM 키 (ops-process OP-04)
+
+- 로컬 `.env`에는 운영과 **다른 계정**의 Cloudflare, Groq 키를 넣는다. 두 업체의 무료 한도(Cloudflare 하루 10,000 뉴런, Groq 분당 토큰)는 계정 단위라서, 키만 새로 만들고 계정이 같으면 한도를 함께 쓴다.
+- 2026-11-25에 로컬 재현이 운영과 같은 Cloudflare 계정의 하루 한도를 다 써서, 운영 검토 보조가 Groq로 넘어가 실패했다.
+- 개발 계정 키를 받기 전까지는 로컬에서 LLM을 여러 번 부르는 재현을 하지 않는다. 필요하면 테스트의 가짜 공급자(`MockLLMProvider`)나 녹화 응답을 쓴다.
 
 ## 로컬 compose 메모
 
