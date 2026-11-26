@@ -133,6 +133,7 @@ Render  --Postgres(세션 풀러)-->  Supabase (pgvector)
 | `GROQ_MODEL` | Vercel ai | Groq 모델 | 기본 `openai/gpt-oss-120b` |
 | `LLM_PROVIDER`, `RETRIEVER_PROVIDER` | Vercel ai | `LLM_PROVIDER`: `auto`(기본, 값이 있는 NVIDIA → Cloudflare → Groq를 묶어 한도 초과·장애 시 다음으로, 없으면 대체 구현), `nvidia`, `cloudflare`, `groq`, `mock`. `RETRIEVER_PROVIDER`: `auto`, `lexical` | 키가 있어도 mock으로 데모하려면 지정 |
 | `NEXT_PUBLIC_API_BASE_URL` | Vercel web | 브라우저가 부를 백엔드 주소 | **빌드 때 번들에 박힌다.** 바꾸면 재배포 |
+| `NEXT_PUBLIC_AI_WAKE_URL` | Netlify web(`netlify.toml`) | 브라우저가 잠든 AI를 직접 깨우는 주소(AI의 `/health`). API를 거친 요청으로는 깨지 않는다([chat-wake](features/chat-wake/spec.md)) | 빌드 때 박힌다. AI 주소를 바꾸면 `collect.yml`의 `AI_PUBLIC_URL`도 함께 바꾼다 |
 
 비밀은 저장소에 두지 않는다. `render.yaml`은 비밀을 `sync: false`로 두고 값을 대시보드에서 넣게 한다.
 

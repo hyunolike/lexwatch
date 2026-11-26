@@ -1,13 +1,12 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { apiFetch, type ApiError, type EvidenceItem } from "@/lib/api";
+import { useEffect, useState } from "react";
+import { apiFetch, type ApiError, type ApiResult, type EvidenceItem } from "@/lib/api";
+import { aiWaker } from "@/lib/aiWaker";
 import { ArrowUp, ShieldCheck, Sparkles } from "lucide-react";
 import {
   MAX_QUESTION_CHARS,
-  aiStateOf,
   isAiWaking,
   mapChatResult,
-  waitForAi,
   maskNotice,
   maskedUserTurn,
   toHistory,
@@ -43,23 +42,13 @@ export function ReviewChat({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
-  const [aiState, setAiState] = useState<AiState>("checking");
-  /** 질문을 들고 AI 서비스가 깨기를 기다리는 중(자동으로 다시 보낸다). */
-  const [waitingWake, setWaitingWake] = useState(false);
-  const abort = useRef<AbortController | null>(null);
+  const [aiState, setAiState] = useState<AiState>(() => aiWaker.state());
 
-  const checkAi = async () => {
-    const s = aiStateOf(await apiFetch<{ state?: string } | ApiError>("/api/ai/status"));
-    setAiState(s);
-    return s;
-  };
-
-  // 화면이 열리면 AI 서비스를 미리 깨운다. 질문을 쓰는 동안 깨어난다.
+  // 앱이 연 깨우기(AiWarmup)를 함께 쓴다. 이미 깨어 있으면 다시 묻지 않는다(chat-wake CW-02).
   useEffect(() => {
-    const ac = new AbortController();
-    abort.current = ac;
-    void waitForAi(checkAi, { signal: ac.signal });
-    return () => ac.abort();
+    const off = aiWaker.subscribe(setAiState);
+    void aiWaker.warm();
+    return off;
   }, []);
 
   async function ask(q: string, history: ReturnType<typeof toHistory>) {
@@ -77,14 +66,14 @@ export function ReviewChat({
     setMessages((m) => [...m, mine]);
     if (preset === undefined) setQuestion("");
     setBusy(true);
-    let res = await ask(q, history);
-    // AI 서비스가 깨는 중이면 깰 때까지 기다렸다가 같은 질문을 한 번 더 보낸다. 사용자가 다시 쓰지 않아도 된다.
-    if (isAiWaking(res)) {
-      setAiState("waking");
-      setWaitingWake(true);
-      const woke = await waitForAi(checkAi, { signal: abort.current?.signal });
-      setWaitingWake(false);
-      if (woke) res = await ask(q, history);
+    let res: ApiResult<ChatResponse | ApiError>;
+    // 잠든 AI에 바로 보내면 서버의 90초 재시도가 깨는 시간(길면 2~3분)보다 먼저 끝난다.
+    // 깰 때까지 질문을 들고 기다렸다가 보낸다(chat-wake CW-03). 사용자가 다시 쓰지 않아도 된다.
+    if (!(await aiWaker.warm())) res = { waking: true };
+    else {
+      res = await ask(q, history);
+      // 깨어 있다고 본 뒤 다시 잠든 경우: 깨기를 다시 기다렸다가 한 번 더 보낸다(CW-04).
+      if (isAiWaking(res) && (await aiWaker.warm({ force: true }))) res = await ask(q, history);
     }
     setBusy(false);
     // 서버가 가린 질문으로 내 말풍선을 바꾼다. 화면과 다음 대화 기록에 원문이 남지 않는다(GV-04).
@@ -185,8 +174,8 @@ export function ReviewChat({
                 <span className="lw-typing-dot size-1.5 rounded-full bg-prov-ai" />
               </span>
               <span className="pt-1">
-                {waitingWake
-                  ? "AI 서버를 깨우는 중이에요. 길면 2~3분 걸려요. 깨어나면 이 질문을 자동으로 다시 보낼게요."
+                {aiState === "waking"
+                  ? "AI 서버를 깨우는 중이에요. 길면 2~3분 걸려요. 깨어나면 이 질문을 자동으로 보낼게요."
                   : `근거 ${evidence.length}건을 읽고 답을 쓰는 중이에요`}
               </span>
             </li>
