@@ -7,3 +7,5 @@
 [build.environment]
   NODE_VERSION = "22"
   NEXT_PUBLIC_API_BASE_URL = "https://lexwatch-api-qinh.onrender.com"
+  # 브라우저가 잠든 AI 서비스를 직접 깨우는 주소(chat-wake CW-05). API를 거친 요청으로는 깨지 않는다.
+  NEXT_PUBLIC_AI_WAKE_URL = "https://lexwatch-ai-xno4.onrender.com/health"

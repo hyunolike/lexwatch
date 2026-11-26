@@ -21,6 +21,9 @@ jobs:
     env:
       API_BASE_URL: ${{ secrets.API_BASE_URL }}
       JOB_TOKEN: ${{ secrets.JOB_TOKEN }}
+      # AI 서비스의 공개 주소. API가 AI를 부르는 요청은 잠든 AI를 깨우지 못하고 바로 502를 받는다(chat-wake CW-05).
+      # 바깥에서 이 주소로 직접 요청해야 Render가 깨운다. 공개 주소라 시크릿이 아니다(docs/deploy.md).
+      AI_PUBLIC_URL: https://lexwatch-ai-xno4.onrender.com
     steps:
       - name: 서버 깨우기 (무료 플랜은 잠들어 있고 첫 요청이 1분쯤 실패할 수 있다)
         run: |
@@ -31,6 +34,8 @@ jobs:
       - name: AI 서비스 깨우기 (끝내 응답이 없어도 수집은 진행한다. 실패는 감시 단계가 알린다)
         run: |
           for i in $(seq 1 12); do
+            # 직접 깨우고(Render가 깰 때까지 요청을 붙잡는다) API에서 AI로 가는 길이 열렸는지 본다
+            curl --silent --output /dev/null --max-time 60 "$AI_PUBLIC_URL/health" || true
             if curl --silent --show-error --fail --max-time 20 -X POST \
                  -H "X-Job-Token: $JOB_TOKEN" "$API_BASE_URL/jobs/wake-ai"; then
               echo; echo "AI 서비스 응답 ($i번째 시도)"; exit 0
@@ -75,7 +80,8 @@ jobs:
             done < run_ids.txt
             echo "$i분: 남은 일 $pending건"
             [ "$pending" -eq 0 ] && break
-            # 처리하는 동안 API와 AI가 잠들지 않게 한다
+            # 처리하는 동안 API와 AI가 잠들지 않게 한다. AI는 직접 불러야 깬다(chat-wake CW-05)
+            curl --silent --output /dev/null --max-time 30 "$AI_PUBLIC_URL/health" || true
             curl --silent --max-time 20 -X POST -H "X-Job-Token: $JOB_TOKEN" "$API_BASE_URL/jobs/wake-ai" > /dev/null || true
             sleep 60
           done

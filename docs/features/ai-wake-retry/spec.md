@@ -30,6 +30,8 @@
 | 예방 | 깨는 중 오류만 약 10분 기다리는 재시도(WR-01~03) | 완료(#41) |
 | 배포 뒤 확인 | AI가 잠든 날 분류가 `AI_WAKING`으로 기다리는지 | [#42](https://github.com/hyunolike/lexwatch/issues/42) |
 
+후속(2026-11-26): API를 거친 깨우기 요청은 잠든 AI를 깨우지 못한다는 것을 [chat-wake](../chat-wake/spec.md)에서 확인했다. 이 명세의 재시도는 기다리는 시간만 늘린다. 수집 잡이 AI 공개 주소로 직접 깨우도록 CW-06에서 고쳤다.
+
 ## 레퍼런스
 
 - 재시도해서 나아질 오류만 재시도하고 나머지는 빨리 실패시킨다: [AWS Well-Architected REL05-BP03](https://docs.aws.amazon.com/ko_kr/wellarchitected/2023-04-10/framework/rel_mitigate_interaction_failure_limit_retries.html), [AWS Batch 서비스 작업 재시도](https://docs.aws.amazon.com/ko_kr/batch/latest/userguide/service-job-retries.html), [Temporal non-retryable errors](https://docs.temporal.io/best-practices/error-handling).

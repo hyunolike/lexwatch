@@ -9,6 +9,7 @@ import { THEME_SCRIPT } from "@/lib/theme";
 import { ToastProvider } from "@/components/ui/Toast";
 import { CommandPalette } from "@/components/CommandPalette";
 import { ShortcutHelp } from "@/components/Shortcuts";
+import { AiWarmup } from "@/components/AiWarmup";
 
 export const metadata: Metadata = {
   title: "LexWatch",
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <CommandPalette />
           </Suspense>
           <ShortcutHelp />
+          <AiWarmup />
         </ToastProvider>
       </body>
     </html>
